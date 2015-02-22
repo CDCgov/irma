@@ -1,0 +1,990 @@
+#!/bin/bash
+PROGRAM="Influenza Read MiSeq Assembler (IRMA)"
+AUTHOR="Samuel S. Shepard"
+EMAIL="vfn4@cdc.gov"
+AFFIL="NCIRD/OID/CDC"
+DATE="18 DEC 2014"
+VERSION="0.5.6"
+LICENSE="GPL version 3. This program comes with ABSOLUTELY NO WARRANTY. This is free software.
+You are welcome to redistribute it under certain conditions. See:  <http://www.gnu.org/licenses/>."
+
+if [ $# -eq 4 ];then
+	PAIRED=1
+	MODULE=$1
+	LEFT=$2			# R1 / left FASTQ
+	RIGHT=$3		# R2 / right FASTQ
+	RUN=$4			# name of the run
+elif [ $# -eq 3 ];then
+	PAIRED=0
+	MODULE=$1
+	SINGLE=$2		# single paired end FASTQ
+	RUN=$3			# name of the run
+else
+	echo -e "$PROGRAM, v$VERSION ($DATE)"
+	echo -e "$AUTHOR ($AFFIL), $EMAIL\n"
+	echo -e "$LICENSE\n\nUSAGE:"
+	echo -e "(PAIRED-END):\t$(basename $0) <MODULE> <R1.fastq.gz/R1.fastq> <R2.fastq.gz/R2.fastq> <run_name>"
+	echo -e "(SINGLE-END):\t$(basename $0) <MODULE> <fastq/fastq.gz> <run_name>\n"
+	exit 1
+fi
+
+# FREE VARIABLES
+QUAL_THRESHOLD=30	# average or median threshold
+INS_T=0.15		# threshold for insertion refinement of references
+DEL_T=0.75		# threshold for deletion refinement of references
+MIN_C=2			# minimum count for variants
+MIN_F=0.0075		# minimum frequency for variants
+MIN_FI=0.0075		# minimum frequency for insertion variations
+MIN_FD=0.0075		# minimum frequency for non-singleton deletion variations
+MIN_AQ=24		# minimum average variant quality, does not apply to deletions
+MIN_TCC=100		# minimum non-ambiguous column coverage
+MIN_CONF=0.80		# minimum confidence not machine error
+MIN_AMBIG=0.25		# minimum ambiguous nucleotides for amended consensus (with ambig codes)
+SIG_LEVEL=0.999		# significance test level for variant calling (.90,.95,.99,.999). 
+LFASTM=1		# LABEL sort fast-mode
+AUTO_F=1		# auto-adjust frequency threshold
+NONSEGMENTED=0		# segmented versus non-segmented virus
+MIN_RP=15		# minimum read pattern count
+MIN_RC=15		# minimum read count
+SKIP_E=1		# skip reference elongation
+INCL_CHIM=0		# whether or not to get rid of chimera
+
+# ALTER AT RISK
+GRID_ON=1		# enable cluster/grid computation
+SSW_M=1			# smith-waterman match score
+SSW_X=5			# smith-waterman mismatch penalty
+SSW_O=10		# smith-waterman gap open penalty
+SSW_E=1			# smith-waterman gap extension penalty
+MIN_LEN=150		# minimum read length for QUALITY reads
+MAX_ROUNDS=2		# maximum number of iterations to BLAT
+R=1			# current round
+LANG=POSIX		# collation
+MAX_ITER_SSW=5		# maximum number of SSW iterations to perform, 3 should be sufficient with 4 to prove
+FASTQ_LIMIT=15000	# read threshold before parallelizing the assembly
+MATCH_PROC=80		# maximum processes for the MATCH
+ALIGN_PROC=25		# maximum processes for the rough align
+ASSEMBLE_PROC=25	# maximum processes for assembly
+SINGLE_LOCAL_PROC=8	# maximum processes for QC on local node
+DOUBLE_LOCAL_PROC=4	# maximum processes for the left or right pairs
+
+
+# DO NOT ALTER
+owd=$(pwd)
+bpath=
+if [ "$bpath" == "" ]; then
+	bpath=$( cd -P "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+fi
+rpath=$bpath/IRMA_RES2	# IRMA resources
+spath=$rpath/scripts	# IRMA specific scripts/binaries
+
+LABEL=$(which LABEL)
+Lspath=$(dirname $LABEL)/LABEL_RES/scripts
+Lmpath=$(dirname $LABEL)/LABEL_RES/training_data/IRMA
+PARSE_SORT_OPTS=""
+
+
+if [ ! -d $rpath/ppath/$RUN ]; then
+	mkdir $rpath/ppath/$RUN
+else
+	echo "$(basename $0) ERROR: run '$RUN' exists, operations have been ABORTED!"
+	exit 1
+fi
+ppath=$rpath/ppath/$RUN
+
+
+MODULE2=$(echo $MODULE|cut -f1 -d'-')
+if [ ! -d $rpath/modules/$MODULE2 ];then
+	time_stamp "Error: $MODULE2 not found."
+	exit 1
+else
+	mpath=$rpath/modules/$MODULE2	
+fi
+
+# STAGES
+MATCH_PROG="BLAT"
+SORT_PROG="LABEL"
+ALIGN_PROG="SAM"
+ASSEM_PROG="SSW"
+
+# stage paths
+matchp=$ppath/MATCH
+sortp=$ppath/SORT
+alignp=$ppath/ALIGN
+assemp=$ppath/ASSEMBLY
+refp=$ppath/GENES
+mkdir $matchp $sortp $alignp $assemp $refp
+
+# initial BLAT database
+REF_SET=$mpath/blatDB.fasta
+source $mpath/params-$MODULE.sh
+
+if [ "$AUTO_F" -eq 1 ];then
+	AUTO_F="-A"
+else
+	AUTO_F=""
+fi
+
+# Enforce LABEL specific options
+[ "$SORT_PROG" != "LABEL" ] && LFASTM=0
+
+# BLAT PARSE options
+[ "$LFASTM" -eq "1" ] && BLAT_PARSE_OPTS="-T"
+[ "$SORT_PROG" == "BLAT" ] && BLAT_PARSE_OPTS="-C"
+[ "$ALIGN_PROG" == "BLAT" ] && BLAT_PARSE_OPTS="-C -A"
+[ "$INCL_CHIM" -eq "1" ] && BLAT_PARSE_OPTS="$BLAT_PARSE_OPTS -I"
+[ "$SKIP_E" -eq "1" ] && BLAT_PARSE_OPTS="$BLAT_PARSE_OPTS -S"
+
+# SSW options
+SSW_OPTS="-x $SSW_X -m $SSW_M -o $SSW_O -e $SSW_E"
+
+# BLAT options
+BLAT_OPTS="-oneOff=1 -minIdentity=80 -tileSize=10"
+
+# Reference elongation
+if [ "$SKIP_E" -eq 1 ];then
+	SKIP_E="-S"
+else
+	SKIP_E=""
+fi
+
+#### FUNCTIONS ####
+
+# FNC - ERROR TEST #
+# Idea courtesy: steve-parker.org/sh/exitcodes.shtml
+function err_test() {
+	if [ "$1" -ne "0" ];then
+		echo ""
+		if [ $# -eq "1" ]; then 
+			echo "$(basename $0) ERROR: operations have been ABORTED!"
+		else
+			echo "$(basename $0) ERROR ($2): operations have been ABORTED!"
+		fi
+		exit 1
+	fi
+}
+
+function time_stamp() {
+	local t=$(date +"%Y-%m-%d %k:%M:%S")
+	echo -e "[$t]\tIRMA/$MODULE $1"
+}
+
+
+#####################
+### Main Functions ###
+
+function moveProject() {
+	local x=2
+	local mvpath=$owd/$RUN
+	
+	if [ ! -d $mvpath ];then
+		mv $ppath $mvpath
+	else
+		local outpath=${mvpath}-V$x
+		while [ -d $outpath ];do
+			x=$(expr $x + 1)
+			outpath=${mvpath}-V$x
+		done
+		mv $ppath $outpath
+	fi
+}
+
+function preProcess() {
+	local file=$1
+	local name=$2
+	local numGroups=$3
+
+	# SEPARATE
+	if [ ${file: -3} == ".gz" ];then 
+		$Lspath/interleavedSamples.pl -Z -G $numGroups -Q $file $ppath/$name > /dev/null
+	else
+		$Lspath/interleavedSamples.pl -G $numGroups -Q $file $ppath/$name > /dev/null
+	fi
+
+	# FILTER
+	for i in $ppath/${name}*.fastq;do
+		local prefix=$(basename $i .fastq)
+		$spath/fastQ_converter.pl -Q -M -T $QUAL_THRESHOLD -L $MIN_LEN $i > $ppath/$prefix.QC.fastq &
+	done
+	wait
+
+	# COLLATE
+	$spath/xflate.pl -C -Q -L $name $ppath/$name.xfl $ppath/${name}*.QC.fastq > $ppath/$name.fa
+}
+
+function doMATCHgrid() {
+	local DB=$1
+	local prefix=$2
+
+	if [ "$MATCH_PROG" == "BLAT" ];then
+###
+cat >$matchp/${prefix}_match.sh  <<EOL
+#!/bin/bash
+LANG=$LANG
+shopt -u nocaseglob;shopt -u nocasematch
+
+ID=\$(printf %04d \$SGE_TASK_ID)
+INPUT=$matchp/${prefix}_\$ID.fasta
+OUTPUT=$matchp/${prefix}_\$ID.blat
+
+$spath/blat $REF_SET \$INPUT \$OUTPUT $BLAT_OPTS
+$spath/parseBlat.pl \$OUTPUT \$INPUT $BLAT_PARSE_OPTS
+EOL
+###
+	fi
+
+	qsub -t 1-$MATCH_PROC:1 -N ${prefix}-MATCH -sync y -wd $matchp -j y -o $matchp/${prefix}_match.o $matchp/${prefix}_match.sh > /dev/null 2>&1
+	rm $matchp/${prefix}_match.{o,sh}
+}
+
+function doMATCHlocal() {
+	local DB=$1
+	local prefix=$2
+	local ID=$3
+
+	if [ "$MATCH_PROG" == "BLAT" ];then
+		ID=$(printf %04d $ID)
+		local INPUT=$matchp/${prefix}_$ID.fasta
+		local OUTPUT=$matchp/${prefix}_$ID.blat
+		local FASTA=$matchp/${prefix}_$ID
+		$spath/blat $REF_SET $INPUT $OUTPUT $BLAT_OPTS > /dev/null 2>&1
+		$spath/parseBlat.pl $OUTPUT $INPUT $BLAT_PARSE_OPTS > /dev/null 2>&1
+	fi
+}
+
+
+function doMATCH() {
+	local DB=$1
+	local prefix=$2
+	local n=$3
+	local match_ext=""
+	local i=0
+
+	if [ "$MATCH_PROG" == "BLAT" ];then
+		match_ext="blat"
+	else
+		time_stamp "$prefix aborted, MATCH:$MATCH_PROG not implemented"
+		if [ $R -gt 1 ];then
+			doPostProcessing
+		fi
+		moveProject
+		time_stamp 'finished!'
+		exit
+	fi
+
+	if [ $n -gt 600000 -a $GRID_ON -eq "1" ];then
+		$Lspath/interleavedSamples.pl -G $MATCH_PROC $DB $matchp/$prefix > /dev/null 2>&1
+		time_stamp "$prefix interleaved"
+		doMATCHgrid $DB $prefix
+	else
+		$Lspath/interleavedSamples.pl -G $SINGLE_LOCAL_PROC $DB $matchp/$prefix > /dev/null 2>&1
+		time_stamp "$prefix interleaved"
+		for i in $(seq $SINGLE_LOCAL_PROC);do
+			doMATCHlocal $DB $prefix $i &
+		done
+		wait
+	fi
+	time_stamp "$prefix performed all match with $MATCH_PROG & parsed"
+	# consolidate
+	cat $matchp/${prefix}_????.match > $matchp/${prefix}.match &
+	cat $matchp/${prefix}_????.nomatch > $matchp/${prefix}.nomatch &
+	cat $matchp/${prefix}_????.chim > $matchp/${prefix}.chim &
+	wait
+
+	# LABEL fast mode consoldiation
+	if [ $LFASTM -eq "1" -a $SORT_PROG == "LABEL" ];then
+		cat $matchp/${prefix}_????.match.HA > $matchp/${prefix}.match.HA 2> /dev/null &
+		cat $matchp/${prefix}_????.match.NA > $matchp/${prefix}.match.NA 2> /dev/null &
+		cat $matchp/${prefix}_????.match.OG > $matchp/${prefix}.match.OG 2> /dev/null &
+		wait
+		rm $matchp/${prefix}_????.match.{HA,NA,OG}
+	fi
+
+	# CLEAN UP	
+	rm $matchp/${prefix}_????.{match,nomatch,chim,fasta}
+	cd $matchp
+	tar  -czf $matchp/${prefix}.tar.gz ${prefix}_????.$match_ext 2> /dev/null
+	cd - > /dev/null
+	rm $matchp/${prefix}_????.$match_ext
+	time_stamp "$prefix consolidated & cleaned"
+
+	# EXTEND to SORT
+	if [ "$SORT_PROG" == "$MATCH_PROG" ];then
+		mkdir $ppath/SORT/${prefix}
+		cat $matchp/${prefix}_????.class > $matchp/${prefix}.class
+		rm $matchp/${prefix}_????.class
+		mv $matchp/${prefix}.class $ppath/SORT/$prefix/SORT_result.txt
+	fi
+
+	# EXTEND to ALIGN
+	if [ "$ALIGN_PROG" == "$MATCH_PROG" ];then
+		mv $matchp/*.sto $alignp
+	fi
+}
+
+function doSORTgrid() {
+	local DB=$1
+	local prefix=$2
+
+	if [ "$SORT_PROG" == "LABEL" ];then
+		if [ $# -eq "3" ];then
+			local Earg=$3
+		else
+			local Earg=2
+		fi
+
+		if [ $LFASTM -eq "1" ];then
+			mkdir $sortp/${prefix}
+			local groupFile=""
+			local geneGroup=""
+
+			for groupFile in $matchp/${prefix}.match.*;do
+				x=$(wc -l < $groupFile)
+				geneGroup=$(basename $groupFile|cut -f3 -d'.')
+
+				if [ $x -gt 0 ];then
+					$LABEL -E $Earg -W $sortp/${prefix} $groupFile $geneGroup irma$geneGroup > /dev/null 2>&1 &
+				fi
+			done
+			wait
+
+			for i in $sortp/${prefix}/*;do 
+				i=$(basename $i)
+				mv $sortp/${prefix}/${i}/LEVEL_trace.tab $sortp/${prefix}/${i}_LEVEL_trace.tab
+			done
+			cat $sortp/${prefix}/*/LEVEL_result.tab > $sortp/${prefix}/SORT_result.txt
+		else
+			# SORT using LABEL full
+			$LABEL -E $Earg -W $sortp $matchp/${prefix}.match $prefix IRMA > /dev/null 2>&1
+			mv $sortp/${prefix}/LEVEL_result.tab > $sortp/${prefix}/SORT_result.txt
+		fi
+	elif [ "$SORT_PROG" == "BLAT" ];then
+		# TO-DO: assumes BLAT was run on MATCH	
+		:
+	fi
+}
+
+function doSORTlocal() {
+	local DB=$1
+	local prefix=$2
+	
+	if [ "$SORT_PROG" == "LABEL" ];then
+		doSORTgrid $DB $prefix 0
+	elif [ "$SORT_PROG" == "BLAT" ];then
+		# TO-DO: assumes BLAT was run on MATCH	
+		:
+	fi
+}
+
+function doSORT() {
+	local DB=$1
+	local prefix=$2
+	local n=$3
+
+	if [ "$SORT_PROG" != "LABEL" -a "$SORT_PROG" != "BLAT" ];then
+		time_stamp "$prefix aborted, SORT:$SORT_PROG not implemented"
+		if [ $R -gt 1 ];then
+			doPostProcessing
+		fi
+		moveProject
+		time_stamp 'finished!'
+		exit
+	fi
+
+	if [ $n -gt 1000 -a "$GRID_ON" -eq "1" ];then
+		doSORTgrid $DB $prefix
+	else
+		doSORTlocal $DB $prefix
+	fi
+	time_stamp "$prefix sorted using $SORT_PROG"
+
+	if [ ! -r $sortp/$prefix/SORT_result.txt ];then
+		time_stamp "$prefix aborted, sort failed"
+		if [ $R -gt 1 ];then
+			doPostProcessing
+		fi
+		moveProject
+		time_stamp 'finished!'
+		exit
+	fi
+
+	x=$(grep UNRECOGNIZABLE $sortp/$prefix/SORT_result.txt -c)
+	y=$(wc -l < $sortp/$prefix/SORT_result.txt)
+	if [ $x -gt 0 -a $x -eq $y ];then
+		time_stamp "$prefix found no significant reads"
+		if [ $R -gt 1 ];then
+			doPostProcessing
+		fi
+		moveProject
+		time_stamp 'finished!'
+		exit
+	fi
+
+	$spath/parseSORTresults.pl $sortp/$prefix/SORT_result.txt $matchp/$prefix.match $sortp/$prefix $PARSE_SORT_OPTS -C $MIN_RC -D $MIN_RP
+
+	# CLEAN UP
+	cd $sortp/$prefix
+	tar  -cf - SORT_result.txt |gzip -4 - > $sortp/$prefix.tar.gz
+	#tar  -cf - *LEVEL_trace.tab SORT_result.tab |gzip -4 - > $sortp/$prefix.tar.gz
+	cd - > /dev/null
+	rm -rf $sortp/$prefix &
+
+}
+
+function doALIGNgrid() {
+	local prefix=$1
+	local name=$2
+
+	if [ "$ALIGN_PROG" == "SAM" ];then
+		local mod=$Lmpath/${name#*-}_hmm.mod
+
+cat >$alignp/$name-align.sh  <<EOL
+#!/bin/bash
+LANG=$LANG
+shopt -u nocaseglob;shopt -u nocasematch
+
+ID=\$(printf %04d \$SGE_TASK_ID)
+DB=$alignp/${name}_\$ID.fasta
+RUN=$alignp/${name}_\$ID
+MOD=$mod
+
+$Lspath/align2model \$RUN -modelfile \$MOD -db \$DB
+$spath/a2mToMatchStats.pl \$RUN.a2m \$RUN.sto $SKIP_E
+EOL
+		qsub -q all.q -hard -t 1-$ALIGN_PROC:1 -N $name-ALIGN -sync y -wd $alignp -j y -o $alignp/$name-align.o $alignp/$name-align.sh > /dev/null 2>&1
+		rm $alignp/$name-align.{o,sh}
+		rm $alignp/${name}_????.{fasta,a2m}
+	elif [ "$ALIGN_PROG" == "BLAT" ];then
+		:
+	fi
+}
+
+function doALIGNlocal() {
+	local prefix=$1
+	local name=$2
+	local ID=$3
+	if [ "$ALIGN_PROG" == "SAM" ];then
+		ID=$(printf %04d $ID)
+		local DB=$alignp/${name}_$ID.fasta
+		local RUN=$alignp/${name}_$ID
+		local MOD=$Lmpath/${name#*-}_hmm.mod
+
+		$Lspath/align2model $RUN -modelfile $MOD -db $DB > /dev/null 2>&1
+		$spath/a2mToMatchStats.pl $RUN.a2m $RUN.sto $SKIP_E > /dev/null 2>&1
+		rm $RUN.{fasta,a2m}
+	elif [ "$ALIGN_PROG" == "BLAT" ];then
+		:
+	fi
+}
+
+function doALIGN() {
+	local $prefix=$1
+	local i=""
+
+	if [ "$ALIGN_PROG" != "BLAT" ];then
+		for i in $sortp/$prefix-*.fa;do
+			n=$(wc -l < $i)
+			name=$(basename $i .fa)
+			if [ $n -gt 500 -a "$GRID_ON" -eq "1" ];then
+				$Lspath/interleavedSamples.pl $i $alignp/$name -G $ALIGN_PROC > /dev/null
+				doALIGNgrid $prefix $name &
+			else
+				$Lspath/interleavedSamples.pl $i $alignp/$name -G $SINGLE_LOCAL_PROC > /dev/null
+				for i in $(seq $SINGLE_LOCAL_PROC);do
+					doALIGNlocal $prefix $name $i &
+				done
+			fi
+		done
+		wait
+	fi
+	time_stamp "$prefix rough aligned reads using $ALIGN_PROG"
+
+	# CREATE NEW REFERENCES
+	for i in $sortp/$prefix-*.fa;do
+		name=$(basename $i .fa)
+		gene=${name#*-}
+		$spath/combineA2Mstats.pl -N $gene $alignp/R*-${gene}_????.sto > $refp/$name.ref $SKIP_E &
+	done
+	wait
+}
+
+function doRound() {
+	local DB=$1
+	local prefix=$2
+	local n=$(grep '>' $DB -c)
+	local Earg=2	
+	local x=0
+	local y=0
+	local gene=""
+
+
+	# make sure directories are available
+	[ ! -d $ppath/MATCH ] && mkdir $ppath/MATCH
+	[ ! -d $ppath/SORT ] && mkdir $ppath/SORT
+	[ ! -d $ppath/ALIGN ] && mkdir $ppath/ALIGN
+	[ ! -d $ppath/GENES ] && mkdir $ppath/GENES
+
+	# MATCH stage
+	doMATCH $DB $prefix $n	
+	n=$(wc -l < $matchp/${prefix}.match)
+	if [ $n -eq 0 ];then
+		time_stamp "$prefix aborted, no matches found"
+		if [ $R -gt 1 ];then
+			doPostProcessing
+		fi
+		moveProject
+		time_stamp 'finished!'
+		exit
+	fi
+	
+	### SORT stage ###
+	DB=$matchp/${prefix}.match
+	doSORT $DB $prefix $n
+
+	# PRIMARY vs SECONDARY tests
+	# if we have primary data from the current round
+	if test -n "$(shopt -s nullglob;echo $sortp/$prefix-*.fa)";then
+		# for each current primary dataset
+		for i in $sortp/$prefix-*.fa;do
+			name=$(basename $i .fa)
+			gene=${name#*-}
+			# if previously a secondary lineage, make the current primary a secondary
+			test -n "$(shopt -s nullglob;echo $sortp/R*-${gene}.fa.2)" && mv $i ${i}.2
+		done
+	fi
+
+	# vice-versa, if we have secondary data from this round
+	if test -n "$(shopt -s nullglob;echo $sortp/$prefix-*.fa.2)";then
+		# for each current secondary dataset
+		for i in $sortp/$prefix-*.fa.2;do
+			name=$(basename $i .fa.2)
+			gene=${name#*-}
+			# if previously a primary lineage, make the current secondary a primary
+			# used to be ".ref"
+			test -n "$(shopt -s nullglob;echo $sortp/R*-${gene}.fa)" && mv $i $sortp/$(basename $i .2)
+		done
+	fi
+
+	### ALIGN stage ###
+	# given we have primary data in this around	
+	if test -n "$(shopt -s nullglob;echo $sortp/$prefix-*.fa)";then
+		doALIGN $prefix
+	else
+		time_stamp "$prefix aborted, found fewer than $MIN_RP RPs or $MIN_RC reads for all template"
+		if [ $R -gt 1 ];then
+			doPostProcessing
+		else
+			mkdir $ppath/low_abundance
+			mkdir $ppath/other_data
+			for i in $sortp/*2;do
+				mv $i $ppath/low_abundance/$(basename $i .2)
+			done
+			mv $ppath/low_abundance/*UNRECOGNIZABLE* $ppath/other_data/failed_sort.fa
+
+			mv $ppath/R1.nomatch $ppath/other_data/unmatched_data.fa
+			mv $ppath/R1.chim $ppath/other_data/chimeric.fa
+			mv $matchp/R1.tar.gz $ppath/other_data/match_output.tar.gz
+			mv $sortp/R1.tar.gz $ppath/other_data/sort_output.tar.gz
+			echo -e "Gene\tRead Patterns\tRead Count" > $ppath/sorted_read_stats.txt
+			cat $sortp/R1.txt >> $ppath/sorted_read_stats.txt && rm $sortp/R1.txt
+			echo -e "Interleaved sample\tStarting reads\tQC'd reads\tQuality threshold\tMin length\tUse median" > $ppath/read_QC_filtering.txt
+			cat $ppath/QC_log.txt >> $ppath/read_QC_filtering.txt && rm $ppath/QC_log.txt
+			rm $ppath/R*.{match,fa,xfl}
+			[ $LFASTM -eq "1" ] && rm $ppath/R1.match.*
+			rmdir $alignp $matchp $refp $sortp
+		fi
+	
+		moveProject
+		time_stamp 'finished!'
+		exit
+	fi
+
+	cat $refp/${prefix}*.ref > $refp/${prefix}.refs
+	REF_SET=$refp/${prefix}.refs
+	QUERY_SET=$matchp/$prefix.nomatch
+	time_stamp "$prefix references created"
+}
+
+function doSSW() {
+	local apath=$1
+	local iter=$2
+	local gene=$3
+	local ref=$4
+
+###
+cat >$apath/F${iter}-${gene}.sh  <<EOL
+#!/bin/bash
+LANG=$LANG
+shopt -u nocaseglob;shopt -u nocasematch
+
+ID=\$(printf %04d \$SGE_TASK_ID)
+FASTQ=$apath/${gene}_\$ID.fastq
+SAM=$apath/F${iter}-${gene}-\$ID.sam
+STAT=$apath/F${iter}-${gene}-\$ID.sto
+
+$spath/ssw -s -c -h -r $SSW_OPTS $ref \$FASTQ > \$SAM 2> /dev/null
+$spath/samStats.pl $ref \$SAM \$STAT
+EOL
+###
+	qsub -q all.q -hard -t 1-$ASSEMBLE_PROC:1 -N F${iter}-$gene -sync y -wd $apath -j y -o $apath/F${iter}-${gene}.o $apath/F${iter}-${gene}.sh > /dev/null 2>&1
+	head -n2 $apath/F${iter}-${gene}-0001.sam|grep -P '^@' > $apath/F${iter}-$gene.sam
+	cat $apath/F${iter}-${gene}-*.sam|grep -vP '^@' >> $apath/F${iter}-$gene.sam
+}
+
+
+function doMergeAndAln() {
+	local apath=$1
+	local iter=$2
+	local gene=$3
+	local ref=$4
+	local final=$5
+
+###
+cat >$apath/M${iter}-${gene}.sh  <<EOL
+#!/bin/bash
+LANG=$LANG
+shopt -u nocaseglob;shopt -u nocasematch
+
+ID=\$(printf %04d \$SGE_TASK_ID)
+SAM=$apath/F${iter}-${gene}-\$ID.sam
+MPREFIX=$apath/M${iter}-${gene}-\$ID
+MSAM=$apath/M${iter}-${gene}-\$ID.sam
+APREFIX=$apath/A${iter}-${gene}-\$ID
+
+$spath/mergeSAMpairs.pl -S $ref \$SAM \$MPREFIX
+$spath/varCallStats.pl $ref \$MSAM \$APREFIX
+
+EOL
+###
+	local callPhaseArgs="-C $MIN_C -F $MIN_F -I $MIN_FI -D $MIN_FD -Q $MIN_AQ -T $MIN_TCC -M $MIN_CONF -S $SIG_LEVEL $AUTO_F"
+	local pstats=$final-pairingStats.txt
+	qsub -q all.q -hard -t 1-$ASSEMBLE_PROC:1 -N M${iter}-$gene -sync y -wd $apath -j y -o $apath/M${iter}-${gene}.o $apath/M${iter}-${gene}.sh > /dev/null 2>&1
+	head -n2 $apath/M${iter}-${gene}-0001.sam|grep -P '^@' > ${final}.sam
+	cat $apath/M${iter}-${gene}-*.sam|grep -vP '^@' >> ${final}.sam &
+	$spath/getPairingStats.pl $apath/M${iter}-${gene}-*.sto > $pstats &
+	wait
+	$spath/callPhase.pl -P -G $callPhaseArgs -E $pstats $lastRef $final $apath/A${iter}-${gene}-*.sto
+	rm $apath/A${iter}-${gene}-*.sto
+	rm $apath/M${iter}-${gene}-*.sam 
+	rm $apath/M${iter}-${gene}-*.sto
+}
+
+
+function doAlnAndCall() {
+	local apath=$1
+	local iter=$2
+	local gene=$3
+	local ref=$4
+	local final=$5
+
+###
+cat >$apath/S${iter}-${gene}.sh  <<EOL
+#!/bin/bash
+LANG=$LANG
+shopt -u nocaseglob;shopt -u nocasematch
+
+ID=\$(printf %04d \$SGE_TASK_ID)
+SAM=$apath/F${iter}-${gene}-\$ID.sam
+MSAM=$apath/M${iter}-${gene}-\$ID.sam
+APREFIX=$apath/A${iter}-${gene}-\$ID
+
+$spath/varCallStats.pl $ref \$SAM \$APREFIX
+
+EOL
+###
+	local callPhaseArgs="-C $MIN_C -F $MIN_F -I $MIN_FI -D $MIN_FD -Q $MIN_AQ -T $MIN_TCC -M $MIN_CONF -S $SIG_LEVEL $AUTO_F"
+	qsub -q all.q -hard -t 1-$ASSEMBLE_PROC:1 -N S${iter}-$gene -sync y -wd $apath -j y -o $apath/S${iter}-${gene}.o $apath/S${iter}-${gene}.sh > /dev/null 2>&1
+	head -n2 $apath/F${iter}-${gene}-0001.sam|grep -P '^@' > ${final}.sam
+	cat $apath/F${iter}-${gene}-*.sam|grep -vP '^@' >> ${final}.sam &
+	$spath/callPhase.pl -P -G $callPhaseArgs $lastRef $final $apath/A${iter}-${gene}-*.sto
+	rm $apath/A${iter}-${gene}-*.sto
+}
+
+
+function doAssemblies() {
+	local apath=$assemp
+	local gene=$1
+	local fastq=$apath/$gene.fastq
+	local log=$apath/$gene.log
+	local final=$ppath/$gene
+	
+	local iter=1
+	local currRef=$apath/F${iter}-$gene.ref
+	local currSAM=$apath/F${iter}-$gene.sam
+	local theBAM=""
+	local lastRef=""
+	local lastSAM=""
+	local lastScore=0
+	local size=$(expr $(wc -l < $fastq) / 4)
+	local callPhaseArgs="-C $MIN_C -F $MIN_F -I $MIN_FI -D $MIN_FD -Q $MIN_AQ -T $MIN_TCC -M $MIN_CONF -S $SIG_LEVEL $AUTO_F"
+
+	if [ $size -gt $FASTQ_LIMIT ];then
+		$Lspath/interleavedSamples.pl -G $ASSEMBLE_PROC -P $fastq $apath/$gene > /dev/null
+		
+		doSSW $apath $iter $gene $currRef
+		local currScore=$(cut -f12 $currSAM|$spath/sumField.pl -F 3 -D ':')
+
+		echo -e "$currScore\t$currSAM" >> $log
+		while [ $lastScore -lt $currScore ];do
+			lastRef=$currRef
+			lastSAM=$currSAM
+			lastSTO=$apath/F${iter}-$gene-*.sto
+			lastScore=$currScore
+			theBAM=$apath/F${iter}-$gene.bam
+			$spath/samtools view -bS $currSAM > $theBAM 2> /dev/null
+			iter=$(expr $iter + 1)
+			currRef=$apath/F${iter}-$gene.ref
+			currSAM=$apath/F${iter}-$gene.sam
+
+			# Generate current scaffold from previous SAM and reference, assemble & compare
+			$spath/combineSAMstats.pl $lastRef -N $gene -I $INS_T $lastSTO > $currRef
+			doSSW $apath $iter $gene $currRef
+			currScore=$(cut -f12 $currSAM|$spath/sumField.pl -F 3 -D ':')
+			echo -e "$currScore\t$currSAM" >> $log
+			rm $lastSTO
+			[ $iter -eq $MAX_ITER_SSW ] && break
+		done
+		
+		if [ $lastScore -eq $currScore ];then
+			mv $currRef $lastRef
+			mv $currSAM $lastSAM
+		else 		
+			rm $currRef
+			iter=$(expr $iter - 1)
+		fi
+
+		if [ "$PAIRED" -eq "1" ];then
+			doMergeAndAln $apath $iter $gene $lastRef $final
+			rm $apath/{M,F}*-${gene}.{sh,o}
+		else
+			doAlnAndCall $apath $iter $gene $lastRef $final
+			rm $apath/{S,F}*-${gene}.{sh,o}
+		fi
+		rm $apath/F*-${gene}-*.sto
+		rm $apath/F*-${gene}-*.sam
+		rm $apath/${gene}_????.fastq
+	else
+		$spath/ssw -s -c -h -r $SSW_OPTS $currRef $fastq > $currSAM 2> /dev/null
+		local currScore=$(cut -f12 $currSAM|$spath/sumField.pl -F 3 -D ':')
+
+		echo -e "$currScore\t$currSAM" >> $log
+		while [ $lastScore -lt $currScore ];do
+			lastRef=$currRef
+			lastSAM=$currSAM
+			lastScore=$currScore
+			theBAM=$apath/F${iter}-$gene.bam
+			$spath/samtools view -bS $currSAM > $theBAM 2> /dev/null
+			iter=$(expr $iter + 1)
+			currRef=$apath/F${iter}-$gene.ref
+			currSAM=$apath/F${iter}-$gene.sam
+
+			# Generate current scaffold from previous SAM and reference, assemble & compare
+			$spath/samConsensus.pl $lastRef $lastSAM $currRef -I $INS_T
+			$spath/ssw -s -c -h -r $SSW_OPTS $currRef $fastq > $currSAM 2> /dev/null
+			currScore=$(cut -f12 $currSAM|$spath/sumField.pl -F 3 -D ':')
+			echo -e "$currScore\t$currSAM" >> $log
+			[ $iter -eq $MAX_ITER_SSW ] && break
+		done
+
+		if [ $lastScore -eq $currScore ];then
+			mv $currRef $lastRef
+			mv $currSAM $lastSAM
+		else 		
+			iter=$(expr $iter - 1)
+			rm $currRef
+		fi
+
+		if [ "$PAIRED" -eq "1" ];then
+			local pstats=$final-pairingStats.txt
+
+			$spath/mergeSAMpairs.pl -S $lastRef $lastSAM $apath/M${iter}-${gene}
+			$spath/varCallStats.pl $lastRef $apath/M${iter}-${gene}.sam $apath/A${iter}-${gene}
+
+			ln $apath/M${iter}-${gene}.sam ${final}.sam
+			$spath/getPairingStats.pl $apath/M${iter}-${gene}.sto > $pstats
+			$spath/callPhase.pl -P -G $callPhaseArgs -E $pstats $lastRef $final $apath/A${iter}-${gene}.sto
+			rm $apath/A${iter}-${gene}.sto $apath/M${iter}-${gene}.sam $apath/M${iter}-${gene}.sto
+		else
+			$spath/alnCallPhase.pl -P -G $lastRef $lastSAM $final -C $MIN_C -F $MIN_F -Q $MIN_AQ -T $MIN_TCC -M $MIN_CONF -S $SIG_LEVEL $AUTO_F
+			ln $lastSAM ${final}.sam
+		fi
+	fi
+
+	local n=$(wc -l < ${final}-variants.txt)
+	if [ $n -gt 2 ]; then
+		$spath/sqmHeatmap.R ${final}-EXPENRD.sqm ${final}-EXPENRD.pdf 2 > /dev/null 2>&1
+		$spath/sqmHeatmap.R ${final}-JACCARD.sqm ${final}-JACCARD.pdf 2 > /dev/null 2>&1
+		$spath/sqmHeatmap.R ${final}-MUTUALD.sqm ${final}-MUTUALD.pdf 2 > /dev/null 2>&1
+	fi
+
+	if [ $n -gt 1 ]; then
+		$spath/coverageDiagram.R $final-coverage.txt $final-variants.txt $final-pairingStats.txt $final-coverageDiagram.pdf > /dev/null 2>&1
+	else
+		$spath/simpleCoverageDiagram.R $final-coverage.txt $final-coverageDiagram.pdf > /dev/null 2>&1
+	fi
+	$spath/heuristicDiagram.R ${final}-allAlleles.txt ${final}-heuristics.pdf > /dev/null 2>&1
+	$spath/amendConsensus.pl -C $MIN_C -N $RUN -S -F $MIN_AMBIG ${final}.fasta ${final}-variants.txt -P $ppath
+	if [ -r ${final}-insertions.txt -a -r ${final}-deletions.txt ];then
+		$spath/vcfGenerator.pl $callPhaseArgs ${final}.fasta ${final}-allAlleles.txt ${final}-insertions.txt ${final}-deletions.txt > ${final}.vcf
+	fi
+
+	$spath/samtools view -bS ${final}.sam > ${final}.bam 2> /dev/null
+	$spath/samtools sort ${final}.bam $final > /dev/null 2>&1
+	$spath/samtools index ${final}.bam > /dev/null 2>&1
+	rm $apath/F*-$gene.sam
+	time_stamp "finished $gene"
+}
+
+function doPostProcessing() {
+	# INFLATE TO FASTQ
+	for name in $($spath/finalRefs.pl $refp/*.refs);do
+		gene=${name#*-}
+		cat $sortp/R*-$gene.fa > $assemp/$gene.fa
+		$spath/xflate.pl -I -Q -R $ppath/R0.xfl $assemp/$gene.fa > $assemp/$gene.fastq &
+		ln $refp/$name.ref $assemp/F1-$gene.ref
+	done
+	time_stamp 'converted back to fastq'
+
+	# SAVE unmatched read patterns
+	cd $matchp
+	tar -cf - R$(($R<=MAX_ROUNDS?$R:$MAX_ROUNDS)).nomatch|gzip -4 - > $ppath/unmatched_read_patterns.tar.gz &
+	cd - > /dev/null
+	cd $alignp
+	tar -cf - R*.sto|gzip -4 - > $alignp/storedCounts.tar.gz &
+	cd - > /dev/null
+	wait
+	time_stamp 'saved unmatched read patterns'
+
+	# CLEAN UP
+	[ $LFASTM -eq "1" ] && rm $matchp/R?.match.{HA,NA,OG}
+	grep '>' $matchp/R?.{match,nomatch,chim} $ppath/R0.fa -c > $ppath/NR_COUNTS_log.txt
+	rm $ppath/R0.{fa,xfl} &
+	rm $alignp/R*.sto &
+	rm $refp/R*.refs &
+	rm $matchp/R*.{match,nomatch,chim} &
+	rm $sortp/R*.fa &
+	wait
+	
+	# FINAL iterative assembly
+	for ref1 in $assemp/F1-*.ref;do
+		name=$(basename $ref1 .ref)
+		gene=${name#*-}
+		doAssemblies $gene &
+	done
+	wait
+	time_stamp 'mapped to references, BAM files created'
+
+	cd $assemp
+	tar -cf - *.fastq|gzip -4 - > $assemp/reads.tar.gz
+	cd - > /dev/null
+	grep '>' $assemp/*.fa -Hc >> $ppath/NR_COUNTS_log.txt
+	rm $assemp/*.fastq $assemp/*.fa
+
+	for i in $ppath/*bam;do 
+		echo ${i}:$(samtools view -c $i) >> $ppath/READ_log.txt
+	done
+	
+	local readSize=$(expr $(zcat $ppath/ASSEMBLY/reads.tar.gz |wc -l) / 4)
+	$spath/percentages.R $ppath/QC_log.txt $readSize $ppath/NR_COUNTS_log.txt $ppath/READ_log.txt $ppath/READ_PERCENTAGES.pdf $PAIRED > /dev/null 2>&1
+
+	[ ! -d $ppath/amended_consensus ] && mkdir $ppath/amended_consensus
+	[ -n "$(shopt -s nullglob;echo $ppath/*.fa)" ] && mv $ppath/*.fa $ppath/amended_consensus
+	
+	[ ! -d $ppath/matrices ] && mkdir $ppath/matrices	
+	[ -n "$(shopt -s nullglob;echo $ppath/*.sqm)" ] && mv $ppath/*.sqm $ppath/matrices
+
+
+	[ ! -d $ppath/figures ] && mkdir $ppath/figures
+	[ -n "$(shopt -s nullglob;echo $ppath/*.pdf)" ] && mv $ppath/*.pdf $ppath/figures
+	
+	echo -e "Total Score\tAlignment" > $ppath/ASSEMBLY_log.txt
+	cat $assemp/*.log >> $ppath/ASSEMBLY_log.txt
+	rm $assemp/*.log $ppath/*.sam
+
+	mkdir $ppath/logs
+	mv $ppath/*log.txt $ppath/logs
+
+	[ ! -d $ppath/tables ] && mkdir $ppath/tables
+	[ -n "$(shopt -s nullglob;echo $ppath/*.txt)" ] && mv $ppath/*.txt $ppath/tables
+
+	# final order
+	mkdir $ppath/secondary
+	mv $ppath/unmatched_read_patterns* $ppath/secondary
+
+	# deposit secondary data
+	if test -n "$(shopt -s nullglob;echo $sortp/*.fa.2)";then
+		for i in $sortp/*.fa.2;do
+			mv $i $ppath/secondary/$(basename $i .2)
+		done
+	fi
+
+	mkdir $ppath/intermediate
+	mv $refp $ppath/intermediate/0-ITERATIVE-REFERENCES
+	mv $matchp $ppath/intermediate/1-MATCH_$MATCH_PROG
+	mv $sortp $ppath/intermediate/2-SORT_$SORT_PROG
+	mv $alignp $ppath/intermediate/3-ALIGN_$ALIGN_PROG
+	mv $assemp $ppath/intermediate/4-ASSEMBLE_$ASSEM_PROG
+
+}
+
+function continueWork() {
+	local prefix=$1
+	R=2
+	REF_SET=$ppath/R2.refs
+	time_stamp 'continued'
+	rm -rf $ppath/ASSEMBLY
+	doPostProcessing
+	exit
+}
+####################
+#continueWork R2
+time_stamp "started run '$RUN'"
+if [ "$PAIRED" -eq "1" ];then
+	preProcess $LEFT 'LEFT' $DOUBLE_LOCAL_PROC &
+	preProcess $RIGHT 'RIGHT' $DOUBLE_LOCAL_PROC &
+	wait
+	time_stamp 'pre-processed'
+
+	cat $ppath/LEFT.xfl >> $ppath/RIGHT.xfl &
+	cat $ppath/LEFT.fa >> $ppath/RIGHT.fa & 
+	wait
+	time_stamp 'consolidated'
+
+	rm $ppath/LEFT.xfl $ppath/LEFT.fa
+	mv $ppath/RIGHT.xfl $ppath/R0.xfl
+	mv $ppath/RIGHT.fa $ppath/R0.fa
+	cat $ppath/{LEFT,RIGHT}*.log > $ppath/QC_log.txt
+	rm $ppath/{LEFT,RIGHT}*
+else
+	preProcess $SINGLE 'SINGLE' $SINGLE_LOCAL_PROC
+	time_stamp 'pre-processed'
+
+	mv $ppath/SINGLE.xfl $ppath/R0.xfl
+	mv $ppath/SINGLE.fa $ppath/R0.fa
+	cat $ppath/SINGLE*.log > $ppath/QC_log.txt
+	rm $ppath/SINGLE*
+fi
+
+if [ ! -s $ppath/R0.fa ];then
+	time_stamp "found no QC'd data, review QC_log.txt"
+	moveProject
+	time_stamp 'finished!'
+	exit
+fi
+
+QUERY_SET=$ppath/R0.fa
+while [ $R -le $MAX_ROUNDS ];do
+	time_stamp "R$R started"
+	doRound $QUERY_SET R$R
+	MIN_RC=1
+	MIN_RP=1
+
+	if [ -s $QUERY_SET ];then
+		R=$(expr $R + 1)
+	else
+		break
+	fi
+done
+doPostProcessing
+moveProject
+time_stamp 'finished!'
+#####################
