@@ -604,6 +604,33 @@ function doRound() {
 	time_stamp "$prefix references created"
 }
 
+
+
+function doASSEMBLEgrid() {
+	echo 1
+}
+
+function doASSEMBLElocal() {
+	echo 1
+}
+
+function doASSEMBLE() {
+	echo 1
+}
+
+function doMERGE() {
+	echo 1
+}
+
+function doCALL() {
+	echo Possible
+}
+
+function doPHASE() {
+	echo Possible
+}
+
+
 function doSSW() {
 	local apath=$1
 	local iter=$2
