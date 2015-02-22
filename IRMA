@@ -74,7 +74,7 @@ bpath=
 if [ "$bpath" == "" ]; then
 	bpath=$( cd -P "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 fi
-rpath=$bpath/IRMA_RES2	# IRMA resources
+rpath=$bpath/IRMA_RES	# IRMA resources
 spath=$rpath/scripts	# IRMA specific scripts/binaries
 
 LABEL=$(which LABEL)
