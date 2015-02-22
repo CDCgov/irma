@@ -1,0 +1,28 @@
+# Module specific OVERRIDE parameters here
+# FLU-fast module for IRMA
+# 11.20.2014, Sam Shepard
+
+MATCH_PROC=20				# maximum processes for the MATCH per genetic unit
+ALIGN_PROC=20				# maximum processes for the rough align per genetic unit
+ASSEMBLE_PROC=20			# maximum processes for assembly per genetic unit
+SINGLE_PREPRO_PROC=12			# maximum processes for QC on local node
+DOUBLE_PREPRO_PROC=6			# maximum processes for the left or right pairs
+MIN_FI=0.0045				# minimum insertion variant frequency
+MIN_F=0.015				# minimum frequency for variants
+SKIP_E=1				# skip reference elongation
+SSW_M=2					# smith-waterman match score
+SSW_X=5					# smith-waterman mismatch penalty
+SSW_O=10				# smith-waterman gap open penalty
+SSW_E=1					# smith-waterman gap extension penalty
+INCL_CHIM=0				# whether or not to include chimera
+QUAL_THRESHOLD=30			# average or median threshold
+MIN_LEN=150				# minimum read length for QUALITY reads
+MAX_ROUNDS=2				# maximum number of iterations to BLAT
+SKIP_E=0				# skip reference elongation
+
+
+# DO NOT ALTER
+BLAT_SORT=0				# sort using BLAT
+NONSEGMENTED=0				# non-segmented virus
+LFASTM=1					# LABEL sorting fast-mode
+#Lmpath=$mpath				# HMM module path

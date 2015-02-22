@@ -1,0 +1,141 @@
+#!/usr/bin/env perl
+# Sam Shepard - 5.2015
+# sums up a field column
+
+use Getopt::Long;
+GetOptions(
+		'ignore-header|H' => \$header,
+		'comment-char|C=s' => \$cc,
+		'field-number|F=i' => \$f,
+		'field-delim|D=s' => \$d,
+		'average|A' => \$takeAverage,
+		'take-count|T' => \$takeCount,
+		'newline|N' => \$newline,
+		'minimum|M' => \$takeMinimum,
+		'maximum|X' => \$takeMaximum,
+		'everything|E' => \$takeEverything
+	);
+
+
+if ( !defined($newline) ) {
+	$newline = '';
+} else {
+	$newline = "\n";
+}
+
+if ( !defined($d) ) {
+	$d = "\t";
+} else {
+	if ( $d eq '|' ) {
+		$d = "/\|/";
+	}
+}
+
+if ( !defined($f) || int($f) <= 0 ) {
+	$f = 0;
+} else {
+	$f = int($f)-1;
+}
+
+$/ = "\n";
+if ( $header ) { $junk=<>; }
+
+$N = $total = 0;
+my $min;
+my $max;
+
+if ( $takeEverything ) {
+	while($line=<>) {
+		chomp($line);
+		if ( defined($cc) && $line =~ /^\Q$cc\E/ ) {
+			next;
+		}
+		@fields = split($d,$line);
+		if ( $f > $#fields ) {
+			next;
+		}
+
+		if ( !defined($max) || $fields[$f] > $max ) {
+			$max = $fields[$f];
+		}
+
+		if ( !defined($min) || $fields[$f] < $min ) {
+			$min = $fields[$f];
+		}
+
+		$total += $fields[$f];
+		$N++;
+	}
+	print $N,"\t",$total,"\t",$min,"\t",$max,"\t",sprintf("%.2f",$total/$N),$newline;
+} elsif ( $takeMaximum ) {
+	while($line=<>) {
+		chomp($line);
+		if ( defined($cc) && $line =~ /^\Q$cc\E/ ) {
+			next;
+		}
+		@fields = split($d,$line);
+		if ( $f > $#fields ) {
+			next;
+		}
+
+		if ( !defined($max) || $fields[$f] > $max ) {
+			$max = $fields[$f];
+		}
+	}
+	print $min,$newline;
+} elsif ( $takeMinimum ) {
+	while($line=<>) {
+		chomp($line);
+		if ( defined($cc) && $line =~ /^\Q$cc\E/ ) {
+			next;
+		}
+		@fields = split($d,$line);
+		if ( $f > $#fields ) {
+			next;
+		}
+
+		if ( !defined($min) || $fields[$f] < $min ) {
+			$min = $fields[$f];
+		}
+	}
+	print $min,$newline;
+} elsif ( $takeAverage ) {
+	while($line=<>) {
+		chomp($line);
+		if ( defined($cc) && $line =~ /^\Q$cc\E/ ) {
+			next;
+		}
+		@fields = split($d,$line);
+		if ( $f > $#fields ) {
+			next;
+		}
+
+		$total += $fields[$f];
+		$N++;
+	}
+	print sprintf("%.2f",$total/$N),$newline;
+} elsif ( $takeCount ) {
+	while($line=<>) {
+		chomp($line);
+		if ( defined($cc) && $line =~ /^\Q$cc\E/ ) {
+			next;
+		} else {
+			$N++;
+		}
+	}
+	print $N,$newline;
+} else {
+	while($line=<>) {
+		chomp($line);
+		if ( defined($cc) && $line =~ /^\Q$cc\E/ ) {
+			next;
+		}
+		@fields = split($d,$line);
+		if ( $f > $#fields ) {
+			next;
+		}
+
+		$total += $fields[$f];
+	}
+	print $total,$newline;
+}

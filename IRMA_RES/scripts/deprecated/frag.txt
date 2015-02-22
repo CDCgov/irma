@@ -1,0 +1,40 @@
+
+			# L1 R2
+			if ( $s1 <= $s2 ) {
+				# Le < Rs => disjoint
+				if ( $e1 < $s2 ) {
+					# Rs - Le - 1 = N-gap-length
+					$gapN = $s2 - $e1 - 1;
+					if ( $gapN > 0 ) {
+						# LEFT+N+RIGHT
+					} else {
+						# LEFT+RIGHT
+					}
+				# Le < Re => incomplete overlap
+				} elsif ( $e1 < $e2 ) {
+					$lseq = substr(
+					
+				
+				# subset or full overlap
+				}
+
+
+			# L2 R1
+			} else {
+				# Le < Rs => disjoint
+				if ( $e2 < $s1 ) {
+					# Rs - Le - 1 = N-gap-length
+					$gapN = $s1 - $e2 - 1;
+					if ( $gapN > 0 ) {
+						# LEFT+N+RIGHT
+					} else {
+						# LEFT+RIGHT
+					}
+				# Le < Re => incomplete overlap
+				} elsif ( $e2 < $e1 ) {
+
+				# subset or full overlap
+				} else {
+
+				}
+			}

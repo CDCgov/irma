@@ -1,0 +1,72 @@
+#!/usr/bin/env perl
+# samStats.pl
+# Sam Shepard - 9.2014
+
+use Storable;
+if ( scalar(@ARGV) != 3 ) {
+	die("Usage:\t$0 <REF> <SAM> <OUT>\n");
+}
+
+open(REF,'<',$ARGV[0]) or die("Cannot open REF $ARGV[0] for reading.\n");
+$/ = ">";
+while($record = <REF>) {
+	chomp($record);
+	@lines = split(/\r\n|\n|\r/, $record);
+	$REF_NAME = shift(@lines);
+	$REF_SEQ = join('',@lines);
+	if ( length($REF_SEQ) < 1 ) {
+		next;
+	}
+	$N = length($REF_SEQ);
+}
+close(REF);
+if ( !defined($N) ) { die("ERROR: no reference found in $ARGV[0].\n"); }
+
+
+open(SAM,'<',$ARGV[1]) or die("Cannot open SAM $ARGV[1] for reading.\n");
+$/ = "\n"; @table = ();
+while($line=<SAM>) {
+	chomp($line);
+	if ( substr($line,0,1) eq '@' ) {
+		next;
+	}
+
+	($qname,$flag,$rname,$pos,$mapq,$cigar,$mrnm,$mpos,$isize,$seq,$qual) = split("\t",$line);
+	if ( $REF_NAME eq $rname ) {
+		$N = $lenByRname{$rname};
+		$seq = uc($seq);
+		$rpos=$pos-1;
+		$qpos=0;
+		
+		while($cigar =~ /(\d+)([MIDNSHP])/g ) {
+			$inc=$1;
+			$op=$2;
+			if ( $op eq 'M' ) {
+				for( 1..$inc ) {
+					$table[0][$rpos]{substr($seq,$qpos,1)}++;
+					$qpos++; $rpos++;
+				}
+			} elsif ( $op eq 'D' ) {
+				for( 1..$inc ) {
+					$table[0][$rpos]{'-'}++;
+					$rpos++;
+				}
+			} elsif( $op eq 'I' ) {
+				$insert = lc(substr($seq,$qpos,$inc));
+				$table[1]{$rpos-1}{$insert}++;
+				$qpos += $inc;
+			} elsif ( $op eq 'N' ) {
+				$rpos += $inc;
+				next;
+			} elsif( $op eq 'S' ) {
+				$qpos += $inc;
+			} elsif ( $op eq 'H' ) {
+				next;
+			} else {
+				die("Extended CIGAR ($op) not yet supported.\n");
+			}
+		}
+	}
+}
+close(SAM);
+store(\@table, $ARGV[2]);
