@@ -66,7 +66,7 @@ ALIGN_PROC=25		# maximum processes for the rough align
 ASSEMBLE_PROC=25	# maximum processes for assembly
 SINGLE_LOCAL_PROC=8	# maximum processes for QC on local node
 DOUBLE_LOCAL_PROC=4	# maximum processes for the left or right pairs
-
+PARALLEL=parallel
 
 # DO NOT ALTER
 owd=$(pwd)
@@ -74,9 +74,9 @@ bpath=
 if [ "$bpath" == "" ]; then
 	bpath=$( cd -P "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 fi
+echo $bpath
 rpath=$bpath/IRMA_RES	# IRMA resources
 spath=$rpath/scripts	# IRMA specific scripts/binaries
-
 LABEL=$(which LABEL)
 Lspath=$(dirname $LABEL)/LABEL_RES/scripts
 Lmpath=$(dirname $LABEL)/LABEL_RES/training_data/IRMA
@@ -838,9 +838,7 @@ function doAssemblies() {
 
 	local n=$(wc -l < ${final}-variants.txt)
 	if [ $n -gt 2 ]; then
-		$spath/sqmHeatmap.R ${final}-EXPENRD.sqm ${final}-EXPENRD.pdf 2 > /dev/null 2>&1
-		$spath/sqmHeatmap.R ${final}-JACCARD.sqm ${final}-JACCARD.pdf 2 > /dev/null 2>&1
-		$spath/sqmHeatmap.R ${final}-MUTUALD.sqm ${final}-MUTUALD.pdf 2 > /dev/null 2>&1
+		$PARALLEL $spath/sqmHeatmap.R ${final}-{}.sqm ${final}-{}.pdf 2 ::: EXPENRD JACCARD MUTUALD 
 	fi
 
 	if [ $n -gt 1 ]; then
