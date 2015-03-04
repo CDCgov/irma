@@ -59,14 +59,16 @@ MIN_LEN=150		# minimum read length for QUALITY reads
 MAX_ROUNDS=2		# maximum number of iterations to BLAT
 R=1			# current round
 LANG=POSIX		# collation
-MAX_ITER_SSW=5		# maximum number of SSW iterations to perform, 3 should be sufficient with 4 to prove
-FASTQ_LIMIT=15000	# read threshold before parallelizing the assembly
+MAX_ITER_ASSEM=5	# maximum number of polish assembly iterations to perform, 3 should be sufficient with 4 to prove
 MATCH_PROC=80		# maximum processes for the MATCH
 ALIGN_PROC=25		# maximum processes for the rough align
 ASSEMBLE_PROC=25	# maximum processes for assembly
 SINGLE_LOCAL_PROC=8	# maximum processes for QC on local node
 DOUBLE_LOCAL_PROC=4	# maximum processes for the left or right pairs
-PARALLEL=parallel
+MATCH_LIMIT=60000	# threshold before grid
+ALIGN_LIMIT=500		# threshold before grid
+SORT_LIMIT=1000		# threshold before grid
+ASSEM_LIMIT=480000	# threshold before grid
 
 # DO NOT ALTER
 owd=$(pwd)
@@ -80,6 +82,7 @@ spath=$rpath/scripts	# IRMA specific scripts/binaries
 LABEL=$(which LABEL)
 Lspath=$(dirname $LABEL)/LABEL_RES/scripts
 Lmpath=$(dirname $LABEL)/LABEL_RES/training_data/IRMA
+PARALLEL="$spath/parallel --will-cite"
 PARSE_SORT_OPTS=""
 
 
@@ -271,7 +274,7 @@ function doMATCH() {
 		exit
 	fi
 
-	if [ $n -gt 600000 -a $GRID_ON -eq "1" ];then
+	if [ $n -gt $MATCH_LIMIT -a $GRID_ON -eq "1" ];then
 		$Lspath/interleavedSamples.pl -G $MATCH_PROC $DB $matchp/$prefix > /dev/null 2>&1
 		time_stamp "$prefix interleaved"
 		doMATCHgrid $DB $prefix
@@ -390,7 +393,7 @@ function doSORT() {
 		exit
 	fi
 
-	if [ $n -gt 1000 -a "$GRID_ON" -eq "1" ];then
+	if [ $n -gt $SORT_LIMIT -a "$GRID_ON" -eq "1" ];then
 		doSORTgrid $DB $prefix
 	else
 		doSORTlocal $DB $prefix
@@ -480,11 +483,11 @@ function doALIGN() {
 	local $prefix=$1
 	local i=""
 
-	if [ "$ALIGN_PROG" != "BLAT" ];then
+	if [ "$ALIGN_PROG" == "SAM" ];then
 		for i in $sortp/$prefix-*.fa;do
 			n=$(wc -l < $i)
 			name=$(basename $i .fa)
-			if [ $n -gt 500 -a "$GRID_ON" -eq "1" ];then
+			if [ $n -gt $ALIGN_LIMIT -a "$GRID_ON" -eq "1" ];then
 				$Lspath/interleavedSamples.pl $i $alignp/$name -G $ALIGN_PROC > /dev/null
 				doALIGNgrid $prefix $name &
 			else
@@ -495,10 +498,22 @@ function doALIGN() {
 			fi
 		done
 		wait
+	elif [ "$ALIGN_PROG" == "BLAT" ];then
+		:
+	else
+		time_stamp "$prefix aborted, ALIGN:$ALIGN_PROG not implemented"
+		if [ $R -gt 1 ];then
+			doPostProcessing
+		fi
+		moveProject
+		time_stamp 'finished!'
+		exit
 	fi
+
 	time_stamp "$prefix rough aligned reads using $ALIGN_PROG"
 
 	# CREATE NEW REFERENCES
+	# USE-PARA
 	for i in $sortp/$prefix-*.fa;do
 		name=$(basename $i .fa)
 		gene=${name#*-}
@@ -604,241 +619,236 @@ function doRound() {
 	time_stamp "$prefix references created"
 }
 
+#############################################
+############# ASSEMBLY SECTION ##############
+#############################################
 
-
-function doASSEMBLEgrid() {
-	echo 1
-}
-
-function doASSEMBLElocal() {
-	echo 1
-}
-
-function doASSEMBLE() {
-	echo 1
-}
-
-function doMERGE() {
-	echo 1
-}
-
-function doCALL() {
-	echo Possible
-}
-
-function doPHASE() {
-	echo Possible
-}
-
-
-function doSSW() {
-	local apath=$1
-	local iter=$2
-	local gene=$3
-	local ref=$4
+#-------------------------------------------#
+#--- Polishing assembly function -----------#
+#-------------------------------------------#
+function ASSEM_RUN_SSW() {
+	local iter=$1
+	local gene=$2
+	local ref=$3
+	local procs=$4
+	local doGrid=$5
 
 ###
-cat >$apath/F${iter}-${gene}.sh  <<EOL
+cat >$assemp/F${iter}-${gene}.sh  <<EOL
 #!/bin/bash
 LANG=$LANG
 shopt -u nocaseglob;shopt -u nocasematch
 
-ID=\$(printf %04d \$SGE_TASK_ID)
-FASTQ=$apath/${gene}_\$ID.fastq
-SAM=$apath/F${iter}-${gene}-\$ID.sam
-STAT=$apath/F${iter}-${gene}-\$ID.sto
+if [ "\$#" -eq "1" ];then
+	ID=\$(printf %04d \$1)
+else
+	ID=\$(printf %04d \$SGE_TASK_ID)
+fi
+FASTQ=$assemp/${gene}_\$ID.fastq
+SAM=$assemp/F${iter}-${gene}-\$ID.sam
+STAT=$assemp/F${iter}-${gene}-\$ID.sto
 
 $spath/ssw -s -c -h -r $SSW_OPTS $ref \$FASTQ > \$SAM 2> /dev/null
 $spath/samStats.pl $ref \$SAM \$STAT
 EOL
 ###
-	qsub -q all.q -hard -t 1-$ASSEMBLE_PROC:1 -N F${iter}-$gene -sync y -wd $apath -j y -o $apath/F${iter}-${gene}.o $apath/F${iter}-${gene}.sh > /dev/null 2>&1
-	head -n2 $apath/F${iter}-${gene}-0001.sam|grep -P '^@' > $apath/F${iter}-$gene.sam
-	cat $apath/F${iter}-${gene}-*.sam|grep -vP '^@' >> $apath/F${iter}-$gene.sam
+
+	# ASSEMBLE on grid vs local
+	if [ "$doGrid" -eq "1" ];then
+		echo "GRIDDED"
+		qsub -t 1-$ASSEMBLE_PROC:1 -N F${iter}-$gene -sync y -wd $assemp -j y -o $assemp/F${iter}-${gene}.o $assemp/F${iter}-${gene}.sh > /dev/null 2>&1
+	else
+		chmod 755 $assemp/F${iter}-${gene}.sh
+		$PARALLEL --workdir $ppath -j $SINGLE_LOCAL_PROC $assemp/F${iter}-${gene}.sh {} ::: $(seq $procs)
+	fi
+	$spath/catSAMfiles.pl $assemp/F${iter}-${gene}-*.sam > $assemp/F${iter}-$gene.sam
 }
 
 
-function doMergeAndAln() {
-	local apath=$1
-	local iter=$2
-	local gene=$3
-	local ref=$4
-	local final=$5
+#-------------------------------------------#
+#--- Scoring assembly function   -----------#
+#-------------------------------------------#
+function ASSEM_SCORE_SSW() {
+	local SAM=$1
+	echo -n $(cut -f12 $SAM|$spath/sumField.pl -F 3 -D ':')
+}
+#############################################
+#############################################
+#############################################
 
-###
-cat >$apath/M${iter}-${gene}.sh  <<EOL
+
+function doCALLS() {
+	local iter=$1
+	local gene=$2
+	local final=$3
+	local procs=$4
+	local doGrid=$5
+	local ref=$assemp/F${iter}-${gene}.ref
+
+	# PAIRED VS SINGLE END
+	if [ "$PAIRED" -eq "1" ];then
+		local prefix=M${iter}-${gene}
+		local prefix2=$assemp/M${iter}-${gene}
+		local pstats="-E $final-pairingStats.txt"
+	else
+		local prefix=S${iter}-${gene}
+		local prefix2=$assemp/F${iter}-${gene}
+		local pstats=""
+	fi
+
+#########################################
+# DO CALL STATS and MERGE if PAIRED END #
+#########################################
+cat > $assemp/${prefix}.sh <<EOL
 #!/bin/bash
 LANG=$LANG
 shopt -u nocaseglob;shopt -u nocasematch
 
-ID=\$(printf %04d \$SGE_TASK_ID)
-SAM=$apath/F${iter}-${gene}-\$ID.sam
-MPREFIX=$apath/M${iter}-${gene}-\$ID
-MSAM=$apath/M${iter}-${gene}-\$ID.sam
-APREFIX=$apath/A${iter}-${gene}-\$ID
+if [ "\$#" -eq "1" ];then
+	ID=\$(printf %04d \$1)
+else
+	ID=\$(printf %04d \$SGE_TASK_ID)
+fi
+SAM=$assemp/F${iter}-${gene}-\$ID.sam
+VPREFIX=$assemp/V${iter}-${gene}-\$ID
 
-$spath/mergeSAMpairs.pl -S $ref \$SAM \$MPREFIX
-$spath/varCallStats.pl $ref \$MSAM \$APREFIX
-
-EOL
-###
-	local callPhaseArgs="-C $MIN_C -F $MIN_F -I $MIN_FI -D $MIN_FD -Q $MIN_AQ -T $MIN_TCC -M $MIN_CONF -S $SIG_LEVEL $AUTO_F"
-	local pstats=$final-pairingStats.txt
-	qsub -q all.q -hard -t 1-$ASSEMBLE_PROC:1 -N M${iter}-$gene -sync y -wd $apath -j y -o $apath/M${iter}-${gene}.o $apath/M${iter}-${gene}.sh > /dev/null 2>&1
-	head -n2 $apath/M${iter}-${gene}-0001.sam|grep -P '^@' > ${final}.sam
-	cat $apath/M${iter}-${gene}-*.sam|grep -vP '^@' >> ${final}.sam &
-	$spath/getPairingStats.pl $apath/M${iter}-${gene}-*.sto > $pstats &
-	wait
-	$spath/callPhase.pl -P -G $callPhaseArgs -E $pstats $lastRef $final $apath/A${iter}-${gene}-*.sto
-	rm $apath/A${iter}-${gene}-*.sto
-	rm $apath/M${iter}-${gene}-*.sam 
-	rm $apath/M${iter}-${gene}-*.sto
-}
-
-
-function doAlnAndCall() {
-	local apath=$1
-	local iter=$2
-	local gene=$3
-	local ref=$4
-	local final=$5
-
-###
-cat >$apath/S${iter}-${gene}.sh  <<EOL
-#!/bin/bash
-LANG=$LANG
-shopt -u nocaseglob;shopt -u nocasematch
-
-ID=\$(printf %04d \$SGE_TASK_ID)
-SAM=$apath/F${iter}-${gene}-\$ID.sam
-MSAM=$apath/M${iter}-${gene}-\$ID.sam
-APREFIX=$apath/A${iter}-${gene}-\$ID
-
-$spath/varCallStats.pl $ref \$SAM \$APREFIX
+if [ "$PAIRED" -eq "1" ];then
+	MSAM=$assemp/M${iter}-${gene}-\$ID.sam
+	MPREFIX=$assemp/M${iter}-${gene}-\$ID
+	$spath/mergeSAMpairs.pl -S $ref \$SAM \$MPREFIX
+	$spath/varCallStats.pl $ref \$MSAM \$VPREFIX
+else
+	$spath/varCallStats.pl $ref \$SAM \$VPREFIX
+fi
 
 EOL
-###
+#########################################
+
+	# GRID vs LOCAL execution of the CALL STATS step, inherits from ASSEMBLY step currently
+	if [ "$doGrid" -eq "1" ];then
+		qsub -t 1-$ASSEMBLE_PROC:1 -N $prefix -sync y -wd $assemp -j y -o $assemp/${prefix}.o $assemp/${prefix}.sh > /dev/null 2>&1
+	else
+		chmod 755 $assemp/${prefix}.sh
+		$PARALLEL --workdir $ppath -j $SINGLE_LOCAL_PROC $assemp/${prefix}.sh {} ::: $(seq $procs)
+	fi
+
+	# GROUP
+	$spath/catSAMfiles.pl ${prefix2}-*.sam > ${final}.sam
+
+	# DO the CALL step
 	local callPhaseArgs="-C $MIN_C -F $MIN_F -I $MIN_FI -D $MIN_FD -Q $MIN_AQ -T $MIN_TCC -M $MIN_CONF -S $SIG_LEVEL $AUTO_F"
-	qsub -q all.q -hard -t 1-$ASSEMBLE_PROC:1 -N S${iter}-$gene -sync y -wd $apath -j y -o $apath/S${iter}-${gene}.o $apath/S${iter}-${gene}.sh > /dev/null 2>&1
-	head -n2 $apath/F${iter}-${gene}-0001.sam|grep -P '^@' > ${final}.sam
-	cat $apath/F${iter}-${gene}-*.sam|grep -vP '^@' >> ${final}.sam &
-	$spath/callPhase.pl -P -G $callPhaseArgs $lastRef $final $apath/A${iter}-${gene}-*.sto
-	rm $apath/A${iter}-${gene}-*.sto
+	[ "$PAIRED" -eq "1" ] && $spath/getPairingStats.pl ${prefix2}-*.sto > $final-pairingStats.txt
+	$spath/callPhase.pl -P -G $callPhaseArgs $pstats $ref $final $assemp/V${iter}-${gene}-*.sto
 }
 
-
-function doAssemblies() {
-	local apath=$assemp
+function REFINE_ASSEMBLY_CALL_PHASE() {
 	local gene=$1
-	local fastq=$apath/$gene.fastq
-	local log=$apath/$gene.log
-	local final=$ppath/$gene
+	local procs=$2
+	local doGrid=$3
+	local final=$4
 	
+	if [ "$ASSEM_PROG" == "SSW" ];then
+		local ASSEM_FUNCTION="ASSEM_RUN_SSW"
+		local ASSEM_SCORE="ASSEM_SCORE_SSW"
+	else
+		time_stamp "at $gene aborted, ASSEMBLE:$ASSEM_PROG not implemented"
+		if [ $R -gt 1 ];then
+			doPostProcessing
+		fi
+		moveProject
+		time_stamp 'finished!'
+		exit
+	fi
+
 	local iter=1
-	local currRef=$apath/F${iter}-$gene.ref
-	local currSAM=$apath/F${iter}-$gene.sam
-	local theBAM=""
+	local log=$assemp/$gene.log
 	local lastRef=""
 	local lastSAM=""
+	local currRef=$assemp/F${iter}-$gene.ref
+	local currSAM=$assemp/F${iter}-$gene.sam
+	local theBAM=""
+
+	$ASSEM_FUNCTION $iter $gene $currRef $procs $doGrid
 	local lastScore=0
-	local size=$(expr $(wc -l < $fastq) / 4)
-	local callPhaseArgs="-C $MIN_C -F $MIN_F -I $MIN_FI -D $MIN_FD -Q $MIN_AQ -T $MIN_TCC -M $MIN_CONF -S $SIG_LEVEL $AUTO_F"
-
-	if [ $size -gt $FASTQ_LIMIT ];then
-		$Lspath/interleavedSamples.pl -G $ASSEMBLE_PROC -P $fastq $apath/$gene > /dev/null
-		
-		doSSW $apath $iter $gene $currRef
-		local currScore=$(cut -f12 $currSAM|$spath/sumField.pl -F 3 -D ':')
-
+	local currScore=$($ASSEM_SCORE $currSAM)
 		echo -e "$currScore\t$currSAM" >> $log
 		while [ $lastScore -lt $currScore ];do
 			lastRef=$currRef
 			lastSAM=$currSAM
-			lastSTO=$apath/F${iter}-$gene-*.sto
+			lastSTO=$assemp/F${iter}-$gene-*.sto
 			lastScore=$currScore
-			theBAM=$apath/F${iter}-$gene.bam
+			theBAM=$assemp/F${iter}-$gene.bam
 			$spath/samtools view -bS $currSAM > $theBAM 2> /dev/null
 			iter=$(expr $iter + 1)
-			currRef=$apath/F${iter}-$gene.ref
-			currSAM=$apath/F${iter}-$gene.sam
+			currRef=$assemp/F${iter}-$gene.ref
+			currSAM=$assemp/F${iter}-$gene.sam
 
 			# Generate current scaffold from previous SAM and reference, assemble & compare
 			$spath/combineSAMstats.pl $lastRef -N $gene -I $INS_T $lastSTO > $currRef
-			doSSW $apath $iter $gene $currRef
-			currScore=$(cut -f12 $currSAM|$spath/sumField.pl -F 3 -D ':')
+			$ASSEM_FUNCTION $iter $gene $currRef $procs $doGrid 
+			currScore=$($ASSEM_SCORE $currSAM)
 			echo -e "$currScore\t$currSAM" >> $log
 			rm $lastSTO
-			[ $iter -eq $MAX_ITER_SSW ] && break
+			[ $iter -eq $MAX_ITER_ASSEM ] && break
 		done
 		
-		if [ $lastScore -eq $currScore ];then
-			mv $currRef $lastRef
-			mv $currSAM $lastSAM
-		else 		
-			rm $currRef
+#		if [ $lastScore -eq $currScore ];then
+#			mv $currRef $lastRef
+#			mv $currSAM $lastSAM
+#		else 		
+#			rm $currRef
+#			iter=$(expr $iter - 1)
+#		fi
+
+		if [ $lastScore -gt $currScore ];then
+			rm $currRef $currSAM
+			# move back a tick
 			iter=$(expr $iter - 1)
+			
 		fi
 
-		if [ "$PAIRED" -eq "1" ];then
-			doMergeAndAln $apath $iter $gene $lastRef $final
-			rm $apath/{M,F}*-${gene}.{sh,o}
-		else
-			doAlnAndCall $apath $iter $gene $lastRef $final
-			rm $apath/{S,F}*-${gene}.{sh,o}
-		fi
-		rm $apath/F*-${gene}-*.sto
-		rm $apath/F*-${gene}-*.sam
-		rm $apath/${gene}_????.fastq
+		# CALL variants
+		doCALLS $iter $gene $final $procs $doGrid
+
+		# CLEAN UP
+		rm $assemp/${gene}_????.fastq
+		rm $assemp/*-${gene}-????.*
+		rm $assemp/*-${gene}.sh
+}
+
+function ASSEMBLE_REPORT() {
+	local gene=$1
+	local final=$ppath/$gene
+	local fastq=$assemp/$gene.fastq
+	local size=$(expr $(wc -l < $fastq) / 4)
+	local doGrid=0
+	local procs=0
+
+	# SCOPE
+	if [ $size -gt $ASSEM_LIMIT -a "$GRID_ON" -eq "1" ];then
+		procs=$ASSEMBLE_PROC
+		doGrid=1
 	else
-		$spath/ssw -s -c -h -r $SSW_OPTS $currRef $fastq > $currSAM 2> /dev/null
-		local currScore=$(cut -f12 $currSAM|$spath/sumField.pl -F 3 -D ':')
-
-		echo -e "$currScore\t$currSAM" >> $log
-		while [ $lastScore -lt $currScore ];do
-			lastRef=$currRef
-			lastSAM=$currSAM
-			lastScore=$currScore
-			theBAM=$apath/F${iter}-$gene.bam
-			$spath/samtools view -bS $currSAM > $theBAM 2> /dev/null
-			iter=$(expr $iter + 1)
-			currRef=$apath/F${iter}-$gene.ref
-			currSAM=$apath/F${iter}-$gene.sam
-
-			# Generate current scaffold from previous SAM and reference, assemble & compare
-			$spath/samConsensus.pl $lastRef $lastSAM $currRef -I $INS_T
-			$spath/ssw -s -c -h -r $SSW_OPTS $currRef $fastq > $currSAM 2> /dev/null
-			currScore=$(cut -f12 $currSAM|$spath/sumField.pl -F 3 -D ':')
-			echo -e "$currScore\t$currSAM" >> $log
-			[ $iter -eq $MAX_ITER_SSW ] && break
-		done
-
-		if [ $lastScore -eq $currScore ];then
-			mv $currRef $lastRef
-			mv $currSAM $lastSAM
-		else 		
-			iter=$(expr $iter - 1)
-			rm $currRef
-		fi
-
-		if [ "$PAIRED" -eq "1" ];then
-			local pstats=$final-pairingStats.txt
-
-			$spath/mergeSAMpairs.pl -S $lastRef $lastSAM $apath/M${iter}-${gene}
-			$spath/varCallStats.pl $lastRef $apath/M${iter}-${gene}.sam $apath/A${iter}-${gene}
-
-			ln $apath/M${iter}-${gene}.sam ${final}.sam
-			$spath/getPairingStats.pl $apath/M${iter}-${gene}.sto > $pstats
-			$spath/callPhase.pl -P -G $callPhaseArgs -E $pstats $lastRef $final $apath/A${iter}-${gene}.sto
-			rm $apath/A${iter}-${gene}.sto $apath/M${iter}-${gene}.sam $apath/M${iter}-${gene}.sto
+		doGrid=0
+		if [ $size -gt $SINGLE_LOCAL_PROC ];then
+			procs=$SINGLE_LOCAL_PROC
 		else
-			$spath/alnCallPhase.pl -P -G $lastRef $lastSAM $final -C $MIN_C -F $MIN_F -Q $MIN_AQ -T $MIN_TCC -M $MIN_CONF -S $SIG_LEVEL $AUTO_F
-			ln $lastSAM ${final}.sam
+			procs=1
 		fi
 	fi
 
+	# ITERATIVE REFINEMENT of ASSEMBLY chained to CALLING and PHASING
+	$Lspath/interleavedSamples.pl -G $procs -P $fastq $assemp/$gene > /dev/null
+#	if [ "$doGrid" -eq "0" ];then
+#		$PARALLEL --semaphore --semaphorename IRMA -j1 REFINE_ASSEMBLY_CALL_PHASE $gene $procs $doGrid $final
+#		$PARALLEL --semaphore --semaphorename IRMA --wait
+#	else
+		REFINE_ASSEMBLY_CALL_PHASE $gene $procs $doGrid $final
+#	fi
+	
 	local n=$(wc -l < ${final}-variants.txt)
 	if [ $n -gt 2 ]; then
-		$PARALLEL $spath/sqmHeatmap.R ${final}-{}.sqm ${final}-{}.pdf 2 ::: EXPENRD JACCARD MUTUALD 
+		$PARALLEL $spath/sqmHeatmap.R ${final}-{}.sqm ${final}-{}.pdf 2 ::: EXPENRD JACCARD MUTUALD > /dev/null
 	fi
 
 	if [ $n -gt 1 ]; then
@@ -855,9 +865,20 @@ function doAssemblies() {
 	$spath/samtools view -bS ${final}.sam > ${final}.bam 2> /dev/null
 	$spath/samtools sort ${final}.bam $final > /dev/null 2>&1
 	$spath/samtools index ${final}.bam > /dev/null 2>&1
-	rm $apath/F*-$gene.sam
+	rm $assemp/F*-$gene.sam
 	time_stamp "finished $gene"
 }
+
+
+
+function doPHASEgrid() {
+	echo Possible
+}
+
+function doPHASElocal() {
+	echo Possible
+}
+
 
 function doPostProcessing() {
 	# INFLATE TO FASTQ
@@ -889,11 +910,11 @@ function doPostProcessing() {
 	rm $sortp/R*.fa &
 	wait
 	
-	# FINAL iterative assembly
+	# POLISH the final assembly & do variant calls/phasing
 	for ref1 in $assemp/F1-*.ref;do
 		name=$(basename $ref1 .ref)
 		gene=${name#*-}
-		doAssemblies $gene &
+		ASSEMBLE_REPORT $gene &
 	done
 	wait
 	time_stamp 'mapped to references, BAM files created'
@@ -951,17 +972,7 @@ function doPostProcessing() {
 
 }
 
-function continueWork() {
-	local prefix=$1
-	R=2
-	REF_SET=$ppath/R2.refs
-	time_stamp 'continued'
-	rm -rf $ppath/ASSEMBLY
-	doPostProcessing
-	exit
-}
 ####################
-#continueWork R2
 time_stamp "started run '$RUN'"
 if [ "$PAIRED" -eq "1" ];then
 	preProcess $LEFT 'LEFT' $DOUBLE_LOCAL_PROC &
