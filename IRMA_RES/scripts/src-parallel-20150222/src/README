@@ -1,0 +1,6 @@
+split @::opt_env på ,
+$envvar = map { " export $ENV{$_}=shellquote env;" } @envs;
+$command = $envvar . $command;
+
+Hvad med command line length
+lige som nice: maxlen -= length($envvar)
