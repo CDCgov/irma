@@ -214,43 +214,39 @@ function preProcess() {
 	$spath/xflate.pl -C -Q -L $name $ppath/$name.xfl $ppath/${name}*.QC.fastq > $ppath/$name.fa
 }
 
-function doMATCHgrid() {
+function doBLAT() {
 	local DB=$1
 	local prefix=$2
+	local workdir=$3
+	local procs=$4
+	local doGrid=$5
 
-	if [ "$MATCH_PROG" == "BLAT" ];then
 ###
-cat >$matchp/${prefix}_match.sh  <<EOL
+cat >$workdir/${prefix}_BLAT.sh  <<EOL
 #!/bin/bash
 LANG=$LANG
 shopt -u nocaseglob;shopt -u nocasematch
 
-ID=\$(printf %04d \$SGE_TASK_ID)
-INPUT=$matchp/${prefix}_\$ID.fasta
-OUTPUT=$matchp/${prefix}_\$ID.blat
+if [ "\$#" -eq "1" ];then
+	ID=\$(printf %04d \$1)
+else
+	ID=\$(printf %04d \$SGE_TASK_ID)
+fi
+INPUT=$workdir/${prefix}_\$ID.fasta
+OUTPUT=$workdir/${prefix}_\$ID.blat
 
 $spath/blat $REF_SET \$INPUT \$OUTPUT $BLAT_OPTS
 $spath/parseBlat.pl \$OUTPUT \$INPUT $BLAT_PARSE_OPTS
 EOL
 ###
-	fi
 
-	qsub -t 1-$MATCH_PROC:1 -N ${prefix}-MATCH -sync y -wd $matchp -j y -o $matchp/${prefix}_match.o $matchp/${prefix}_match.sh > /dev/null 2>&1
-	rm $matchp/${prefix}_match.{o,sh}
-}
-
-function doMATCHlocal() {
-	local DB=$1
-	local prefix=$2
-	local ID=$3
-
-	if [ "$MATCH_PROG" == "BLAT" ];then
-		ID=$(printf %04d $ID)
-		local INPUT=$matchp/${prefix}_$ID.fasta
-		local OUTPUT=$matchp/${prefix}_$ID.blat
-		local FASTA=$matchp/${prefix}_$ID
-		$spath/blat $REF_SET $INPUT $OUTPUT $BLAT_OPTS > /dev/null 2>&1
-		$spath/parseBlat.pl $OUTPUT $INPUT $BLAT_PARSE_OPTS > /dev/null 2>&1
+	if [ "$doGrid" -eq "1" ];then
+		qsub -t 1-$procs:1 -N ${prefix}-BLAT -sync y -wd $workdir -j y -o $workdir/${prefix}_BLAT.o $matchp/${prefix}_BLAT.sh > /dev/null 2>&1
+		rm $workdir/${prefix}_BLAT.{o,sh}
+	else 
+		chmod 755 $workdir/${prefix}_BLAT.sh
+		$PARALLEL --workdir $workdir -j $SINGLE_LOCAL_PROC $workdir/${prefix}_BLAT.sh {} ::: $(seq $procs) > /dev/null 2>&1
+		rm $workdir/${prefix}_BLAT.sh
 	fi
 }
 
@@ -261,8 +257,27 @@ function doMATCH() {
 	local n=$3
 	local match_ext=""
 	local i=0
+	local doGrid=0
+	local procs=0
+
+
+	if [ $n -gt $MATCH_LIMIT -a $GRID_ON -eq "1" ];then
+		doGrid=1
+		procs=$MATCH_PROC
+	else
+		doGrid=0
+		if [ "$n" -lt "$SINGLE_LOCAL_PROC" ];then
+			procs=1
+		else
+			procs=$SINGLE_LOCAL_PROC
+		fi
+	fi
+
+	$Lspath/interleavedSamples.pl -G $procs $DB $matchp/$prefix > /dev/null 2>&1
+	time_stamp "$prefix interleaved"
 
 	if [ "$MATCH_PROG" == "BLAT" ];then
+		doBLAT $DB $prefix $matchp $procs $doGrid
 		match_ext="blat"
 	else
 		time_stamp "$prefix aborted, MATCH:$MATCH_PROG not implemented"
@@ -274,18 +289,6 @@ function doMATCH() {
 		exit
 	fi
 
-	if [ $n -gt $MATCH_LIMIT -a $GRID_ON -eq "1" ];then
-		$Lspath/interleavedSamples.pl -G $MATCH_PROC $DB $matchp/$prefix > /dev/null 2>&1
-		time_stamp "$prefix interleaved"
-		doMATCHgrid $DB $prefix
-	else
-		$Lspath/interleavedSamples.pl -G $SINGLE_LOCAL_PROC $DB $matchp/$prefix > /dev/null 2>&1
-		time_stamp "$prefix interleaved"
-		for i in $(seq $SINGLE_LOCAL_PROC);do
-			doMATCHlocal $DB $prefix $i &
-		done
-		wait
-	fi
 	time_stamp "$prefix performed all match with $MATCH_PROG & parsed"
 	# consolidate
 	cat $matchp/${prefix}_????.match > $matchp/${prefix}.match &
@@ -655,7 +658,6 @@ EOL
 
 	# ASSEMBLE on grid vs local
 	if [ "$doGrid" -eq "1" ];then
-		echo "GRIDDED"
 		qsub -t 1-$ASSEMBLE_PROC:1 -N F${iter}-$gene -sync y -wd $assemp -j y -o $assemp/F${iter}-${gene}.o $assemp/F${iter}-${gene}.sh > /dev/null 2>&1
 	else
 		chmod 755 $assemp/F${iter}-${gene}.sh
