@@ -137,6 +137,12 @@ fi
 [ "$INCL_CHIM" -eq "1" ] && BLAT_PARSE_OPTS="$BLAT_PARSE_OPTS -I"
 [ "$SKIP_E" -eq "1" ] && BLAT_PARSE_OPTS="$BLAT_PARSE_OPTS -S"
 
+
+# ALIGN editing options
+COMBINE_ALIGN_OPTS=""
+[ "$ALIGN_PROG" == "BLAT" ] && COMBINE_ALIGN_OPTS="-A"
+[ "$SKIP_E" -eq "1" ] && COMBINE_ALIGN_OPTS="$COMBINE_ALIGN_OPTS -S"
+
 # SSW options
 SSW_OPTS="-x $SSW_X -m $SSW_M -o $SSW_O -e $SSW_E"
 
@@ -218,12 +224,14 @@ function doBLAT() {
 	local refDB=$1
 	local queryDB=$2
 	local prefix=$3
-	local workdir=$4
-	local procs=$5
-	local doGrid=$6
+	local name=$4
+	local workdir=$5
+	local procs=$6
+	local doGrid=$7
+	local script=$workdir/${prefix}-${name}-BLAT
 
 ###
-cat >$workdir/${prefix}_BLAT.sh  <<EOL
+cat >$script.sh  <<EOL
 #!/bin/bash
 LANG=$LANG
 shopt -u nocaseglob;shopt -u nocasematch
@@ -242,12 +250,12 @@ EOL
 ###
 	$Lspath/interleavedSamples.pl -G $procs $queryDB $workdir/$prefix > /dev/null 2>&1
 	if [ "$doGrid" -eq "1" ];then
-		qsub -t 1-$procs:1 -N ${prefix}-BLAT -sync y -wd $workdir -j y -o $workdir/${prefix}_BLAT.o $matchp/${prefix}_BLAT.sh > /dev/null 2>&1
-		rm $workdir/${prefix}_BLAT.{o,sh}
+		qsub -t 1-$procs:1 -N ${prefix}-${name}-BLAT -sync y -wd $workdir -j y -o $script.o $script.sh > /dev/null 2>&1
+		rm $script.{o,sh}
 	else 
-		chmod 755 $workdir/${prefix}_BLAT.sh
-		$PARALLEL --workdir $workdir -j $SINGLE_LOCAL_PROC $workdir/${prefix}_BLAT.sh {} ::: $(seq $procs) > /dev/null 2>&1
-		rm $workdir/${prefix}_BLAT.sh
+		chmod 755 $script.sh
+		$PARALLEL --workdir $workdir -j $SINGLE_LOCAL_PROC $script.sh {} ::: $(seq $procs) > /dev/null 2>&1
+		rm $script.sh
 	fi
 }
 
@@ -274,7 +282,7 @@ function doMATCH() {
 	fi
 
 	if [ "$MATCH_PROG" == "BLAT" ];then
-		doBLAT $REF_SET $DB $prefix $matchp $procs $doGrid
+		doBLAT $REF_SET $DB $prefix all $matchp $procs $doGrid
 		match_ext="blat"
 	else
 		time_stamp "$prefix aborted, MATCH:$MATCH_PROG not implemented"
@@ -434,24 +442,25 @@ function doSORT() {
 }
 
 function doSAM() {
-	local prefix=$1
-	local sequences=$2
+	local queryDB=$1
+	local prefix=$2
 	local name=$3
 	local workdir=$4
 	local procs=$5
 	local doGrid=$6
 	local mod=$Lmpath/${name#*-}_hmm.mod
+	local script=$workdir/$prefix-$name-SAM.sh
 			
 
-cat >$workdir/$name-SAM.sh  <<EOL
+cat >$script.sh  <<EOL
 #!/bin/bash
 LANG=$LANG
 shopt -u nocaseglob;shopt -u nocasematch
 
 if [ "\$#" -eq "1" ];then
-	ID=\$(printf %04d \$SGE_TASK_ID)
-else
 	ID=\$(printf %04d \$1)
+else
+	ID=\$(printf %04d \$SGE_TASK_ID)
 fi
 DB=$workdir/${name}_\$ID.fasta
 RUN=$workdir/${name}_\$ID
@@ -461,13 +470,14 @@ $Lspath/align2model \$RUN -modelfile \$MOD -db \$DB
 $spath/a2mToMatchStats.pl \$RUN.a2m \$RUN.sto $SKIP_E
 EOL
 
-	$Lspath/interleavedSamples.pl $sequences $workdir/$name -G $procs > /dev/null
+	$Lspath/interleavedSamples.pl $queryDB $workdir/$name -G $procs > /dev/null
 	if [ "$doGrid" -eq "1" ];then
-		qsub -t 1-$procs:1 -N $name-SAM -sync y -wd $workdir -j y -o $workdir/$name-SAM.o $workdir/$name-SAM.sh > /dev/null 2>&1
-		rm $workdir/$name-SAM{o,sh}
+		qsub -t 1-$procs:1 -N $prefix-$name-SAM -sync y -wd $workdir -j y -o $script.o $script.sh > /dev/null 2>&1
+		rm $script.{o,sh}
 	else
-		chmod 755 $workdir/$name-SAM.sh
-		$PARALLEL --workdir $workdir -j $SINGLE_LOCAL_PROC $workdir/$name-SAM.sh {} ::: $(seq $procs)
+		chmod 755 $script.sh
+		$PARALLEL --workdir $workdir -j $SINGLE_LOCAL_PROC $script.sh {} ::: $(seq $procs) > /dev/null 2>&1
+		rm $script.sh
 	fi
 	rm $workdir/${name}_????.{fasta,a2m}
 }
@@ -478,6 +488,7 @@ function doALIGN() {
 	local procs=0
 	local queryDB=""
 	local i=0
+	local j=0
 
 	# FOR EACH GENE
 	for queryDB in $sortp/$prefix-*.fa;do
@@ -486,7 +497,6 @@ function doALIGN() {
 		if [ $n -gt $ALIGN_LIMIT -a "$GRID_ON" -eq "1" ];then
 			doGrid=1
 			procs=$ALIGN_PROC
-			doALIGNgrid $prefix $name &
 		else
 			doGrid=0
 			if [ "$n" -lt "$SINGLE_LOCAL_PROC" ];then
@@ -497,12 +507,12 @@ function doALIGN() {
 		fi
 
 		if [ "$ALIGN_PROG" == "SAM" ];then
-			doSAM $prefix $queryDB $name $alignp $procs $doGrid &
+			doSAM $queryDB $prefix $name $alignp $procs $doGrid &
 		elif [ "$ALIGN_PROG" == "BLAT" ];then
-			local j=$(expr $R - 1)
+			j=$(expr $R - 1)
 			if [ "$R" -gt 1 ];then
 				for i in $(seq $j);do
-					doBLAT $refp/R${j}-$name.ref $queryDB $prefix $alignp $procs $doGrid &
+					doBLAT $refp/R${j}-$name.ref $queryDB R$i $name $alignp $procs $doGrid &
 				done
 			fi
 		else
@@ -514,8 +524,8 @@ function doALIGN() {
 			time_stamp 'finished!'
 			exit
 		fi
-		wait
 	done
+	wait
 	time_stamp "$prefix rough aligned reads using $ALIGN_PROG"
 
 	# CREATE NEW REFERENCES
@@ -523,7 +533,8 @@ function doALIGN() {
 	for i in $sortp/$prefix-*.fa;do
 		name=$(basename $i .fa)
 		gene=${name#*-}
-		$spath/combineA2Mstats.pl -N $gene $alignp/R*-${gene}_????.sto > $refp/$name.ref $SKIP_E &
+		
+		$spath/combineALIGNstats.pl $COMBINE_ALIGN_OPTS -N $gene $alignp/R*-${gene}_????.sto > $refp/$name.ref &
 	done
 	wait
 }
@@ -547,7 +558,7 @@ function doRound() {
 	# MATCH stage
 	doMATCH $DB $prefix $n	
 	n=$(grep '>' $matchp/${prefix}.match -c)
-	if [ $n -eq 0 ];then
+	if [ "$n" -eq "0" ];then
 		time_stamp "$prefix aborted, no matches found"
 		if [ $R -gt 1 ];then
 			doPostProcessing
