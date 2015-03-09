@@ -4,7 +4,8 @@
 
 use Storable;
 use Getopt::Long;
-GetOptions(	'name|N=s' => \$name, 'min-pad-count|M=i' => \$minPadCount,
+GetOptions(	'name|N=s' => \$name, 'min-pad-count|M=i' => \$minPadCount, 
+		'delete-by-ambiguity|A' => \$deleteByAmbig,
 		 'skip-elongation|S' => \$skipExtension
 	);
 
@@ -37,8 +38,6 @@ sub min($$) {
 		return $_[1];
 	}
 }
-
-
 
 # PROCESS fasta data
 $/ = ">";
@@ -89,7 +88,11 @@ while( ($base, $matchCount) = each(%{$count[0]}) ) {
 		}
 	}
 }
-$seq .= $maxB;
+if ( $deleteByAmbig && $maxB eq '' ) {
+	$seq .= 'N';
+} else {
+	$seq .= $maxB;
+}
 
 for($j = 1; $j < $Ncount - 1; $j++ ) {
 	$max = 0; $maxB = ''; $total = 0;
@@ -101,7 +104,11 @@ for($j = 1; $j < $Ncount - 1; $j++ ) {
 			}
 		}
 	}
-	$seq .= $maxB;
+	if ( $deleteByAmbig && $maxB eq '' ) {
+		$seq .= 'N';
+	} else {
+		$seq .= $maxB;
+	}
 }
 
 $max3 = 0; $maxB = '';
@@ -113,7 +120,11 @@ while( ($base, $matchCount) = each(%{$count[$Ncount-1]}) ) {
 		}
 	}
 }
-$seq .= $maxB;
+if ( $deleteByAmbig && $maxB eq '' ) {
+	$seq .= 'N';
+} else {
+	$seq .= $maxB;
+}
 
 
 if ( $notSkipExtension ) {
