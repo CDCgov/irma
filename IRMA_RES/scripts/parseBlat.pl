@@ -30,7 +30,7 @@ if ( defined($skipExtension) ) {
 	$notSkipExtension = 1;
 }
 
-sub alignedBLAT($$) {
+sub alignedBLAT($$$) {
 	my @v = split("\t",$_[0]);
 	my $s = $_[1];
 	my $h = $_[2];
@@ -113,6 +113,8 @@ sub alignedBLAT($$) {
 		}
 
 	}
+
+	#if ( $h =~ /PA/ ) {print STDERR '>',$v[9],"\n",$seq,"\n"; }
 	return $seq;
 }
 
@@ -125,7 +127,6 @@ sub recordStats($$$) {
 	my $trailer = '';
 	my $gap = '';
 	my $length = length($sequence);
-
 
 	if ( $notSkipExtension ) {
 		if ( $sequence =~ /^([actgn.]*)([-]{0,2}[ACTGN])/ ) {
@@ -236,12 +237,9 @@ foreach $q ( keys(%stats) ) {
 	#print "\n";
 }
 
-
-
 $/ = ">";
 $name = basename($ARGV[0],'.blat');
 $path = dirname($ARGV[0]);
-
 
 open(CHIM,'>',$path.'/'.$name.'.chim') or die("Cannot open $path/$name.chim for writing.\n");
 open(MATCH,'>',$path.'/'.$name.'.match') or die("Cannot open $path/$name.match for writing.\n");
@@ -284,7 +282,7 @@ while( $record = <IN> ) {
 			if ( $S{$header} eq '+' ) {
 				print MATCH '>',$header,"\n",$sequence,"\n";
 				if ( defined($alignSequences) ) {
-					recordStats(\%alignStats, alignedBLAT($maxGene{$header}[2],$sequence), $maxGene{$header}[0]);
+					recordStats(\%alignStats, alignedBLAT($maxGene{$header}[2],$sequence,$maxGene{$header}[0]), $maxGene{$header}[0]);
 				}
 
 				if ( $classify ) {
@@ -305,7 +303,7 @@ while( $record = <IN> ) {
 
 				print MATCH '>',$header,"{c}\n",$sequence,"\n";
 				if ( defined($alignSequences) ) {
-					recordStats(\%alignStats, alignedBLAT($maxGene{$header}[2],$sequence), $maxGene{$header}[0]);
+					recordStats(\%alignStats, alignedBLAT($maxGene{$header}[2],$sequence,$maxGene{$header}[0]), $maxGene{$header}[0]);
 				}
  
 				if ( $classify ) {
