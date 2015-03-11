@@ -432,7 +432,6 @@ foreach $p ( sort { $a <=> $b } keys(%varLine) ) {
 		}
 	}
 }
-
 close(VARS);
 close(ALL);
 
@@ -554,7 +553,6 @@ foreach $p ( sort { $a <=> $b } keys(%icTable) ) {
 	}
 }
 close(INSV);
-
 
 
 if ( scalar(keys(%variants)) > 1 ) {

@@ -9,7 +9,8 @@ GetOptions(	'separate-ha-na-og|T' => \$triplet,
 		'groups|G=s' => \$classificationGroups, 
 		'include-chimera|I' => \$includeChimera,
 		'align-to-ref|A' => \$alignSequences,
-		'skip-elongation|S' => \$skipExtension 
+		'skip-elongation|S' => \$skipExtension,
+		'prefix|P=s' => \$prefix
 		);
 
 if ( scalar(@ARGV) != 2 ) {
@@ -20,6 +21,7 @@ if ( scalar(@ARGV) != 2 ) {
 	$message .= "\t\t-I|--include-chimera\t\tInclude chimeric data in match data instead of skipping it.\n";
 	$message .= "\t\t-A|--align-to-ref\t\tAlign data to ref using BLAT matches.\n";
 	$message .= "\t\t-S|--skip-elongation\t\tSkip the elongation of the reference to find 5prime and 3prime regions.\n";
+	$message .= "\t\t-P|--prefix <STR>\t\tPrefix to store gene-wise stats.\n";
 	die($message."\n");
 }
 
@@ -114,7 +116,7 @@ sub alignedBLAT($$$) {
 
 	}
 
-	#if ( $h =~ /PA/ ) {print STDERR '>',$v[9],"\n",$seq,"\n"; }
+#	if ( $h =~ /MP/ ) {print STDERR '>',$v[9],"\n",$seq,"\n"; }
 	return $seq;
 }
 
@@ -159,7 +161,6 @@ sub recordStats($$$) {
 	}
 
 	$length -= ($sequence =~ tr/[a-z.]//d)+1;
-
 	for $x ( 0 .. $length) {
 		 $hashRef->{$gene}[0][$x]{substr($sequence,$x,1)}++;
 	}
@@ -334,16 +335,21 @@ if ( $classify ) {
 	close(HA); close(NA); close(OG);
 }
 
+if ( !defined($prefix) ) {
+	$prefix = '';
+} else {
+	$prefix = $prefix . '-';
+}
+
+if ( $name =~ /_(\d{4,})$/ ) {
+	$suffix = '_'.$1;
+} else {
+	$suffix = '';
+}
+
 if ( defined($alignSequences) ) {
 	foreach $gene ( keys(%alignStats) ) {
-		if ( $name =~ /^(\w\d+)[-_](\d{4,})$/ ) {
-			$prefix = $1;
-			$id = $2;
-			$filename = $path.'/'.$prefix.'-'.$gene.'_'.$id.'.sto';
-		} else {
-			$filename = $path.'/'.$gene.'.sto';
-		}
-
+		$filename = $path.'/'.$prefix.$gene.$suffix.'.sto';
 		@count = ();
 		@count = @{$alignStats{$gene}};
 		store(\@count, $filename);

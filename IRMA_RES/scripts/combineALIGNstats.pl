@@ -42,8 +42,7 @@ sub min($$) {
 # PROCESS fasta data
 $/ = ">";
 %count3 = %count5 = ();
-@count = ();
-@statRef = ();
+@count = @statRef = ();
 for($i=0;$i<scalar(@ARGV);$i++) {
 	@statRef = @{retrieve($ARGV[$i])};
 	for $p ( 0 .. (scalar(@{$statRef[0]})-1) ) {
@@ -65,10 +64,10 @@ for($i=0;$i<scalar(@ARGV);$i++) {
 			while( ($base, $trailerCount) = each(%{$statRef[2]{$p}}) ) {
 				$count3{$p}{$base} += $trailerCount;
 			}
+
 		} 
 	}
 }
-
 
 if ( $name ) {
 	print '>',$name,"\n";
@@ -76,7 +75,6 @@ if ( $name ) {
 	print ">consensus\n";
 }
 $seq ='';
-
 
 $Ncount = scalar(@count);
 $max5 = 0; $maxB = '';

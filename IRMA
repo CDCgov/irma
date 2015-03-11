@@ -76,7 +76,6 @@ bpath=
 if [ "$bpath" == "" ]; then
 	bpath=$( cd -P "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 fi
-echo $bpath
 rpath=$bpath/IRMA_RES	# IRMA resources
 spath=$rpath/scripts	# IRMA specific scripts/binaries
 LABEL=$(which LABEL)
@@ -241,14 +240,14 @@ if [ "\$#" -eq "1" ];then
 else
 	ID=\$(printf %04d \$SGE_TASK_ID)
 fi
-INPUT=$workdir/${prefix}_\$ID.fasta
-OUTPUT=$workdir/${prefix}_\$ID.blat
+INPUT=$workdir/${prefix}-${name}_\$ID.fasta
+OUTPUT=$workdir/${prefix}-${name}_\$ID.blat
 
 $spath/blat $refDB \$INPUT \$OUTPUT $BLAT_OPTS
-$spath/parseBlat.pl \$OUTPUT \$INPUT $BLAT_PARSE_OPTS
+$spath/parseBlat.pl \$OUTPUT \$INPUT $BLAT_PARSE_OPTS -P $prefix
 EOL
 ###
-	$Lspath/interleavedSamples.pl -G $procs $queryDB $workdir/$prefix > /dev/null 2>&1
+	$Lspath/interleavedSamples.pl -G $procs $queryDB $workdir/$prefix-$name > /dev/null 2>&1
 	if [ "$doGrid" -eq "1" ];then
 		qsub -t 1-$procs:1 -N ${prefix}-${name}-BLAT -sync y -wd $workdir -j y -o $script.o $script.sh > /dev/null 2>&1
 		rm $script.{o,sh}
@@ -265,9 +264,10 @@ function doMATCH() {
 	local prefix=$2
 	local n=$3
 	local match_ext=""
-	local i=0
+	local name="all"
 	local doGrid=0
 	local procs=0
+	local i=0
 
 	if [ $n -gt $MATCH_LIMIT -a $GRID_ON -eq "1" ];then
 		doGrid=1
@@ -282,7 +282,7 @@ function doMATCH() {
 	fi
 
 	if [ "$MATCH_PROG" == "BLAT" ];then
-		doBLAT $REF_SET $DB $prefix all $matchp $procs $doGrid
+		doBLAT $REF_SET $DB $prefix $name $matchp $procs $doGrid
 		match_ext="blat"
 	else
 		time_stamp "$prefix aborted, MATCH:$MATCH_PROG not implemented"
@@ -296,33 +296,33 @@ function doMATCH() {
 
 	time_stamp "$prefix performed all match with $MATCH_PROG & parsed"
 	# consolidate
-	cat $matchp/${prefix}_????.match > $matchp/${prefix}.match &
-	cat $matchp/${prefix}_????.nomatch > $matchp/${prefix}.nomatch &
-	cat $matchp/${prefix}_????.chim > $matchp/${prefix}.chim &
+	cat $matchp/${prefix}-${name}_????.match > $matchp/${prefix}.match &
+	cat $matchp/${prefix}-${name}_????.nomatch > $matchp/${prefix}.nomatch &
+	cat $matchp/${prefix}-${name}_????.chim > $matchp/${prefix}.chim &
 	wait
 
 	# LABEL fast mode consoldiation
 	if [ $LFASTM -eq "1" -a $SORT_PROG == "LABEL" ];then
-		cat $matchp/${prefix}_????.match.HA > $matchp/${prefix}.match.HA 2> /dev/null &
-		cat $matchp/${prefix}_????.match.NA > $matchp/${prefix}.match.NA 2> /dev/null &
-		cat $matchp/${prefix}_????.match.OG > $matchp/${prefix}.match.OG 2> /dev/null &
+		cat $matchp/${prefix}-${name}_????.match.HA > $matchp/${prefix}.match.HA 2> /dev/null &
+		cat $matchp/${prefix}-${name}_????.match.NA > $matchp/${prefix}.match.NA 2> /dev/null &
+		cat $matchp/${prefix}-${name}_????.match.OG > $matchp/${prefix}.match.OG 2> /dev/null &
 		wait
-		rm $matchp/${prefix}_????.match.{HA,NA,OG}
+		rm $matchp/${prefix}-${name}_????.match.{HA,NA,OG}
 	fi
 
 	# CLEAN UP	
-	rm $matchp/${prefix}_????.{match,nomatch,chim,fasta}
+	rm $matchp/${prefix}-${name}_????.{match,nomatch,chim,fasta}
 	cd $matchp
-	tar  -czf $matchp/${prefix}.tar.gz ${prefix}_????.$match_ext 2> /dev/null
+	tar  -czf $matchp/${prefix}.tar.gz ${prefix}-${name}_????.$match_ext 2> /dev/null
 	cd - > /dev/null
-	rm $matchp/${prefix}_????.$match_ext
+	rm $matchp/${prefix}-${name}_????.$match_ext
 	time_stamp "$prefix consolidated & cleaned"
 
 	# EXTEND to SORT
 	if [ "$SORT_PROG" == "$MATCH_PROG" ];then
 		mkdir $ppath/SORT/${prefix}
-		cat $matchp/${prefix}_????.class > $matchp/${prefix}.class
-		rm $matchp/${prefix}_????.class
+		cat $matchp/${prefix}-${name}_????.class > $matchp/${prefix}.class
+		rm $matchp/${prefix}-${name}_????.class
 		mv $matchp/${prefix}.class $ppath/SORT/$prefix/SORT_result.txt
 	fi
 
@@ -448,7 +448,7 @@ function doSAM() {
 	local workdir=$4
 	local procs=$5
 	local doGrid=$6
-	local mod=$Lmpath/${name#*-}_hmm.mod
+	local mod=$Lmpath/${name}_hmm.mod
 	local script=$workdir/$prefix-$name-SAM.sh
 			
 
@@ -462,15 +462,15 @@ if [ "\$#" -eq "1" ];then
 else
 	ID=\$(printf %04d \$SGE_TASK_ID)
 fi
-DB=$workdir/${name}_\$ID.fasta
-RUN=$workdir/${name}_\$ID
+DB=$workdir/${prefix}-${name}_\$ID.fasta
+RUN=$workdir/${prefix}-${name}_\$ID
 MOD=$mod
 
 $Lspath/align2model \$RUN -modelfile \$MOD -db \$DB
 $spath/a2mToMatchStats.pl \$RUN.a2m \$RUN.sto $SKIP_E
 EOL
 
-	$Lspath/interleavedSamples.pl $queryDB $workdir/$name -G $procs > /dev/null
+	$Lspath/interleavedSamples.pl $queryDB $workdir/$prefix-$name -G $procs > /dev/null
 	if [ "$doGrid" -eq "1" ];then
 		qsub -t 1-$procs:1 -N $prefix-$name-SAM -sync y -wd $workdir -j y -o $script.o $script.sh > /dev/null 2>&1
 		rm $script.{o,sh}
@@ -479,7 +479,7 @@ EOL
 		$PARALLEL --workdir $workdir -j $SINGLE_LOCAL_PROC $script.sh {} ::: $(seq $procs) > /dev/null 2>&1
 		rm $script.sh
 	fi
-	rm $workdir/${name}_????.{fasta,a2m}
+	rm $workdir/${prefix}-${name}_????.{fasta,a2m}
 }
 
 function doALIGN() {
@@ -489,11 +489,13 @@ function doALIGN() {
 	local queryDB=""
 	local i=0
 	local j=0
+	local name=""
+	local gene=""
 
 	# FOR EACH GENE
 	for queryDB in $sortp/$prefix-*.fa;do
 		n=$(grep '>' $queryDB -c)
-		name=$(basename $queryDB .fa)
+		name=$(basename $queryDB .fa);name=${name#*-}
 		if [ $n -gt $ALIGN_LIMIT -a "$GRID_ON" -eq "1" ];then
 			doGrid=1
 			procs=$ALIGN_PROC
@@ -512,7 +514,8 @@ function doALIGN() {
 			j=$(expr $R - 1)
 			if [ "$R" -gt 1 ];then
 				for i in $(seq $j);do
-					doBLAT $refp/R${j}-$name.ref $queryDB R$i $name $alignp $procs $doGrid &
+					rm $alignp/R${j}-$name*.sto
+					doBLAT $refp/R${j}-$name.ref $sortp/R${i}-${name}.fa R$i $name $alignp $procs $doGrid &
 				done
 			fi
 		else
@@ -547,7 +550,7 @@ function doRound() {
 	local x=0
 	local y=0
 	local gene=""
-
+	local name=""
 
 	# make sure directories are available
 	[ ! -d $ppath/MATCH ] && mkdir $ppath/MATCH
@@ -649,9 +652,10 @@ function ASSEM_RUN_SSW() {
 	local ref=$3
 	local procs=$4
 	local doGrid=$5
+	local script=$assemp/F${iter}-${gene}
 
 ###
-cat >$assemp/F${iter}-${gene}.sh  <<EOL
+cat > $script.sh  <<EOL
 #!/bin/bash
 LANG=$LANG
 shopt -u nocaseglob;shopt -u nocasematch
@@ -672,12 +676,13 @@ EOL
 
 	# ASSEMBLE on grid vs local
 	if [ "$doGrid" -eq "1" ];then
-		qsub -t 1-$ASSEMBLE_PROC:1 -N F${iter}-$gene -sync y -wd $assemp -j y -o $assemp/F${iter}-${gene}.o $assemp/F${iter}-${gene}.sh > /dev/null 2>&1
+		qsub -t 1-$ASSEMBLE_PROC:1 -N F${iter}-$gene -sync y -wd $assemp -j y -o $script.o $script.sh > /dev/null 2>&1
 	else
-		chmod 755 $assemp/F${iter}-${gene}.sh
-		$PARALLEL --workdir $ppath -j $SINGLE_LOCAL_PROC $assemp/F${iter}-${gene}.sh {} ::: $(seq $procs)
+		chmod 755 $script.sh
+		$PARALLEL --workdir $ppath -j $SINGLE_LOCAL_PROC $script.sh {} ::: $(seq $procs)
 	fi
 	$spath/catSAMfiles.pl $assemp/F${iter}-${gene}-*.sam > $assemp/F${iter}-$gene.sam
+	rm $script.sh
 }
 
 
