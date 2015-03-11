@@ -537,7 +537,8 @@ function doALIGN() {
 		gene=${name#*-}
 		
 		$spath/combineALIGNstats.pl $COMBINE_ALIGN_OPTS -N $gene $alignp/R*-${gene}_????.sto > $refp/$name.ref &
-		[ "$ALIGN_PROG" == "BLAT" -a "$R" -gt 1 ] && rm $alignp/R*-${gene}_????.{match,nomatch,chim,fasta} &
+		# consider placing burden on the function itself to do the cleanup
+		[ "$ALIGN_PROG" == "BLAT" -a "$R" -gt 1 ] && rm $alignp/R*-${gene}_????.{match,nomatch,chim,fasta,class,blat} &
 	done
 	wait
 }
