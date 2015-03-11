@@ -532,12 +532,12 @@ function doALIGN() {
 	time_stamp "$prefix rough aligned reads using $ALIGN_PROG"
 
 	# CREATE NEW REFERENCES
-	# USE-PARA
 	for i in $sortp/$prefix-*.fa;do
 		name=$(basename $i .fa)
 		gene=${name#*-}
 		
 		$spath/combineALIGNstats.pl $COMBINE_ALIGN_OPTS -N $gene $alignp/R*-${gene}_????.sto > $refp/$name.ref &
+		[ "$ALIGN_PROG" == "BLAT" -a "$R" -gt 1 ] && rm $alignp/R*-${gene}_????.{match,nomatch,chim,fasta} &
 	done
 	wait
 }
