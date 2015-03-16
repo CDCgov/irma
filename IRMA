@@ -68,7 +68,7 @@ DOUBLE_LOCAL_PROC=4	# maximum processes for the left or right pairs
 MATCH_LIMIT=60000	# threshold before grid
 ALIGN_LIMIT=500		# threshold before grid
 SORT_LIMIT=1000		# threshold before grid
-ASSEM_LIMIT=480000	# threshold before grid
+ASSEM_LIMIT=80000	# threshold before grid
 
 # DO NOT ALTER
 owd=$(pwd)
@@ -806,7 +806,7 @@ function REFINE_ASSEMBLY_CALL_PHASE() {
 			currSAM=$assemp/F${iter}-$gene.sam
 
 			# Generate current scaffold from previous SAM and reference, assemble & compare
-			$spath/combineSAMstats.pl $lastRef -N $gene -I $INS_T $lastSTO > $currRef
+			$spath/combineSAMstats.pl $lastRef -N $gene -I $INS_T -D $DEL_T $lastSTO > $currRef
 			$ASSEM_FUNCTION $iter $gene $currRef $procs $doGrid 
 			currScore=$($ASSEM_SCORE $currSAM)
 			echo -e "$currScore\t$currSAM" >> $log

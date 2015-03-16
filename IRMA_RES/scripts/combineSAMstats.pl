@@ -59,8 +59,6 @@ for($i=1;$i<scalar(@ARGV);$i++) {
 	}
 }
 
-
-
 @cons = @totals = ();
 for $p ( 0 .. ($N-1) ) {
 	$total = 0;
