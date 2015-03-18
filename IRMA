@@ -294,7 +294,7 @@ function doMATCH() {
 		exit
 	fi
 
-	time_stamp "$prefix performed all match with $MATCH_PROG & parsed"
+	time_stamp "$prefix all-match with $MATCH_PROG finished"
 	# consolidate
 	cat $matchp/${prefix}-${name}_????.match > $matchp/${prefix}.match &
 	cat $matchp/${prefix}-${name}_????.nomatch > $matchp/${prefix}.nomatch &
@@ -552,6 +552,8 @@ function doRound() {
 	local y=0
 	local gene=""
 	local name=""
+
+	time_stamp "$prefix started ($n)"
 
 	# make sure directories are available
 	[ ! -d $ppath/MATCH ] && mkdir $ppath/MATCH
@@ -861,6 +863,7 @@ function ASSEMBLE_REPORT() {
 
 	# ITERATIVE REFINEMENT of ASSEMBLY chained to CALLING and PHASING
 	$Lspath/interleavedSamples.pl -G $procs -P $fastq $assemp/$gene > /dev/null
+	time_stamp "started $gene ($size)"
 #	if [ "$doGrid" -eq "0" ];then
 #		$PARALLEL --semaphore --semaphorename IRMA -j1 REFINE_ASSEMBLY_CALL_PHASE $gene $procs $doGrid $final
 #		$PARALLEL --semaphore --semaphorename IRMA --wait
@@ -1031,7 +1034,6 @@ fi
 
 QUERY_SET=$ppath/R0.fa
 while [ $R -le $MAX_ROUNDS ];do
-	time_stamp "R$R started"
 	doRound $QUERY_SET R$R
 	MIN_RC=1
 	MIN_RP=1
