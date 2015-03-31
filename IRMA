@@ -211,7 +211,7 @@ function preProcess() {
 	# FILTER
 	for i in $ppath/${name}*.fastq;do
 		local prefix=$(basename $i .fastq)
-		$spath/fastQ_converter.pl -Q -M -T $QUAL_THRESHOLD -L $MIN_LEN $i > $ppath/$prefix.QC.fastq &
+		$spath/fastQ_converter.pl -Q -M  -T $QUAL_THRESHOLD -L $MIN_LEN $i  > $ppath/$prefix.QC.fastq &
 	done
 	wait
 
@@ -875,7 +875,7 @@ function ASSEMBLE_REPORT() {
 #		$PARALLEL --semaphore --semaphorename IRMA -j1 REFINE_ASSEMBLY_CALL_PHASE $gene $procs $doGrid $final
 #		$PARALLEL --semaphore --semaphorename IRMA --wait
 #	else
-		REFINE_ASSEMBLY_CALL_PHASE $gene $procs $doGrid $final
+	REFINE_ASSEMBLY_CALL_PHASE $gene $procs $doGrid $final
 #	fi
 	
 	local n=$(wc -l < ${final}-variants.txt)
@@ -935,11 +935,11 @@ function doPostProcessing() {
 	# CLEAN UP
 	[ $LFASTM -eq "1" ] && rm $matchp/R?.match.{HA,NA,OG}
 	grep '>' $matchp/R?.{match,nomatch,chim} $ppath/R0.fa -c > $ppath/NR_COUNTS_log.txt
-	rm $ppath/R0.{fa,xfl} &
+#	rm $ppath/R0.{fa,xfl} &
 	rm $alignp/R*.sto &
 	rm $refp/R*.refs &
-	rm $matchp/R*.{match,nomatch,chim} &
-	rm $sortp/R*.fa &
+#	rm $matchp/R*.{match,nomatch,chim} &
+#	rm $sortp/R*.fa &
 	wait
 	
 	# POLISH the final assembly & do variant calls/phasing
@@ -1006,22 +1006,23 @@ function doPostProcessing() {
 
 ####################
 time_stamp "started run '$RUN'"
+FASTQ_CONV_OPTS="-Q -M -T $QUAL_THRESHOLD -L $MIN_LEN"
 if [ "$PAIRED" -eq "1" ];then
-	preProcess $LEFT 'LEFT' $DOUBLE_LOCAL_PROC &
-	preProcess $RIGHT 'RIGHT' $DOUBLE_LOCAL_PROC &
-	wait
+	if [ ${LEFT: -3} == ".gz" ];then 
+		$spath/xflate.pl -C -Q -L INTERLEAVED $ppath/R0.xfl \
+			<(zcat $LEFT|$PARALLEL --pipe -L4 -j$DOUBLE_LOCAL_PROC $spath/fastQ_converter.pl $FASTQ_CONV_OPTS -G $ppath/LEFT.log -g {#}) \
+			<(zcat $RIGHT|$PARALLEL --pipe -L4 -j$DOUBLE_LOCAL_PROC $spath/fastQ_converter.pl $FASTQ_CONV_OPTS -G $ppath/RIGHT.log -g {#}) \
+			> $ppath/R0.fa
+	else
+		$spath/xflate.pl -C -Q -L INTERLEAVED $ppath/R0.xfl \
+			<(cat $LEFT|$PARALLEL --pipe -L4 -j$DOUBLE_LOCAL_PROC $spath/fastQ_converter.pl $FASTQ_CONV_OPTS -G $ppath/LEFT.log -g {#}) \
+			<(cat $RIGHT|$PARALLEL --pipe -L4 -j$DOUBLE_LOCAL_PROC $spath/fastQ_converter.pl $FASTQ_CONV_OPTS -G $ppath/RIGHT.log -g {#}) \
+			> $ppath/R0.fa
+	fi
 	time_stamp 'pre-processed'
 
-	cat $ppath/LEFT.xfl >> $ppath/RIGHT.xfl &
-	cat $ppath/LEFT.fa >> $ppath/RIGHT.fa & 
-	wait
-	time_stamp 'consolidated'
-
-	rm $ppath/LEFT.xfl $ppath/LEFT.fa
-	mv $ppath/RIGHT.xfl $ppath/R0.xfl
-	mv $ppath/RIGHT.fa $ppath/R0.fa
-	cat $ppath/{LEFT,RIGHT}*.log > $ppath/QC_log.txt
-	rm $ppath/{LEFT,RIGHT}*
+	cat $ppath/{LEFT,RIGHT}.log > $ppath/QC_log.txt
+	rm $ppath/{LEFT,RIGHT}.log
 else
 	preProcess $SINGLE 'SINGLE' $SINGLE_LOCAL_PROC
 	time_stamp 'pre-processed'
