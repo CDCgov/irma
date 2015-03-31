@@ -12,6 +12,8 @@ GetOptions(	'read-quality|T=i'=> \$qualityThreshold,
 		'ordinal-headers|O' => \$ordinal,
 		'file-id|F=s' => \$fileID,
 		'save-quality|S=s' => \$saveFile,
+		'save-stats|A=s' => \$saveStats,	 
+		'skip-remaining|K' => \$skipRemaining,
 		'log-file|G=s' => \$logFile,
 		'log-id|g=s' => \$logID
 	);
@@ -27,6 +29,8 @@ if ( -t STDIN && scalar(@ARGV) != 1 ) {
 	$message .= "\t\t-O|--ordinal-headers\t\t\tReplace header with strict ordinals.\n";
 	$message .= "\t\t-F|--file-id <STR>\t\t\tFile id for ordinals.\n";
 	$message .= "\t\t-S|--save-quality <STR>\t\t\tSave quality file for back-mapping.\n";
+	$message .= "\t\t-A|--save-stats <STR>\t\t\tSave quality length file for analysis.\n";
+	$message .= "\t\t-K|--skip-remaining\t\t\tDo not output data FASTA/FASTQ data (assumes -A).\n";
 	die($message."\n");
 }
 if ( !defined($useMedian) ) {
@@ -85,6 +89,10 @@ if ( $complementAndAdd ) {
 	$dnp = '';
 }
 
+if ( defined($saveStats) ) {
+	open(STAT,'>',$saveStats) or die("Cannot open $saveStats for writing.\n"); 
+}
+
 while($hdr=<>) {
 	chomp($hdr);
 	$seq=<>; chomp($seq);
@@ -113,6 +121,13 @@ while($hdr=<>) {
 			$q += $x;
 		}
 		$q = ($q-$n*33)/$n;
+	}
+
+	if ( defined($saveStats) ) {
+		print STAT $id,"\t",$q,"\t",$n,"\n";
+		if ( defined($skipRemaining) ) {
+			next;
+		} 
 	}
 
 	if ( $q >= $qualityThreshold ) {
@@ -167,6 +182,11 @@ while($hdr=<>) {
 			}
 		}
 	}
+}
+
+
+if ( defined($saveStats) ) {
+	close(STAT);
 }
 
 if ( $logFile ) {
