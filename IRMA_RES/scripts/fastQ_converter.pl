@@ -2,6 +2,7 @@
 # Sam Shepard - fastQ_converter - 1.2014
 
 use Getopt::Long;
+Getopt::Long::Configure('no_ignore_case');
 GetOptions(	'read-quality|T=i'=> \$qualityThreshold,
 		'use-median|M' => \$useMedian,
 		'fastQ-ouput|Q' => \$fastQformat,
@@ -11,12 +12,12 @@ GetOptions(	'read-quality|T=i'=> \$qualityThreshold,
 		'ordinal-headers|O' => \$ordinal,
 		'file-id|F=s' => \$fileID,
 		'save-quality|S=s' => \$saveFile,
-		'save-stats|A=s' => \$saveStats,
-		'skip-remaining|K' => \$skipRemaining
+		'log-file|G=s' => \$logFile,
+		'log-id|g=s' => \$logID
 	);
 
 
-if ( scalar(@ARGV) != 1 ) {
+if ( -t STDIN && scalar(@ARGV) != 1 ) {
 	$message = "Usage:\n\tperl $0 <fastQ> [options]\n";
 	$message .= "\t\t-T|--read-quality <threshold>\t\tSpecify the average read quality.\n";
 	$message .= "\t\t-M|--use-median\t\t\t\tInterprets the threshold (-T) as the median, not average.\n";
@@ -26,8 +27,6 @@ if ( scalar(@ARGV) != 1 ) {
 	$message .= "\t\t-O|--ordinal-headers\t\t\tReplace header with strict ordinals.\n";
 	$message .= "\t\t-F|--file-id <STR>\t\t\tFile id for ordinals.\n";
 	$message .= "\t\t-S|--save-quality <STR>\t\t\tSave quality file for back-mapping.\n";
-	$message .= "\t\t-A|--save-stats <STR>\t\t\tSave quality length file for analysis.\n";
-	$message .= "\t\t-K|--skip-remaining\t\t\tDo not output data FASTA/FASTQ data (assumes -A).\n";
 	die($message."\n");
 }
 if ( !defined($useMedian) ) {
@@ -74,7 +73,6 @@ if ( !defined($minLength) ) {
 
 
 $/ = "\n";
-open(IN,'<',$ARGV[0]) or die("Cannot open $ARGV[0]\n");
 $act = $id = 0;
 
 if ( $complementAndAdd ) {
@@ -87,15 +85,11 @@ if ( $complementAndAdd ) {
 	$dnp = '';
 }
 
-if ( defined($saveStats) ) {
-	open(STAT,'>',$saveStats) or die("Cannot open $saveStats for writing.\n");
-}
-
-while($hdr=<IN>) {
+while($hdr=<>) {
 	chomp($hdr);
-	$seq=<IN>; chomp($seq);
-	$junk=<IN>; chomp($junk);
-	$quality=<IN>; chomp($quality);
+	$seq=<>; chomp($seq);
+	$junk=<>; chomp($junk);
+	$quality=<>; chomp($quality);
 	@a = unpack("c* i*",$quality);
 
 	$q = 0; $n = scalar(@a);
@@ -119,13 +113,6 @@ while($hdr=<IN>) {
 			$q += $x;
 		}
 		$q = ($q-$n*33)/$n;
-	}
-
-	if ( defined($saveStats) ) {
-		print STAT $id,"\t",$q,"\t",$n,"\n";
-		if ( defined($skipRemaining) ) {
-			next;
-		}
 	}
 
 	if ( $q >= $qualityThreshold ) {
@@ -182,12 +169,15 @@ while($hdr=<IN>) {
 	}
 }
 
-open(OUT,'>',$ARGV[0].'.log') or die("Cannot open $ARGV[0].log for writing.\n");
-print OUT $ARGV[0],"\t",($id),"\t",($act),"\t",$qualityThreshold,"\t",$minLength,"\t",$useMedian,"\n";
-close(OUT);
-
-if ( defined($saveStats) ) {
-	close(STAT);
+if ( $logFile ) {
+	if ( defined($logID) ) {
+		$logID = ':'.$logID;
+	} else {
+		$logID = '';
+	}
+	open(OUT,'>>',$logFile) or die("Cannot open $logFile for appending.\n");
+	print OUT $logFile,"$logID\t",($id),"\t",($act),"\t",$qualityThreshold,"\t",$minLength,"\t",$useMedian,"\n";
+	close(OUT);
 }
 
 if ( $saveQuality ) {
