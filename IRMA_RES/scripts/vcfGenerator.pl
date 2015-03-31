@@ -317,7 +317,7 @@ foreach $p ( sort { $a <=> $b } keys(%minorityTable) ) {
 
 		for($i=1;$i<$snvCalls;$i++) {
 			$ALT .= ','.$bases[$i].$REF_EXT;
-			$AF .= sprintf(',.10f',$minorityTable{$p}{$bases[$i]}[5]);
+			$AF .= sprintf(',%.10f',$minorityTable{$p}{$bases[$i]}[5]);
 			$AQ .= sprintf(',%.2f',$minorityTable{$p}{$bases[$i]}[6]);
 			if ( $takeSig ) {
 				$PUB .= sprintf(',%.10f',$minorityTable{$p}{$bases[$i]}[8]);

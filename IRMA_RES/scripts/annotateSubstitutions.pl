@@ -174,7 +174,7 @@ print STDERR $UB,"\t",$offset,"\n";
 open(IN,'<',$ARGV[1]) or die("Cannot open $ARGV[1] for reading.\n");
 $/ = "\n";
 $header = <IN>; chomp($header);
-print $header,"\thasSubstitution\tMutation\tPCD\taaAllele\tSignificant\tNonsense\n";
+print $header,"\tCN\tCP\thasSubstitution\tMutation\tPCD\taaAllele\tSignificant\tNonsense\n";
 while($record=<IN>) {
 	chomp($record);
 	@fields	= split("\t",$record);
@@ -212,7 +212,7 @@ while($record=<IN>) {
 		} else {
 			$pcd = $distMat{$aa}{$ref[$CN]};
 			$sub = 'Yes';
-			$mutation = $ref[$CN].($position+1).$aa;
+			$mutation = $ref[$CN].$CN.$aa;
 		}
 		$aaAllele = $aa;
 
@@ -223,6 +223,6 @@ while($record=<IN>) {
 		}
 	}
 	
-	print $record,"\t",$sub,"\t",$mutation,"\t",$pcd,"\t",$aaAllele,"\t",$sig,"\t",$nonsense,"\n";
+	print $record,"\t",($CN+1),"\t",($CP+1),"\t",$sub,"\t",$mutation,"\t",$pcd,"\t",$aaAllele,"\t",$sig,"\t",$nonsense,"\n";
 }
 close(IN);

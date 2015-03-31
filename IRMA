@@ -616,19 +616,26 @@ function doRound() {
 			for i in $sortp/*2;do
 				mv $i $ppath/low_abundance/$(basename $i .2)
 			done
-			mv $ppath/low_abundance/*UNRECOGNIZABLE* $ppath/other_data/failed_sort.fa
 
-			mv $ppath/R1.nomatch $ppath/other_data/unmatched_data.fa
-			mv $ppath/R1.chim $ppath/other_data/chimeric.fa
+			if test -n "$(shopt -s nullglob;echo $ppath/low_abundance/*UNRECOGNIZABLE*)";then
+				cat $ppath/low_abundance/*UNRECOGNIZABLE* > $ppath/other_data/failed_sort.fa
+				rm $ppath/low_abundance/*UNRECOGNIZABLE*
+			fi
+
+			mv $matchp/R1.nomatch $ppath/other_data/unmatched_data.fa
+			mv $matchp/R1.chim $ppath/other_data/chimeric.fa
 			mv $matchp/R1.tar.gz $ppath/other_data/match_output.tar.gz
 			mv $sortp/R1.tar.gz $ppath/other_data/sort_output.tar.gz
 			echo -e "Gene\tRead Patterns\tRead Count" > $ppath/sorted_read_stats.txt
 			cat $sortp/R1.txt >> $ppath/sorted_read_stats.txt && rm $sortp/R1.txt
 			echo -e "Interleaved sample\tStarting reads\tQC'd reads\tQuality threshold\tMin length\tUse median" > $ppath/read_QC_filtering.txt
 			cat $ppath/QC_log.txt >> $ppath/read_QC_filtering.txt && rm $ppath/QC_log.txt
-			rm $ppath/R*.{match,fa,xfl}
-			[ $LFASTM -eq "1" ] && rm $ppath/R1.match.*
-			rmdir $alignp $matchp $refp $sortp
+			
+			if test -n "$(shopt -s nullglob;echo $ppath/R1.match.*)";then
+				rm $ppath/R1.match.*
+			fi
+			rm $ppath/R*.{fa,xfl}
+			rm -rf $alignp $matchp $refp $sortp $assemp
 		fi
 	
 		moveProject
