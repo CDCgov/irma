@@ -17,7 +17,8 @@ if [ $# -eq 4 ];then
 elif [ $# -eq 3 ];then
 	PAIRED=0
 	MODULE=$1
-	SINGLE=$2		# single paired end FASTQ
+	LEFT=$2			# single paired end FASTQ
+	RIGHT=""
 	RUN=$3			# name of the run
 else
 	echo -e "$PROGRAM, v$VERSION ($DATE)"
@@ -93,6 +94,12 @@ else
 fi
 ppath=$rpath/ppath/$RUN
 
+# select cat for reading reads
+if [ ${LEFT: -3} == ".gz" ];then
+	CAT="zcat"
+else
+	CAT="cat"
+fi
 
 MODULE2=$(echo $MODULE|cut -f1 -d'-')
 if [ ! -d $rpath/modules/$MODULE2 ];then
@@ -148,6 +155,9 @@ SSW_OPTS="-x $SSW_X -m $SSW_M -o $SSW_O -e $SSW_E"
 # BLAT options
 BLAT_OPTS="-oneOff=1 -minIdentity=80 -tileSize=10"
 
+# FASTQ converter/QC options
+FASTQ_CONV_OPTS="-Q -M -T $QUAL_THRESHOLD -L $MIN_LEN"
+
 # Reference elongation
 if [ "$SKIP_E" -eq 1 ];then
 	SKIP_E="-S"
@@ -194,29 +204,6 @@ function moveProject() {
 		done
 		mv $ppath $outpath
 	fi
-}
-
-function preProcess() {
-	local file=$1
-	local name=$2
-	local numGroups=$3
-
-	# SEPARATE
-	if [ ${file: -3} == ".gz" ];then 
-		$Lspath/interleavedSamples.pl -Z -G $numGroups -Q $file $ppath/$name > /dev/null
-	else
-		$Lspath/interleavedSamples.pl -G $numGroups -Q $file $ppath/$name > /dev/null
-	fi
-
-	# FILTER
-	for i in $ppath/${name}*.fastq;do
-		local prefix=$(basename $i .fastq)
-		$spath/fastQ_converter.pl -Q -M  -T $QUAL_THRESHOLD -L $MIN_LEN $i  > $ppath/$prefix.QC.fastq &
-	done
-	wait
-
-	# COLLATE
-	$spath/xflate.pl -C -Q -L $name $ppath/$name.xfl $ppath/${name}*.QC.fastq > $ppath/$name.fa
 }
 
 function doBLAT() {
@@ -1004,33 +991,20 @@ function doPostProcessing() {
 
 }
 
-####################
+### START ####
 time_stamp "started run '$RUN'"
-FASTQ_CONV_OPTS="-Q -M -T $QUAL_THRESHOLD -L $MIN_LEN"
 if [ "$PAIRED" -eq "1" ];then
-	if [ ${LEFT: -3} == ".gz" ];then 
-		$spath/xflate.pl -C -Q -L INTERLEAVED $ppath/R0.xfl \
-			<(zcat $LEFT|$PARALLEL --pipe -L4 -j$DOUBLE_LOCAL_PROC $spath/fastQ_converter.pl $FASTQ_CONV_OPTS -G $ppath/LEFT.log -g {#}) \
-			<(zcat $RIGHT|$PARALLEL --pipe -L4 -j$DOUBLE_LOCAL_PROC $spath/fastQ_converter.pl $FASTQ_CONV_OPTS -G $ppath/RIGHT.log -g {#}) \
-			> $ppath/R0.fa
-	else
-		$spath/xflate.pl -C -Q -L INTERLEAVED $ppath/R0.xfl \
-			<(cat $LEFT|$PARALLEL --pipe -L4 -j$DOUBLE_LOCAL_PROC $spath/fastQ_converter.pl $FASTQ_CONV_OPTS -G $ppath/LEFT.log -g {#}) \
-			<(cat $RIGHT|$PARALLEL --pipe -L4 -j$DOUBLE_LOCAL_PROC $spath/fastQ_converter.pl $FASTQ_CONV_OPTS -G $ppath/RIGHT.log -g {#}) \
-			> $ppath/R0.fa
-	fi
+	$spath/xflate.pl -C -Q -L INTER $ppath/R0.xfl \
+		<($CAT $LEFT|$PARALLEL --pipe -L4 -j$DOUBLE_LOCAL_PROC $spath/fastQ_converter.pl $FASTQ_CONV_OPTS -G $ppath/LEFT.log -g {#}) \
+		<($CAT $RIGHT|$PARALLEL --pipe -L4 -j$DOUBLE_LOCAL_PROC $spath/fastQ_converter.pl $FASTQ_CONV_OPTS -G $ppath/RIGHT.log -g {#}) \
+		> $ppath/R0.fa
+	cat $ppath/{LEFT,RIGHT}.log > $ppath/QC_log.txt && rm $ppath/{LEFT,RIGHT}.log
 	time_stamp 'pre-processed'
-
-	cat $ppath/{LEFT,RIGHT}.log > $ppath/QC_log.txt
-	rm $ppath/{LEFT,RIGHT}.log
 else
-	preProcess $SINGLE 'SINGLE' $SINGLE_LOCAL_PROC
+	$spath/xflate.pl -C -Q -L INTER $ppath/R0.xfl \
+		<($CAT $LEFT|$PARALLEL --pipe -L4 -j$SINGLE_LOCAL_PROC $spath/fastQ_converter.pl $FASTQ_CONV_OPTS -G $ppath/QC_log.txt -g {#})
+		> $ppath/R0.fa
 	time_stamp 'pre-processed'
-
-	mv $ppath/SINGLE.xfl $ppath/R0.xfl
-	mv $ppath/SINGLE.fa $ppath/R0.fa
-	cat $ppath/SINGLE*.log > $ppath/QC_log.txt
-	rm $ppath/SINGLE*
 fi
 
 if [ ! -s $ppath/R0.fa ];then
@@ -1055,4 +1029,5 @@ done
 doPostProcessing
 moveProject
 time_stamp 'finished!'
-#####################
+exit 0
+### END ###

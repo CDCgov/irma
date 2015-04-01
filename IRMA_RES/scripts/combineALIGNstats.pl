@@ -6,7 +6,8 @@ use Storable;
 use Getopt::Long;
 GetOptions(	'name|N=s' => \$name, 'min-pad-count|M=i' => \$minPadCount, 
 		'delete-by-ambiguity|A' => \$deleteByAmbig,
-		 'skip-elongation|S' => \$skipExtension
+		 'skip-elongation|S' => \$skipExtension,
+		'debug-mode|D' => \$debug
 	);
 
 if ( scalar(@ARGV) < 1 ) {
@@ -68,6 +69,17 @@ for($i=0;$i<scalar(@ARGV);$i++) {
 		} 
 	}
 }
+
+if ( $debug ) {
+
+	for $p ( 0 .. (scalar(@count)-1) ) {
+		foreach $b ( keys(%{$count[$p]}) ) {
+			print $p,"\t",$b,"\t",$count[$p]{$b},"\n";
+		}
+		
+        }
+}
+
 
 if ( $name ) {
 	print '>',$name,"\n";
