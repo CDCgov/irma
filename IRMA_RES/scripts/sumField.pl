@@ -9,6 +9,7 @@ GetOptions(
 		'field-number|F=i' => \$f,
 		'field-delim|D=s' => \$d,
 		'average|A' => \$takeAverage,
+		'sum-count|S' => \$sumAndCount,
 		'take-count|T' => \$takeCount,
 		'newline|N' => \$newline,
 		'minimum|M' => \$takeMinimum,
@@ -43,6 +44,11 @@ if ( $header ) { $junk=<>; }
 $N = $total = 0;
 my $min;
 my $max;
+
+if ( $sumAndCount ) {
+	$takeAverage = 1;
+}
+
 
 if ( $takeEverything ) {
 	while($line=<>) {
@@ -113,7 +119,12 @@ if ( $takeEverything ) {
 		$total += $fields[$f];
 		$N++;
 	}
-	print sprintf("%.2f",$total/$N),$newline;
+
+	if ( $sumAndCount ) {
+		print sprintf("%d\t%d",$total,$N),$newline;
+	} else {
+		print sprintf("%.2f",$total/$N),$newline;
+	}
 } elsif ( $takeCount ) {
 	while($line=<>) {
 		chomp($line);
