@@ -2,27 +2,28 @@
 # Sam Shepard
 
 args = commandArgs(TRUE)
-if (length(args) != 3) {
-        cat("Usage:\n\tRscript ./percentages.R <COUNTS.txt> <OUTPUT.pdf> <PAIRED:1/0>\n")
+if (length(args) != 6) {
+        cat("Usage:\n\tRscript ./percentages.R <QC.txt> <reads> <NR_COUNTS.txt> <MERGED.txt> <OUTPUT> <PAIRED:1/0>\n")
         q()
 }
 
 tableau10=c("#1F77B4","#FF7F0E","#2CA02C","#D62728","#9467BD","#8C564B","#E377C2","#7F7F7F","#BCBD22","#17BECF")
 
 
-countsFile=args[1]
-outputFile=args[2]
-paired=as.numeric(args[3])
+QCfile=args[1]
+assembled=as.numeric(args[2])
+countsFile=args[3]
+mergeFile=args[4]
+outputFile=args[5]
+paired=as.numeric(args[6])
 
 pdf(outputFile,width=12,height=11)
 par(mfrow=c(2,2),mar=c(3, 3, 3, 3))
 
-D=read.table(header=TRUE,sep="\t",file=countsFile)
-
-total=D$Reads[D$Record =='1-initial']
-#qual=D$Reads[D$Record =='2-afterQC']
-nonqual=D$Reads[D$Record =='2-failQC']
-assembled=D$Reads[D$Record =='3-match']
+D=read.table(header=FALSE,sep="\t",file=QCfile)
+total=sum(D$V2)
+qual=sum(D$V3)
+nonqual=total-qual
 therest=total-nonqual-assembled
 
 vals=c(assembled,nonqual,therest)
@@ -50,25 +51,14 @@ if ( paired ) {
 }
 legend("bottomright", grps, fill=cols)
 
-
-assembled=D$Patterns[D$Record =='3-match']
-total=D$Patterns[D$Record =='2-afterQC']
-if ( sum(D$Record == '3-chimeric') > 0 ) {
-	chimeric=D$Patterns[D$Record =='3-chimeric']
-} else {
-	chimeric=0
-}
-
-if ( sum(D$Record=='3-unrecognizable') > 0 ) {
-	unused=D$Patterns[D$Record =='3-unrecognizable']
-} else {
-	unused=0
-}
-
-if ( sum(D$Record=='3-altmatch') > 0 ) {
-	unused=unused+D$Patterns[D$Record=='3-altmatch']
-}
-unmatched=D$Patterns[D$Record =='3-nomatch']
+D=read.table(countsFile,sep=":",header=FALSE,colClasses=c("character","numeric"),)
+D$V3=basename(D$V1)
+chimeric=sum(D$V2[grep('\\.chim',D$V3)])
+assembled=sum(D$V2[grep('ASSEMBLY/',D$V1)])
+match=sum(D$V2[grep('\\.match',D$V3)])
+total=sum(D$V2[grep('R0\\.fa',D$V3)])
+unused=match-assembled
+unmatched=total-chimeric-match
 
 cols=c("#1F77B4","#ed9a9a","#e05758","#d62728")
 vals=c(assembled,unused,chimeric,unmatched)
@@ -89,13 +79,12 @@ grps=c("Assembled","Unusable","Chimeric","No match")
 pie(x=vals,labels=perc,col=cols,main="2. Percentages of all read patterns passing QC")
 legend("bottomright", grps, fill=cols)
 
-
-G=D[grep(pattern="^4-",x=D$Record),]
-G$Record=gsub(pattern="^4-",replacement="",x=G$Record)
-
-o=order(G$Record)
-grps=G$Record[o]
-vals=G$PairsAndWidows[o]
+M=read.table(mergeFile,sep=":",header=FALSE,colClasses=c("character","numeric"),)
+M$V3=basename(M$V1)
+M$V4=gsub(pattern="(.+?)\\..+",replacement="\\1",x=M$V3)
+o=order(M$V4)
+grps=M$V4[o]
+vals=M$V2[o]
 S=vector(length=length(vals))
 for( i in 1:length(vals)) {
 	v=vals[i]

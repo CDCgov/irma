@@ -6,6 +6,8 @@ PARAM_FILE_DATE="2015-02-17"
 
 # PERFORMANCE
 GRID_ON=0				# grid computation on
+ALLOW_TMP=1				# use TMP for ppath
+TMP=/scratch				# our HPC scratch space
 MATCH_PROC=20				# grid maximum processes for the MATCH
 ALIGN_PROC=20				# grid maximum processes for the rough align
 ASSEMBLE_PROC=10			# grid maximum processes for assembly
@@ -46,6 +48,6 @@ LFASTM=1				# LABEL sorting fast-mode
 
 # STAGES
 MATCH_PROG="BLAT"
-SORT_PROG="BLAT"
-ALIGN_PROG="BLAT"
+SORT_PROG="LABEL"
+ALIGN_PROG="SAM"
 ASSEM_PROG="SSW"

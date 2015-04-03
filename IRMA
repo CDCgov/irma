@@ -52,6 +52,8 @@ INCL_CHIM=0		# whether or not to get rid of chimera
 
 # ALTER AT RISK
 GRID_ON=1		# enable cluster/grid computation
+ALLOW_TMP=1		# if GRID_ON=0, try to use /tmp for working directory
+TMP=/tmp		# the scratch/tmpfs for working on the assemblies
 SSW_M=1			# smith-waterman match score
 SSW_X=5			# smith-waterman mismatch penalty
 SSW_O=10		# smith-waterman gap open penalty
@@ -85,14 +87,11 @@ Lmpath=$(dirname $LABEL)/LABEL_RES/training_data/IRMA
 PARALLEL="$spath/parallel --will-cite"
 PARSE_SORT_OPTS=""
 
-
-if [ ! -d $rpath/ppath/$RUN ]; then
-	mkdir $rpath/ppath/$RUN
-else
-	echo "$(basename $0) ERROR: run '$RUN' exists, operations have been ABORTED!"
-	exit 1
-fi
-ppath=$rpath/ppath/$RUN
+# STAGES
+MATCH_PROG="BLAT"
+SORT_PROG="LABEL"
+ALIGN_PROG="SAM"
+ASSEM_PROG="SSW"
 
 # select cat for reading reads
 if [ ${LEFT: -3} == ".gz" ];then
@@ -101,6 +100,7 @@ else
 	CAT="cat"
 fi
 
+# check for module
 MODULE2=$(echo $MODULE|cut -f1 -d'-')
 if [ ! -d $rpath/modules/$MODULE2 ];then
 	time_stamp "Error: $MODULE2 not found."
@@ -109,11 +109,26 @@ else
 	mpath=$rpath/modules/$MODULE2	
 fi
 
-# STAGES
-MATCH_PROG="BLAT"
-SORT_PROG="LABEL"
-ALIGN_PROG="SAM"
-ASSEM_PROG="SSW"
+# initial BLAT database
+REF_SET=$mpath/blatDB.fasta
+
+# load module parameter file
+source $mpath/params-$MODULE.sh
+
+# define ppath
+if [ "$ALLOW_TMP" -eq "1" -a "$GRID_ON" -eq "0" ];then
+	ppath=/$TMP/$(whoami)/IRMAv$VERSION/$RUN
+else
+	ppath=$rpath/ppath/$RUN
+fi
+
+# check if RUN already exists
+if [ ! -d $ppath ]; then
+	mkdir -p $ppath
+else
+	echo "$(basename $0) ERROR: run '$RUN' exists, operations have been ABORTED!"
+	exit 1
+fi
 
 # stage paths
 matchp=$ppath/MATCH
@@ -122,10 +137,6 @@ alignp=$ppath/ALIGN
 assemp=$ppath/ASSEMBLY
 refp=$ppath/GENES
 mkdir $matchp $sortp $alignp $assemp $refp
-
-# initial BLAT database
-REF_SET=$mpath/blatDB.fasta
-source $mpath/params-$MODULE.sh
 
 if [ "$AUTO_F" -eq 1 ];then
 	AUTO_F="-A"
@@ -919,28 +930,28 @@ function doPostProcessing() {
 
 	### experimental ###
 	if [ "$PAIRED" -eq "1" ];then
-		raw1=$(grep LEFT.log $ppath/QC_log.txt |sumField.pl -F 2)
-		raw2=$(grep RIGHT.log $ppath/QC_log.txt |sumField.pl -F 2)
-		echo -e "Record\tReads\tPatterns\tPairsAndWidows" >> $ppath/COUNTS_table.txt
-		echo -e "1-R1\t${raw1}\tNA\tNA" >> $ppath/COUNTS_table.txt
-		echo -e "1-R2\t${raw2}\tNA\tNA" >> $ppath/COUNTS_table.txt
+		raw1=$(grep LEFT.log $ppath/QC_log.txt |$spath/sumField.pl -F 2)
+		raw2=$(grep RIGHT.log $ppath/QC_log.txt |$spath/sumField.pl -F 2)
+		echo -e "Record\tReads\tPatterns\tPairsAndWidows" >> $ppath/READ_COUNTS.txt
+		echo -e "0-R1\t${raw1}\tNA\tNA" >> $ppath/READ_COUNTS.txt
+		echo -e "0-R2\t${raw2}\tNA\tNA" >> $ppath/READ_COUNTS.txt
 	fi
-	raw1=$(cat $ppath/QC_log.txt|sumField.pl -F 2)
-	raw2=$(cat $ppath/QC_log.txt|sumField.pl -F 3)
+	raw1=$(cat $ppath/QC_log.txt|$spath/sumField.pl -F 2)
+	raw2=$(cat $ppath/QC_log.txt|$spath/sumField.pl -F 3)
 	raw3=$(expr $raw1 - $raw2)
-	read raw pats <<<$(grep '>' $ppath/R0.fa|cut -f2 -d'%'|sumField.pl -S)
-	echo -e "1-initial\t${raw1}\tNA\tNA" >> $ppath/COUNTS_table.txt
-	echo -e "2-failQC\t${raw3}\tNA\tNA" >> $ppath/COUNTS_table.txt
-	echo -e "2-afterQC\t${raw}\t${pats}\tNA" >> $ppath/COUNTS_table.txt
+	read raw pats <<<$(grep '>' $ppath/R0.fa|cut -f2 -d'%'|$spath/sumField.pl -S)
+	echo -e "1-initial\t${raw1}\tNA\tNA" >> $ppath/READ_COUNTS.txt
+	echo -e "2-failQC\t${raw3}\tNA\tNA" >> $ppath/READ_COUNTS.txt
+	echo -e "2-afterQC\t${raw}\t${pats}\tNA" >> $ppath/READ_COUNTS.txt
 	
-	read raw1 pats1 <<<$(grep '>' $matchp/*.chim|cut -f2 -d'%'|sumField.pl -S)
-	read raw2 pats2 <<<$(grep '>' $matchp/R${MAX_ROUNDS}.nomatch|cut -f2 -d'%'|sumField.pl -S)
-	echo -e "3-chimeric\t${raw1}\t${pats1}\tNA" >> $ppath/COUNTS_table.txt
-	echo -e "3-nomatch\t${raw2}\t${pats2}\tNA" >> $ppath/COUNTS_table.txt
+	read raw1 pats1 <<<$(grep '>' $matchp/*.chim|cut -f2 -d'%'|$spath/sumField.pl -S)
+	read raw2 pats2 <<<$(grep '>' $matchp/R${MAX_ROUNDS}.nomatch|cut -f2 -d'%'|$spath/sumField.pl -S)
+	echo -e "3-chimeric\t${raw1}\t${pats1}\tNA" >> $ppath/READ_COUNTS.txt
+	echo -e "3-nomatch\t${raw2}\t${pats2}\tNA" >> $ppath/READ_COUNTS.txt
 
 	if test -n "$(shopt -s nullglob;echo $sortp/*UNRECOGNIZABLE*)";then
-		read raw pats <<<$(grep '>' $sortp/*UNRECOGNIZABLE*|cut -f2 -d'%'|sumField.pl -S)
-		echo -e "3-unrecognizable\t${raw}\t${pats}\tNA" >> $ppath/COUNTS_table.txt
+		read raw pats <<<$(grep '>' $sortp/*UNRECOGNIZABLE*|cut -f2 -d'%'|$spath/sumField.pl -S)
+		echo -e "3-unrecognizable\t${raw}\t${pats}\tNA" >> $ppath/READ_COUNTS.txt
 	fi
 
 
@@ -965,8 +976,8 @@ function doPostProcessing() {
 	for i in $ppath/*bam;do
 		pairs=$(samtools view -c $i)
 		gene=$(basename $i .bam)
-		read raw pats <<<$(grep '>' $assemp/${gene}.fa|cut -f2 -d'%'|sumField.pl -S)
-		echo -e "4-${gene}\t${raw}\t${pats}\t${pairs}" >> $ppath/COUNTS_table.txt
+		read raw pats <<<$(grep '>' $assemp/${gene}.fa|cut -f2 -d'%'|$spath/sumField.pl -S)
+		echo -e "4-${gene}\t${raw}\t${pats}\t${pairs}" >> $ppath/READ_COUNTS.txt.tmp
 		echo ${i}:$pairs >> $ppath/READ_log.txt
 	done
 
@@ -976,18 +987,14 @@ function doPostProcessing() {
 	grep '>' $assemp/*.fa -Hc >> $ppath/NR_COUNTS_log.txt
 	rm $assemp/*.fastq $assemp/*.fa
 
-	local readSize=$(expr $(zcat $ppath/ASSEMBLY/reads.tar.gz |wc -l) / 4)
-	$spath/percentages.R $ppath/QC_log.txt $readSize $ppath/NR_COUNTS_log.txt $ppath/READ_log.txt $ppath/READ_PERCENTAGES.pdf $PAIRED > /dev/null 2>&1
+#	local readSize=$(expr $(zcat $ppath/ASSEMBLY/reads.tar.gz |wc -l) / 4)
+#	$spath/percentages.R $ppath/QC_log.txt $readSize $ppath/NR_COUNTS_log.txt $ppath/READ_log.txt $ppath/READ_PERCENTAGES.pdf $PAIRED > /dev/null 2>&1
 
 	[ ! -d $ppath/amended_consensus ] && mkdir $ppath/amended_consensus
 	[ -n "$(shopt -s nullglob;echo $ppath/*.fa)" ] && mv $ppath/*.fa $ppath/amended_consensus
 	
 	[ ! -d $ppath/matrices ] && mkdir $ppath/matrices	
 	[ -n "$(shopt -s nullglob;echo $ppath/*.sqm)" ] && mv $ppath/*.sqm $ppath/matrices
-
-
-	[ ! -d $ppath/figures ] && mkdir $ppath/figures
-	[ -n "$(shopt -s nullglob;echo $ppath/*.pdf)" ] && mv $ppath/*.pdf $ppath/figures
 	
 	echo -e "Total Score\tAlignment" > $ppath/ASSEMBLY_log.txt
 	cat $assemp/*.log >> $ppath/ASSEMBLY_log.txt
@@ -1007,11 +1014,33 @@ function doPostProcessing() {
 		done
 	
 		# alternative counts
-		for gene in $(parallel echo  {/.} ::: water_C6/secondary/*.fa|cut -f2- -d'-'|sort|uniq|grep -v UNRECOGNIZABLE);do
-			read raw pats <<<$(grep -h '>' $ppath/secondary/*-${gene}.fa|cut -f2 -d'%'|sumField.pl -S)
-			echo -e "5-$gene\t${raw}\t${pats}\tNA" >> $ppath/COUNTS_table.txt
+		for gene in $(parallel echo  {/.} ::: $ppath/secondary/*.fa|cut -f2- -d'-'|sort|uniq|grep -v UNRECOGNIZABLE);do
+			read raw pats <<<$(grep -h '>' $ppath/secondary/*-${gene}.fa|cut -f2 -d'%'|$spath/sumField.pl -S)
+			echo -e "5-$gene\t${raw}\t${pats}\tNA" >> $ppath/READ_COUNTS.txt.tmp
 		done 
 	fi
+
+	if [ "$(grep -P '^4-' $ppath/READ_COUNTS.txt.tmp -c)" -gt "0" ];then
+		x=$(grep -P '^4-' $ppath/READ_COUNTS.txt.tmp|$spath/sumField.pl -F 2)
+		y=$(grep -P '^4-' $ppath/READ_COUNTS.txt.tmp|$spath/sumField.pl -F 3)
+		z=$(grep -P '^4-' $ppath/READ_COUNTS.txt.tmp|$spath/sumField.pl -F 4)
+		echo -e "3-match\t$x\t$y\t$z" >> $ppath/READ_COUNTS.txt
+	fi
+
+	if [ "$(grep -P '^5-' $ppath/READ_COUNTS.txt.tmp -c)" -gt "0" ];then
+		x=$(grep -P '^5-' $ppath/READ_COUNTS.txt.tmp|$spath/sumField.pl -F 2)
+		y=$(grep -P '^5-' $ppath/READ_COUNTS.txt.tmp|$spath/sumField.pl -F 3)
+		echo -e "3-altmatch\t$x\t$y\tNA" >> $ppath/READ_COUNTS.txt
+	fi
+
+	# adjust counts
+	[ -r $ppath/READ_COUNTS.txt.tmp ] && cat $ppath/READ_COUNTS.txt.tmp >> $ppath/READ_COUNTS.txt && rm $ppath/READ_COUNTS.txt.tmp
+	$spath/percentages.R $ppath/READ_COUNTS.txt $ppath/READ_PERCENTAGES.pdf $PAIRED > /dev/null 2>&1
+
+
+	# save figures
+	[ ! -d $ppath/figures ] && mkdir $ppath/figures
+	[ -n "$(shopt -s nullglob;echo $ppath/*.pdf)" ] && mv $ppath/*.pdf $ppath/figures
 
 	# save tables
 	[ ! -d $ppath/tables ] && mkdir $ppath/tables

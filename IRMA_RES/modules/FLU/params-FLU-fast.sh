@@ -5,7 +5,9 @@ PARAM_FILE_VERSION="1.0"
 PARAM_FILE_DATE="2015-01-29"
 
 # PERFORMANCE
-GRID_ON=1				# grid computation on
+GRID_ON=0				# grid computation on
+ALLOW_TMP=1
+TMP=/scratch
 MATCH_PROC=20				# grid maximum processes for the MATCH
 ALIGN_PROC=20				# grid maximum processes for the rough align
 ASSEMBLE_PROC=20			# grid maximum processes for assembly
