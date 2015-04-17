@@ -1,0 +1,26 @@
+# Module specific OVERRIDE parameters here
+# EBOLA module for IRMA
+# 10.3.2014, Sam Shepard
+
+MATCH_PROC=280				# maximum processes for the MATCH
+ALIGN_PROC=280				# maximum processes for the rough align
+ASSEMBLE_PROC=280			# maximum processes for assembly
+SINGLE_PREPRO_PROC=12			# maximum processes for QC on local node
+DOUBLE_PREPRO_PROC=6			# maximum processes for the left or right pairs
+MIN_FI=0.0040				# minimum insertion variant frequency
+MIN_FD=0.0040				# minimum deletion variant frequency
+MIN_F=0.015				# minimum frequency for variants
+#MIN_F=0.10				# minimum frequency for variants
+SKIP_E=1				# skip reference elongation
+SSW_M=1					# smith-waterman match score
+SSW_X=5					# smith-waterman mismatch penalty
+SSW_O=10				# smith-waterman gap open penalty
+SSW_E=1					# smith-waterman gap extension penalty
+
+# DO NOT ALTER
+SORT_PROG="BLAT"
+ALIGN_PROG="BLAT"
+NONSEGMENTED=1				# non-segmented virus
+FASTM=0					# LABEL sorting fast-mode
+PARSE_SORT_OPTS="-P EBOV"		# Pattern list for sorting
+Lmpath=$mpath				# HMM module path
