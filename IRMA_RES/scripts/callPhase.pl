@@ -261,7 +261,7 @@ print VARS "\t",'Major Frequency',"\t",'Minor Frequency';
 print VARS "\t",'Major_Average_Quality',"\t",'Minor_Average_Quality';
 print VARS "\t",'ConfidenceNotMacErr',"\t",'PairedUB',"\t",'QualityUB',"\n";
 
-print COVG "Position\tCoverage Depth\tConsensus\tDeletions\tAmbiguous\n";
+print COVG "Reference_Name\tPosition\tCoverage Depth\tConsensus\tDeletions\tAmbiguous\n";
 print CONS '>',$REF_NAME,"\n";
 
 $hFreq = 0;
@@ -293,9 +293,9 @@ for($p=0;$p<$REF_LEN;$p++) {
 	$totals[$p] = $total;
 
 	if ( defined($cTable[$p]{'-'}) ) {
-		print COVG ($p+1),"\t",($total-$cTable[$p]{'-'}),"\t",$consensus,"\t",$cTable[$p]{'-'};
+		print COVG $REF_NAME,"\t",($p+1),"\t",($total-$cTable[$p]{'-'}),"\t",$consensus,"\t",$cTable[$p]{'-'};
 	} else {
-		print COVG ($p+1),"\t",$total,"\t",$consensus,"\t",0;
+		print COVG $REF_NAME,"\t",($p+1),"\t",$total,"\t",$consensus,"\t",0;
 	}
 
 	if ( ! defined($cTable[$p]{'N'}) ) {
@@ -483,7 +483,7 @@ foreach $p ( sort { $a <=> $b } keys(%dcTable) ) {
 		}
 	
 		$mid = '-' x $inc;
-		print DELV $rn,"\t",($p+1),"\t",$inc,"\t",$left,$mid,$right;
+		print DELV $REF_NAME,"\t",($p+1),"\t",$inc,"\t",$left,$mid,$right;
 		print DELV "\t",$called,"\t",$count,"\t",$total,"\t",$freq,"\t",$pairedUB,"\n";
 	}
 }
@@ -547,7 +547,7 @@ foreach $p ( sort { $a <=> $b } keys(%icTable) ) {
 			$right = substr($consensusSeq,$p+1,5);
 		}
 
-		print INSV $rn,"\t",($p+1),"\t",uc($insert),"\t",lc($left),uc($insert),lc($right);
+		print INSV $REF_NAME,"\t",($p+1),"\t",uc($insert),"\t",lc($left),uc($insert),lc($right);
 		print INSV "\t",$called,"\t",$count,"\t",$total,"\t",$freq,"\t",$quality;
 		print INSV "\t",$confidence,"\t",$pairedUB,"\t",$qualityUB,"\t","\n";
 	}

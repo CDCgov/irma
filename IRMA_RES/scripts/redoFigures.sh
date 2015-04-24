@@ -4,7 +4,11 @@
 
 bpath=~/Tools
 spath=$bpath/IRMA_RES/scripts
-PAIRED=1
+if [ $# -eq "2" ];then
+	PAIRED=$2
+else
+	PAIRED=0
+fi
 ppath=$1
 fpath=$ppath/figures
 apath=$ppath/intermediate/?-ASSEMBLE_*
@@ -31,4 +35,5 @@ for i in $ppath/*fasta;do
 	$spath/heuristicDiagram.R ${final}-allAlleles.txt $fpath/$gene-heuristics.pdf
 done
 readSize=$(expr $(zcat $apath/reads.tar.gz |wc -l) / 4)
+echo "Percents"
 $spath/percentages.R $ppath/tables/READ_COUNTS.txt $ppath/figures/READ_PERCENTAGES.pdf $PAIRED

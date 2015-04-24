@@ -3,8 +3,8 @@ PROGRAM="Iterative Refinement Module Assembler (IRMA)"
 AUTHOR="Samuel S. Shepard"
 EMAIL="vfn4@cdc.gov"
 AFFIL="NCIRD/OID/CDC"
-DATE="03 APR 2015"
-VERSION="0.5.9b"
+DATE="21 APR 2015"
+VERSION="0.5.9"
 LICENSE="GPL version 3. This program comes with ABSOLUTELY NO WARRANTY. This is free software.
 You are welcome to redistribute it under certain conditions. See:  <http://www.gnu.org/licenses/>."
 
@@ -74,6 +74,7 @@ SORT_LIMIT=1000		# threshold before grid
 ASSEM_LIMIT=80000	# threshold before grid
 
 # DO NOT ALTER
+FASTA=0			# accept fasta format
 owd=$(pwd)
 bpath=
 if [ "$bpath" == "" ]; then
@@ -86,6 +87,7 @@ Lspath=$(dirname $LABEL)/LABEL_RES/scripts
 Lmpath=$(dirname $LABEL)/LABEL_RES/training_data/IRMA
 PARALLEL="$spath/parallel --will-cite"
 PARSE_SORT_OPTS=""
+
 
 # STAGES
 MATCH_PROG="BLAT"
@@ -862,7 +864,11 @@ function ASSEMBLE_REPORT() {
 	fi
 
 	# ITERATIVE REFINEMENT of ASSEMBLY chained to CALLING and PHASING
-	$Lspath/interleavedSamples.pl -G $procs -P $fastq $assemp/$gene > /dev/null
+	if [ "$PAIRED" -eq "1" ];then
+		$Lspath/interleavedSamples.pl -G $procs -P $fastq $assemp/$gene > /dev/null
+	else
+		$Lspath/interleavedSamples.pl -G $procs -Q $fastq $assemp/$gene > /dev/null
+	fi
 	time_stamp "started $gene ($size)"
 #	if [ "$doGrid" -eq "0" ];then
 #		$PARALLEL --semaphore --semaphorename IRMA -j1 REFINE_ASSEMBLY_CALL_PHASE $gene $procs $doGrid $final
@@ -929,10 +935,10 @@ function doPostProcessing() {
 	[ $LFASTM -eq "1" ] && rm $matchp/R?.match.{HA,NA,OG}
 
 	### experimental ###
+	echo -e "Record\tReads\tPatterns\tPairsAndWidows" >> $ppath/READ_COUNTS.txt
 	if [ "$PAIRED" -eq "1" ];then
 		raw1=$(grep LEFT.log $ppath/QC_log.txt |$spath/sumField.pl -F 2)
 		raw2=$(grep RIGHT.log $ppath/QC_log.txt |$spath/sumField.pl -F 2)
-		echo -e "Record\tReads\tPatterns\tPairsAndWidows" >> $ppath/READ_COUNTS.txt
 		echo -e "0-R1\t${raw1}\tNA\tNA" >> $ppath/READ_COUNTS.txt
 		echo -e "0-R2\t${raw2}\tNA\tNA" >> $ppath/READ_COUNTS.txt
 	fi
@@ -1066,7 +1072,7 @@ if [ "$PAIRED" -eq "1" ];then
 	time_stamp 'pre-processed'
 else
 	$spath/xflate.pl -C -Q -L INTER $ppath/R0.xfl \
-		<($CAT $LEFT|$PARALLEL --pipe -L4 -j$SINGLE_LOCAL_PROC $spath/fastQ_converter.pl $FASTQ_CONV_OPTS -G $ppath/QC_log.txt -g {#})
+		<($CAT $LEFT|$PARALLEL --pipe -L4 -j$SINGLE_LOCAL_PROC $spath/fastQ_converter.pl $FASTQ_CONV_OPTS -G $ppath/QC_log.txt -g {#}) \
 		> $ppath/R0.fa
 	time_stamp 'pre-processed'
 fi
@@ -1094,8 +1100,12 @@ done
 doPostProcessing
 
 cat <<EOF > $ppath/logs/run_version.txt
+sample	$RUN
+data	$LEFT $RIGHT
 program	$PROGRAM
 version	$VERSION
+module	$MODULE2
+mod_param	$MODULE
 param	$PARAM_FILE_NAME
 param_version	$PARAM_FILE_VERSION
 match	$MATCH_PROG
