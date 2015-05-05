@@ -69,6 +69,6 @@ if ( file.exists(STAT) ) {
 	abline(h=EE,col="#282828",lty=2,lwd=.75)
 } else {
 	bp=barplot(V$Minor.Frequency,beside=TRUE,names.arg=variants,ylab="Observed frequency",xlab="minor variants",col=Cols,las=2)
-	text(bp,c(0,V$Minor.Frequency*.5),labels=c('',V$Position),col="white",cex=.75)
+	text(bp,(max(V$Minor.Frequency)*.03),labels=c(V$Position),col="white",cex=.75)
 }
 dev.off()

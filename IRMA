@@ -879,7 +879,7 @@ function ASSEMBLE_REPORT() {
 	
 	local n=$(wc -l < ${final}-variants.txt)
 	if [ $n -gt 2 ]; then
-		$PARALLEL $spath/sqmHeatmap.R ${final}-{}.sqm ${final}-{}.pdf 2 ::: EXPENRD JACCARD MUTUALD > /dev/null
+		$PARALLEL $spath/sqmHeatmap.R ${final}-{}.sqm ${final}-{}.pdf 2 ::: EXPENRD JACCARD MUTUALD NJOINTP > /dev/null
 	fi
 
 	if [ $n -gt 1 ]; then

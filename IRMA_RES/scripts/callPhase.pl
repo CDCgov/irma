@@ -114,7 +114,10 @@ if ( defined($sigLevel) ) {
 			print STDERR "Unexpected error: 0 coverage depth.\n";
 			return 0;
 		}
-
+		
+		if ( $p == 1 ) {
+			return 1;
+		}
 		my $u= $p/(1-$p);
 		# Let b=1, so V= u + u^2
 		my $V= $u + $u**2;
@@ -559,6 +562,7 @@ if ( scalar(keys(%variants)) > 1 ) {
 	open(EXP,'>',$prefix."-EXPENRD.sqm") or die("Cannot open ${prefix}_EXPENRD.sqm for writing.\n");
 	open(JAC,'>',$prefix."-JACCARD.sqm") or die("Cannot open ${prefix}_JACCARD.sqm for writing.\n");
 	open(MUT,'>',$prefix."-MUTUALD.sqm") or die("Cannot open ${prefix}_MUTUALD.sqm for writing.\n");
+	open(JOP,'>',$prefix."-NJOINTP.sqm") or die("Cannot open ${prefix}_NJOINTP.sqm for writing.\n");
 	%readPats = ();
 	@vars = sort { $a <=> $b } keys(%variants);
 	foreach $sequence ( keys(%alignments) ) {
@@ -580,6 +584,7 @@ if ( scalar(keys(%variants)) > 1 ) {
 			print MUT ($v1+1),$b1;
 			print JAC ($v1+1),$b1;
 			print EXP ($v1+1),$b1;
+			print JOP ($v1+1),$b1;
 			for($j=0;$j<$V;$j++) {
 				$v2 = $vars[$j];
 				@B2 = keys(%{$variants{$v2}});
@@ -589,11 +594,13 @@ if ( scalar(keys(%variants)) > 1 ) {
 							print MUT "\t0";
 							print JAC "\t0";
 							print EXP "\t0";
+							print JOP "\t0";
 							next;
 						} else {
 							print MUT "\t1";
 							print JAC "\t1";
 							print EXP "\t1";
+							print JOP "\t1";
 							next;
 						}
 					}
@@ -604,6 +611,7 @@ if ( scalar(keys(%variants)) > 1 ) {
 						print MUT "\t1";
 						print JAC "\t1";
 						print EXP "\t1";
+						print JOP "\t1";
 						next;
 					}
 
@@ -628,12 +636,14 @@ if ( scalar(keys(%variants)) > 1 ) {
 							print MUT "\t1";
 							print JAC "\t1";
 							print EXP "\t1";
+							print JOP "\t1";
 							next;
 						}
 					} else {
 						print MUT "\t1";
 						print EXP "\t1";
 						print JAC "\t1";
+						print JOP "\t1";
 						next;
 					}
 
@@ -642,17 +652,21 @@ if ( scalar(keys(%variants)) > 1 ) {
 					$mutd = 1 - $Fb1b2**2/($mx1*$mx2);
 					$jacc = 1 - $Fb1b2/($mx1+$mx2-$Fb1b2);
 					$expd = 1 - (($Fb1b2*$mnA)/($mx1*$mx2));
+					$njop = 1 - 2*$Fb1b2;
 					print JAC "\t$mutd";
 					print MUT "\t$jacc";
 					print EXP "\t$expd";
+					print JOP "\t$njop";
 				}
 			}
 			print MUT "\n";
 			print JAC "\n";
 			print EXP "\n";
+			print JOP "\n";
 		}
 	}
 	close(MUT);
 	close(JAC);
 	close(EXP);
+	close(JOP);
 }

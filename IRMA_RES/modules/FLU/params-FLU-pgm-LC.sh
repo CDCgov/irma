@@ -1,11 +1,13 @@
 # HEADER
-PARAM_FILE_NAME="FLU"
+PARAM_FILE_NAME="FLU-pgm"
 PARAM_FILE_AUTHOR="S. Shepard"
 PARAM_FILE_VERSION="1.0"
 PARAM_FILE_DATE="2015-01-29"
 
 # PERFORMANCE
-GRID_ON=1				# grid computation on
+GRID_ON=0				# grid computation on
+ALLOW_TMP=1
+TMP=/scratch
 MATCH_PROC=20				# grid maximum processes for the MATCH
 ALIGN_PROC=20				# grid maximum processes for the rough align
 ASSEMBLE_PROC=20			# grid maximum processes for assembly
@@ -13,8 +15,8 @@ SINGLE_LOCAL_PROC=16			# local maximum processes
 DOUBLE_LOCAL_PROC=8			# local half maximum processes for doubled work
 
 # VARIANT CALLING HEURISTICS & STATS
-MIN_FI=0.005				# minimum insertion variant frequency
-MIN_FD=0.005				# minimum deletion variant frequency
+MIN_FI=0.05				# minimum insertion variant frequency
+MIN_FD=0.05				# minimum deletion variant frequency
 MIN_F=0.008				# minimum frequency for variants
 MIN_C=2					# minimum count for variants
 MIN_AQ=24				# minimum average variant quality, does not apply to deletions
@@ -23,9 +25,9 @@ MIN_CONF=0.80				# minimum confidence not machine error
 SIG_LEVEL=0.999				# significance test level for variant calling (.90,.95,.99,.999). 
 
 # CONSENSUS REFINEMENT & READ SELECTION
-QUAL_THRESHOLD=30			# average or median threshold for QUALITY reads
-MIN_LEN=125				# minimum read length for QUALITY reads
-INS_T=0.15				# threshold for insertion refinement
+QUAL_THRESHOLD=19			# average or median threshold for QUALITY reads
+MIN_LEN=50				# minimum read length for QUALITY reads
+INS_T=0.25				# threshold for insertion refinement
 DEL_T=0.50				# threshold for deletion refinement
 SKIP_E=1				# skip reference elongation
 INCL_CHIM=0				# whether or not to get rid of chimera

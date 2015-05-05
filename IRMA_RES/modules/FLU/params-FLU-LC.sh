@@ -5,13 +5,14 @@ PARAM_FILE_VERSION="1.0"
 PARAM_FILE_DATE="2015-01-29"
 
 # PERFORMANCE
+ALLOW_TMP=1
 GRID_ON=0				# grid computation on
 TMP=/scratch				# our local storage
 MATCH_PROC=20				# grid maximum processes for the MATCH
 ALIGN_PROC=20				# grid maximum processes for the rough align
 ASSEMBLE_PROC=20			# grid maximum processes for assembly
-SINGLE_LOCAL_PROC=12			# local maximum processes
-DOUBLE_LOCAL_PROC=6			# local half maximum processes for doubled work
+SINGLE_LOCAL_PROC=16			# local maximum processes
+DOUBLE_LOCAL_PROC=8			# local half maximum processes for doubled work
 
 # VARIANT CALLING HEURISTICS & STATS
 MIN_FI=0.005				# minimum insertion variant frequency

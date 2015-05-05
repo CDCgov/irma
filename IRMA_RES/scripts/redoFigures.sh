@@ -24,6 +24,7 @@ for i in $ppath/*fasta;do
 		$spath/sqmHeatmap.R $sqmpath/$gene-EXPENRD.sqm $fpath/$gene-EXPENRD.pdf 2
 		$spath/sqmHeatmap.R $sqmpath/$gene-JACCARD.sqm $fpath/$gene-JACCARD.pdf 2
 		$spath/sqmHeatmap.R $sqmpath/$gene-MUTUALD.sqm $fpath/$gene-MUTUALD.pdf 2
+		$spath/sqmHeatmap.R $sqmpath/$gene-NJOINTP.sqm $fpath/$gene-NJOINTP.pdf 2
 	fi
 
 	final=$tpath/$gene

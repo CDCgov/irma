@@ -25,7 +25,7 @@ SIG_LEVEL=0.999				# significance test level for variant calling (.90,.95,.99,.9
 
 # CONSENSUS REFINEMENT & READ SELECTION
 QUAL_THRESHOLD=19			# average or median threshold for QUALITY reads
-MIN_LEN=75				# minimum read length for QUALITY reads
+MIN_LEN=50				# minimum read length for QUALITY reads
 INS_T=0.25				# threshold for insertion refinement
 DEL_T=0.50				# threshold for deletion refinement
 SKIP_E=1				# skip reference elongation

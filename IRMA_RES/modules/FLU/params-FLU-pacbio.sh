@@ -1,11 +1,12 @@
 # HEADER
-PARAM_FILE_NAME="FLU"
+PARAM_FILE_NAME="FLU PacBio ReadOfInserts"
 PARAM_FILE_AUTHOR="S. Shepard"
 PARAM_FILE_VERSION="1.0"
-PARAM_FILE_DATE="2015-01-29"
+PARAM_FILE_DATE="2015-04-17"
 
 # PERFORMANCE
 GRID_ON=1				# grid computation on
+TMP=/scratch
 MATCH_PROC=20				# grid maximum processes for the MATCH
 ALIGN_PROC=20				# grid maximum processes for the rough align
 ASSEMBLE_PROC=20			# grid maximum processes for assembly
@@ -13,24 +14,24 @@ SINGLE_LOCAL_PROC=16			# local maximum processes
 DOUBLE_LOCAL_PROC=8			# local half maximum processes for doubled work
 
 # VARIANT CALLING HEURISTICS & STATS
-MIN_FI=0.005				# minimum insertion variant frequency
-MIN_FD=0.005				# minimum deletion variant frequency
+MIN_FI=0.05				# minimum insertion variant frequency
+MIN_FD=0.05				# minimum deletion variant frequency
 MIN_F=0.008				# minimum frequency for variants
 MIN_C=2					# minimum count for variants
-MIN_AQ=24				# minimum average variant quality, does not apply to deletions
+MIN_AQ=37				# minimum average variant quality, does not apply to deletions
 MIN_TCC=100				# minimum non-ambiguous column coverage
 MIN_CONF=0.80				# minimum confidence not machine error
 SIG_LEVEL=0.999				# significance test level for variant calling (.90,.95,.99,.999). 
 
 # CONSENSUS REFINEMENT & READ SELECTION
-QUAL_THRESHOLD=30			# average or median threshold for QUALITY reads
+QUAL_THRESHOLD=20			# average or median threshold for QUALITY reads
 MIN_LEN=125				# minimum read length for QUALITY reads
-INS_T=0.15				# threshold for insertion refinement
+INS_T=0.25				# threshold for insertion refinement
 DEL_T=0.50				# threshold for deletion refinement
 SKIP_E=1				# skip reference elongation
 INCL_CHIM=0				# whether or not to get rid of chimera
-MIN_RP=15				# minimum read pattern count to continue
-MIN_RC=15				# minimum read count to continue
+MIN_RP=3				# minimum read pattern count to continue
+MIN_RC=3				# minimum read count to continue
 MIN_AMBIG=0.25				# min SNV freq for ambig nts in final amended consensus
 
 # ASSEMBLY
