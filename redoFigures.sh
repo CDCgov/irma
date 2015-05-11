@@ -2,8 +2,8 @@
 
 # SET to install
 
-bpath=~/Tools
-spath=$bpath/IRMA_RES/scripts
+
+spath=$(dirname $(which IRMA))/IRMA_RES/scripts
 if [ $# -eq "2" ];then
 	PAIRED=$2
 else
