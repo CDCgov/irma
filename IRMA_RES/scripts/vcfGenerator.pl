@@ -18,6 +18,7 @@ GetOptions(	'no-gap-allele|G' => \$noGap,
 		'sig-level|S=f' => \$sigLevel,
 		'paired-error|E=s' => \$pairedStats,
 		'auto-min-freq|A' => \$autoFreq,
+		'rewrite-var-table|V=s' => \$rewriteVariants
 	);
 
 print "##reference=$ARGV[0]\n";
@@ -111,8 +112,8 @@ print '##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency">',"\n";
 print '##INFO=<ID=AQ,Number=A,Type=Float,Description="Average Allele Quality">',"\n";
 
 if ( $takeSig ) {
-	print '##INFO=<ID=QUB,Number=A,Type=Float,Description="Second-order corrected ',$sigLevel,'% binomial confidence upper bound on quality error estimate">',"\n";
-	print '##INFO=<ID=PUB,Number=.,Type=Float,Description="Second-order corrected ',$sigLevel,'% binomial confidence upper bound on paired error estimate">',"\n";
+	print '##INFO=<ID=QUB,Number=A,Type=Float,Description="Second-order corrected ',$sigLevel,'% negative binomial confidence upper bound on quality error estimate">',"\n";
+	print '##INFO=<ID=PUB,Number=.,Type=Float,Description="Second-order corrected ',$sigLevel,'% negative binomial confidence upper bound on paired error estimate">',"\n";
 }
 
 if ( $minTotal > 0 ) {
@@ -167,6 +168,16 @@ close(REF);
 $/ = "\n";
 
 
+if ( defined($rewriteVariants) ) {
+	open(VARS,'>',$rewriteVariants ) or die("ERROR: cannot open $rewriteVariants for writing.\n");
+	print VARS 'Reference_Name',"\t",'Position',"\t",'Total';
+	print VARS "\t",'Major Allele',"\t",'Minor Allele';
+	print VARS "\t",'Major Count',"\t",'Minor Count';
+	print VARS "\t",'Major Frequency',"\t",'Minor Frequency';
+	print VARS "\t",'Major_Average_Quality',"\t",'Minor_Average_Quality';
+	print VARS "\t",'ConfidenceNotMacErr',"\t",'PairedUB',"\t",'QualityUB',"\n";
+}
+
 $heurFreq = 0;
 open(IN,'<',$ARGV[1]) or die("Cannot open $ARGV[1] for reading.\n");
 $header = <IN>;
@@ -192,6 +203,7 @@ while($line=<IN>) {
 	}
 }
 close(IN);
+
 
 if ( defined($autoFreq) ) {
 	if ( $heurFreq > $minFreq ) {
@@ -289,6 +301,14 @@ foreach $p ( sort { $a <=> $b } keys(%minorityTable) ) {
 		if ( $minConf > $ConfidenceNotMacErr ) { next; }
 		if ( $takeSig && ($Frequency <= $PairedUB || $Frequency <= $QualityUB ) ) { next; }
 		$calledSNV{$b} = 1;
+		if ( defined($rewriteVariants) ) {	
+			($cReference_Name,$cPosition,$cAllele,$cCount,$cTotal,$cFrequency,$cAverage_Quality,
+				$cConfidenceNotMacErr,$cPairedUB,$cQualityUB,$cAllele_Type) = @{$majorityTable{$p}};
+			print VARS $Reference_Name,"\t",$p,"\t",$Total,"\t";
+			print VARS $cAllele,"\t",$Allele,"\t",$cCount,"\t",$AverageQuality,"\t";
+			print VARS $cFreq,"\t",$Frequency,"\t",$cQuality,"\t",$Average_Quality,"\t";
+			print VARS $ConfidenceNotMacErr,"\t",$PairedUB,"\t",$QualityUB,"\n";
+		}
 	}
 
 	@bases = ();
@@ -382,4 +402,8 @@ foreach $p ( sort { $a <=> $b } keys(%minorityTable) ) {
 		}
 		print "\n";
 	}
+}
+
+if ( defined($rewriteVariants) ) {
+	close(VARS);
 }
