@@ -87,6 +87,7 @@ LABEL=$(which LABEL)
 Lspath=$(dirname $LABEL)/LABEL_RES/scripts
 Lmpath=$(dirname $LABEL)/LABEL_RES/training_data/IRMA
 PARALLEL="$spath/parallel --will-cite"
+SAMTOOLS=$spath/samtools
 PARSE_SORT_OPTS=""
 
 
@@ -805,7 +806,7 @@ function REFINE_ASSEMBLY_CALL_PHASE() {
 			lastSTO=$assemp/F${iter}-$gene-*.sto
 			lastScore=$currScore
 			theBAM=$assemp/F${iter}-$gene.bam
-			$spath/samtools view -bS $currSAM > $theBAM 2> /dev/null
+			$SAMTOOLS view -bS $currSAM > $theBAM 2> /dev/null
 			iter=$(expr $iter + 1)
 			currRef=$assemp/F${iter}-$gene.ref
 			currSAM=$assemp/F${iter}-$gene.sam
@@ -895,9 +896,9 @@ function ASSEMBLE_REPORT() {
 		$spath/vcfGenerator.pl $callPhaseArgs ${final}.fasta ${final}-allAlleles.txt ${final}-insertions.txt ${final}-deletions.txt > ${final}.vcf
 	fi
 
-	$spath/samtools view -bS ${final}.sam > ${final}.bam 2> /dev/null
-	$spath/samtools sort ${final}.bam $final > /dev/null 2>&1
-	$spath/samtools index ${final}.bam > /dev/null 2>&1
+	$SAMTOOLS view -bS ${final}.sam > ${final}.bam 2> /dev/null
+	$SAMTOOLS sort ${final}.bam $final > /dev/null 2>&1
+	$SAMTOOLS index ${final}.bam > /dev/null 2>&1
 	rm $assemp/F*-$gene.sam
 	time_stamp "finished $gene"
 }
@@ -971,7 +972,7 @@ function doPostProcessing() {
 	time_stamp 'mapped to references, BAM files created'
 
 	for i in $ppath/*bam;do
-		pairs=$(samtools view -c $i)
+		pairs=$($SAMTOOLS view -c $i)
 		gene=$(basename $i .bam)
 		read raw pats <<<$(grep '>' $assemp/${gene}.fa|cut -f2 -d'%'|$spath/sumField.pl -S)
 		echo -e "4-${gene}\t${raw}\t${pats}\t${pairs}" >> $ppath/READ_COUNTS.txt.tmp
@@ -1011,7 +1012,7 @@ function doPostProcessing() {
 		done
 	
 		# alternative counts
-		for gene in $(parallel echo  {/.} ::: $ppath/secondary/*.fa|cut -f2- -d'-'|sort|uniq|grep -v UNRECOGNIZABLE);do
+		for gene in $($PARALLEL echo  {/.} ::: $ppath/secondary/*.fa|cut -f2- -d'-'|sort|uniq|grep -v UNRECOGNIZABLE);do
 			read raw pats <<<$(grep -h '>' $ppath/secondary/*-${gene}.fa|cut -f2 -d'%'|$spath/sumField.pl -S)
 			echo -e "5-$gene\t${raw}\t${pats}\tNA" >> $ppath/READ_COUNTS.txt.tmp
 		done 
