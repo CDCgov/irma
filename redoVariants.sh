@@ -74,5 +74,4 @@ for bam in $RUN/*.bam;do
 		callPhaseArgs="-C $MIN_C -F $MIN_F -I $MIN_FI -D $MIN_FD -Q $MIN_AQ -T $MIN_TCC -M $MIN_CONF -S $SIG_LEVEL $AUTO_F"
 		$spath/vcfGenerator.pl $callPhaseArgs $ref ${final}-allAlleles.txt ${final}-insertions.txt ${final}-deletions.txt -V $fix-variants.txt > $fix.vcf
 	fi
-	mv $fix.vcf $owd
 done
