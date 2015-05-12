@@ -305,8 +305,8 @@ foreach $p ( sort { $a <=> $b } keys(%minorityTable) ) {
 			($cReference_Name,$cPosition,$cAllele,$cCount,$cTotal,$cFrequency,$cAverage_Quality,
 				$cConfidenceNotMacErr,$cPairedUB,$cQualityUB,$cAllele_Type) = @{$majorityTable{$p}};
 			print VARS $Reference_Name,"\t",$p,"\t",$Total,"\t";
-			print VARS $cAllele,"\t",$Allele,"\t",$cCount,"\t",$AverageQuality,"\t";
-			print VARS $cFreq,"\t",$Frequency,"\t",$cQuality,"\t",$Average_Quality,"\t";
+			print VARS $cAllele,"\t",$Allele,"\t",$cCount,"\t","$Count","\t";
+			print VARS $cFrequency,"\t",$Frequency,"\t",$cAverage_Quality,"\t",$Average_Quality,"\t";
 			print VARS $ConfidenceNotMacErr,"\t",$PairedUB,"\t",$QualityUB,"\n";
 		}
 	}

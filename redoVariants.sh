@@ -41,6 +41,12 @@ Lspath=$(dirname $LABEL)/LABEL_RES/scripts
 Lmpath=$(dirname $LABEL)/LABEL_RES/training_data/IRMA
 PARALLEL="$spath/parallel --will-cite"
 
+if [ "$MODULE" == "commit" ];then
+	mv $RUN/redo/*vcf $RUN
+	mv $RUN/redo/*txt $RUN/tables
+	rmdir $RUN/redo	
+fi
+
 # check for module
 MODULE2=$(echo $MODULE|cut -f1 -d'-')
 if [ ! -d $rpath/modules/$MODULE2 ];then
