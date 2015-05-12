@@ -45,12 +45,13 @@ if [ "$MODULE" == "commit" ];then
 	mv $RUN/redo/*vcf $RUN
 	mv $RUN/redo/*txt $RUN/tables
 	rmdir $RUN/redo	
+	exit 0
 fi
 
 # check for module
 MODULE2=$(echo $MODULE|cut -f1 -d'-')
 if [ ! -d $rpath/modules/$MODULE2 ];then
-	time_stamp "Error: $MODULE2 not found."
+	echo "Error: $MODULE2 not found."
 	exit 1
 else
 	mpath=$rpath/modules/$MODULE2	
