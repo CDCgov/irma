@@ -142,8 +142,8 @@ if ( $minConf > 0 ) {
 }
 
 if ( $takeSig ) {
-	print '##FILTER=<ID=sigP',$sigLevel,',Description="Second-order corrected ',$sigLevel,'% binomial confidence upper bound on paired error estimate">',"\n";
-	print '##FILTER=<ID=sigQ',$sigLevel,',Description="Second-order corrected ',$sigLevel,'% binomial confidence upper bound on quality error estimate">',"\n";
+	print '##FILTER=<ID=sigP',$sigLevel,',Description="Second-order corrected ',$sigLevel,'% negative binomial confidence upper bound on paired error estimate">',"\n";
+	print '##FILTER=<ID=sigQ',$sigLevel,',Description="Second-order corrected ',$sigLevel,'% negative binomial confidence upper bound on quality error estimate">',"\n";
 }
 
 %majorityTable = ();
