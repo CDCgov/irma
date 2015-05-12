@@ -349,7 +349,7 @@ for($p=0;$p<$REF_LEN;$p++) {
 				print ALLA $REF_NAME,"\t",($p+1),"\t",$base,"\t",$conCount,"\t",$total,"\t",$conFreq,"\t",$quality;
 				print ALLA "\t",$confidence,"\t",$pairedUB,"\t",$qualityUB,"\t",'Majority',"\n";
 
-				if ( $freq <= $ee ) { $hFreq = $freq; }
+				if ( $freq <= $ee && $freq > $hFreq ) { $hFreq = $freq; }
 			}
 		} else {
 			$count = $cTable[$p]{$base};
@@ -380,7 +380,7 @@ for($p=0;$p<$REF_LEN;$p++) {
 						$qualityUB = UB($ee,$total);
 					}
 
-					if ( $freq <= $ee ) { $hFreq = $freq; }
+					if ( $freq <= $ee && $freq > $hFreq ) { $hFreq = $freq; }
 					if ( $printAllAlleles ) {
 						print ALLA $REF_NAME,"\t",($p+1),"\t",$base,"\t",$count,"\t",$total,"\t",$freq,"\t",$quality;
 						print ALLA "\t",$confidence,"\t",$pairedUB,"\t",$qualityUB,"\t",'Minority',"\n";
@@ -410,7 +410,7 @@ for($p=0;$p<$REF_LEN;$p++) {
 						$pairedUB = UB($PE,$total);
 						$qualityUB = UB($ee,$total);
 					}
-					if ( $freq <= $ee ) { $hFreq = $freq; }
+					if ( $freq <= $ee && $freq > $hFreq ) { $hFreq = $freq; }
 					print ALLA $REF_NAME,"\t",($p+1),"\t",$base,"\t",$count,"\t",$total,"\t",$freq,"\t",$quality;
 					print ALLA "\t",$confidence,"\t",$pairedUB,"\t",$qualityUB,"\t",'Minority',"\n";
 				}

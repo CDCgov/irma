@@ -891,6 +891,7 @@ function ASSEMBLE_REPORT() {
 	$spath/heuristicDiagram.R ${final}-allAlleles.txt ${final}-heuristics.pdf > /dev/null 2>&1
 	$spath/amendConsensus.pl -C $MIN_C -N $RUN -S -F $MIN_AMBIG ${final}.fasta ${final}-variants.txt -P $ppath
 	if [ -r ${final}-insertions.txt -a -r ${final}-deletions.txt ];then
+		local callPhaseArgs="-C $MIN_C -F $MIN_F -I $MIN_FI -D $MIN_FD -Q $MIN_AQ -T $MIN_TCC -M $MIN_CONF -S $SIG_LEVEL $AUTO_F"
 		$spath/vcfGenerator.pl $callPhaseArgs ${final}.fasta ${final}-allAlleles.txt ${final}-insertions.txt ${final}-deletions.txt > ${final}.vcf
 	fi
 
@@ -900,17 +901,6 @@ function ASSEMBLE_REPORT() {
 	rm $assemp/F*-$gene.sam
 	time_stamp "finished $gene"
 }
-
-
-
-function doPHASEgrid() {
-	echo Possible
-}
-
-function doPHASElocal() {
-	echo Possible
-}
-
 
 function doPostProcessing() {
 	# INFLATE TO FASTQ
