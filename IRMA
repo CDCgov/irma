@@ -83,12 +83,26 @@ if [ "$bpath" == "" ]; then
 fi
 rpath=$bpath/IRMA_RES	# IRMA resources
 spath=$rpath/scripts	# IRMA specific scripts/binaries
+
+
+# FNC - CHECK PROGRAM #
+# Idea courtesy: stackoverflow.com/questions/592620/check-if-a-program-exists-from-a-bash-script
+function check_prgm() {
+	command -v $1 >/dev/null 2>&1 || { echo "$PROGRAM ERROR: '$1' not found, add to the PATH or install." >&2; exit 1 }
+}
+
+# Check and find supporting code
+check_prgm LABEL
+check_prgm Rscript
+check_prgm perl
+check_prgm gzip
+
 LABEL=$(which LABEL)
 Lspath=$(dirname $LABEL)/LABEL_RES/scripts
 Lmpath=$(dirname $LABEL)/LABEL_RES/training_data/IRMA
 PARALLEL="$spath/parallel --will-cite"
 SAMTOOLS=$spath/samtools
-PARSE_SORT_OPTS=""
+RSCRIPT="$(which Rscript) --vanilla"
 
 
 # STAGES
@@ -147,6 +161,9 @@ if [ "$AUTO_F" -eq 1 ];then
 else
 	AUTO_F=""
 fi
+
+# Sort opts
+PARSE_SORT_OPTS=""
 
 # Enforce LABEL specific options
 [ "$SORT_PROG" != "LABEL" ] && LFASTM=0
@@ -881,15 +898,15 @@ function ASSEMBLE_REPORT() {
 	
 	local n=$(wc -l < ${final}-variants.txt)
 	if [ $n -gt 2 ]; then
-		$PARALLEL $spath/sqmHeatmap.R ${final}-{}.sqm ${final}-{}.pdf 2 ::: EXPENRD JACCARD MUTUALD NJOINTP > /dev/null
+		$PARALLEL $RSCRIPT $spath/sqmHeatmap.R ${final}-{}.sqm ${final}-{}.pdf 2 ::: EXPENRD JACCARD MUTUALD NJOINTP > /dev/null
 	fi
 
 	if [ $n -gt 1 ]; then
-		$spath/coverageDiagram.R $final-coverage.txt $final-variants.txt $final-pairingStats.txt $final-coverageDiagram.pdf > /dev/null 2>&1
+		$RSCRIPT $spath/coverageDiagram.R $final-coverage.txt $final-variants.txt $final-pairingStats.txt $final-coverageDiagram.pdf > /dev/null 2>&1
 	else
-		$spath/simpleCoverageDiagram.R $final-coverage.txt $final-coverageDiagram.pdf > /dev/null 2>&1
+		$RSCRIPT $spath/simpleCoverageDiagram.R $final-coverage.txt $final-coverageDiagram.pdf > /dev/null 2>&1
 	fi
-	$spath/heuristicDiagram.R ${final}-allAlleles.txt ${final}-heuristics.pdf > /dev/null 2>&1
+	$RSCRIPT $spath/heuristicDiagram.R ${final}-allAlleles.txt ${final}-heuristics.pdf > /dev/null 2>&1
 	$spath/amendConsensus.pl -C $MIN_C -N $RUN -S -F $MIN_AMBIG ${final}.fasta ${final}-variants.txt -P $ppath
 	if [ -r ${final}-insertions.txt -a -r ${final}-deletions.txt ];then
 		local callPhaseArgs="-C $MIN_C -F $MIN_F -I $MIN_FI -D $MIN_FD -Q $MIN_AQ -T $MIN_TCC -M $MIN_CONF -S $SIG_LEVEL $AUTO_F"
@@ -986,7 +1003,7 @@ function doPostProcessing() {
 	rm $assemp/*.fastq $assemp/*.fa
 
 #	local readSize=$(expr $(zcat $ppath/ASSEMBLY/reads.tar.gz |wc -l) / 4)
-#	$spath/percentages.R $ppath/QC_log.txt $readSize $ppath/NR_COUNTS_log.txt $ppath/READ_log.txt $ppath/READ_PERCENTAGES.pdf $PAIRED > /dev/null 2>&1
+#	$RSCRIPT $spath/percentages.R $ppath/QC_log.txt $readSize $ppath/NR_COUNTS_log.txt $ppath/READ_log.txt $ppath/READ_PERCENTAGES.pdf $PAIRED > /dev/null 2>&1
 
 	[ ! -d $ppath/amended_consensus ] && mkdir $ppath/amended_consensus
 	[ -n "$(shopt -s nullglob;echo $ppath/*.fa)" ] && mv $ppath/*.fa $ppath/amended_consensus
@@ -1033,7 +1050,7 @@ function doPostProcessing() {
 
 	# adjust counts
 	[ -r $ppath/READ_COUNTS.txt.tmp ] && cat $ppath/READ_COUNTS.txt.tmp >> $ppath/READ_COUNTS.txt && rm $ppath/READ_COUNTS.txt.tmp
-	$spath/percentages.R $ppath/READ_COUNTS.txt $ppath/READ_PERCENTAGES.pdf $PAIRED > /dev/null 2>&1
+	$RSCRIPT $spath/percentages.R $ppath/READ_COUNTS.txt $ppath/READ_PERCENTAGES.pdf $PAIRED > /dev/null 2>&1
 
 
 	# save figures

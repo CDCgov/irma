@@ -1,4 +1,4 @@
-#!/usr/bin/Rscript --vanilla
+#!/usr/bin/env Rscript
 args = commandArgs(TRUE)
 if (length(args) != 2) {
 	cat("Usage:\n\tRscript ./heuristicDiagram.R <ALL_ALLELES.txt> <out.pdf>\n")

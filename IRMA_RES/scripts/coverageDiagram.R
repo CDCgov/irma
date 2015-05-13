@@ -1,4 +1,4 @@
-#!/usr/bin/Rscript --vanilla
+#!/usr/bin/env Rscript
 args = commandArgs(TRUE)
 if (length(args) != 4) {
 	cat("Usage:\n\tRscript ./sqmHeatmap.R <COVG.txt> <VARS.txt> <STATS.txt> <out.pdf>\n")

@@ -1,4 +1,4 @@
-#!/usr/bin/Rscript --vanilla
+#!/usr/bin/env Rscript
 # Sam Shepard
 
 args = commandArgs(TRUE)
