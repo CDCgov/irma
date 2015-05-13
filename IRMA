@@ -88,7 +88,7 @@ spath=$rpath/scripts	# IRMA specific scripts/binaries
 # FNC - CHECK PROGRAM #
 # Idea courtesy: stackoverflow.com/questions/592620/check-if-a-program-exists-from-a-bash-script
 function check_prgm() {
-	command -v $1 >/dev/null 2>&1 || { echo "$PROGRAM ERROR: '$1' not found, add to the PATH or install." >&2; exit 1 }
+	command -v $1 >/dev/null 2>&1 || { echo "$PROGRAM ERROR: '$1' not found, add to the PATH or install." >&2; exit 1; }
 }
 
 # Check and find supporting code
