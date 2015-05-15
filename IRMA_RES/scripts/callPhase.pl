@@ -470,7 +470,7 @@ foreach $p ( sort { $a <=> $b } keys(%dcTable) ) {
 
 		$pairedUB = UB($DE,$total);
 
-		if ( $confidence < $minConf || $freq <= $pairedUB || $freq <= $qualityUB ) { $called = "FALSE"; }
+		if ( $freq <= $pairedUB || $freq <= $qualityUB ) { $called = "FALSE"; }
 
 		$left = $right = '';
 		if ( $p < 5 ) {
