@@ -52,7 +52,7 @@ for($i=1;$i<scalar(@ARGV);$i++) {
 			$bigTable[$p]{$base} += $statRef[0][$p]{$base};
 		}
 		if ( defined(%{$statRef[1]{$p}}) ) {
-			foreach $base ( keys(%{$statRef[1]{$p}}) ) {
+			foreach $insert ( keys(%{$statRef[1]{$p}}) ) {
 				$insTable{$p}{$insert} += $statRef[1]{$p}{$insert};
 			}
 		}
