@@ -34,18 +34,6 @@ if ( scalar(@ARGV) < 3 ) {
 }
 
 # FUNCTIONS #
-sub condenseCigar($) {
-	my $cig = $_[0];
-	my $cigar = '';
-	my $state = '';
-	while( $cig =~ /([M]+|[D]+|[I]+|[H]+|[N]+)/g ) {
-		$state = $1;
-		$cigar .= length($state);
-		$cigar .= substr($state,0,1);
-	}
-	return $cigar;
-}
-
 sub calcProb($$) {
 	my $w = $_[0];
 	my $e = $_[1];
@@ -99,12 +87,12 @@ if ( defined($sigLevel) ) {
 		$kappa = 3.090232;
 	}
 
-	### NEGATIVE BINOMIAL ###
+	### second order correction ###
 	$kappa2 = $kappa ** 2;
 	$eta = $kappa2/3 + 1/6;
 	$gamma1 = $kappa2*(13/18) + 17/18;
 	$gamma2 = $kappa2*(1/18)+7/36;
-	########################
+	###############################
 	
 	sub UB($$) {
 		my $p = $_[0];
@@ -118,12 +106,14 @@ if ( defined($sigLevel) ) {
 		if ( $p == 1 ) {
 			return 1;
 		}
-		my $u= $p/(1-$p);
-		# Let b=1, so V= u + u^2
-		my $V= $u + $u**2;
-		# And N + -2*eta
-		my $u2= ($p*$N + $eta)/($N - 2*$eta);
-		my $UB = $u2 + $kappa*sqrt($V+($gamma1*$V+$gamma2)/$N)*(1/sqrt($N));
+		#my $u= $p/(1-$p); 	# negative binomial
+		#my $u = $p;		# binomial
+
+		# Let b=-1, so V= u - u^2
+		my $V= $p - $p**2;
+		# And N + 2*eta
+		my $u2= ($p*$N + $eta)/($N + 2*$eta);
+		my $UB = $u2 + $kappa*sqrt($V+($gamma2-$gamma1*$V)/$N)/sqrt($N);
 		return max(min($UB,1),0);
 	}
 } else {
@@ -189,6 +179,7 @@ while($record = <REF>) {
 		next;
 	}
 	$REF_LEN = length($REF_SEQ);
+	last;
 }
 close(REF);
 if ( !defined($REF_LEN) ) { die("No reference found.\n"); }
