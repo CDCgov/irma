@@ -98,8 +98,8 @@ if ( defined($sigLevel) ) {
 		my $p = $_[0];
 		my $N = $_[1];
 
-		if ( $N == 0 ) {
-			print STDERR "Unexpected error: 0 coverage depth.\n";
+		if ( $N <= 0 ) {
+			print STDERR "Unexpected error: $N coverage depth.\n";
 			return 0;
 		}
 		
@@ -113,8 +113,19 @@ if ( defined($sigLevel) ) {
 		my $V= $p - $p**2;
 		# And N + 2*eta
 		my $u2= ($p*$N + $eta)/($N + 2*$eta);
-		my $UB = $u2 + $kappa*sqrt($V+($gamma2-$gamma1*$V)/$N)/sqrt($N);
-		return max(min($UB,1),0);
+
+#		print STDERR $p,"\t",$N,"\t",$V,"\t",$gamma2,"\t",$gamma1,"\t",$conFreq,"\t",$u2,"\n";
+		my $inRoot = $V+($gamma2-$gamma1*$V)/$N;
+
+		# N < gamma1 - 4*gamma2
+		# N < kappa^2/2 + 31/18 
+		if ( $inRoot < 0 ) {
+			return 1;
+			#return max(min($u2,1),0);
+		} else {
+			my $UB = $u2 + $kappa*sqrt($inRoot)/sqrt($N);
+			return max(min($UB,1),0);
+		}
 	}
 } else {
 	$takeSig = 0;
@@ -339,8 +350,6 @@ for($p=0;$p<$REF_LEN;$p++) {
 				}
 				print ALLA $REF_NAME,"\t",($p+1),"\t",$base,"\t",$conCount,"\t",$total,"\t",$conFreq,"\t",$quality;
 				print ALLA "\t",$confidence,"\t",$pairedUB,"\t",$qualityUB,"\t",'Majority',"\n";
-
-				if ( $freq <= $ee && $freq > $hFreq ) { $hFreq = $freq; }
 			}
 		} else {
 			$count = $cTable[$p]{$base};
