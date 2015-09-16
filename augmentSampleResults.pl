@@ -1,19 +1,21 @@
 #!/usr/bin/env perl
 # Sam Shepard
 
+use File::Basename;
 use Getopt::Long;
 GetOptions(	'word|W=s'=> \$word, 'suffix|S=s' => \$suffix, 'ID-only|I' => \$idOnly, 'infix|X=s' => \$infix,
-		'dir-field|F=i' =>  \$field, 'ignore-dir|G' => \$ignoreIDfield
+		'dir-field|F=i' =>  \$field, 'ignore-dir|G' => \$ignoreIDfield, "no-header|H" => \$noHeader
  );
 
 if ( scalar(@ARGV) != 1 ) {
 	$message = "Usage:\n\tperl $0 <key.txt> [options]\n";
+	$message .= "\t\t-H|--no-header\t\tDo not output header.\n";
 	$message .= "\t\t-W|--word <STR>]\tContains <word> in table filename.\n";
 	$message .= "\t\t-S|--suffix <STR>\tTable filename ends in suffix.\n";
 	$message .= "\t\t-I|--ID-only\t\tKey just contains the ID.\n";
-	$message .= "\t\t-X|--infix <STR>\tInfix is added to $id in dirname.\n";
+	$message .= "\t\t-X|--infix <STR>\tInfix is the intermediate path. Default is 'tables/'\n";
 	$message .= "\t\t-F|--dir-field <INT>\tField containing dirname.\n"; 
-	$message .= "\t\t-G|ignore-dir\t\tDo not print out dirname into collated data.\n";
+	$message .= "\t\t-G|--ignore-dir\t\tDo not print out dirname into collated data.\n";
 	die($message."\n");
 }
 
@@ -22,9 +24,7 @@ if ( !defined($word) ) {
 }
 
 if ( !defined($infix) ) {
-	$infix = '';
-} else {
-	$infix = '-'.$infix;
+	$infix = 'tables';
 }
 
 if ( defined($field) && $field > 0 ) {
@@ -59,7 +59,7 @@ while($line=<IN>) {
 	chomp($line);
 	@fields = split("\t",$line);
 	$id = $fields[$sampleDirField-1];
-	@files=glob("$id$infix/tables/*$word*$suffix");
+	@files=glob("$id/$infix/*$word*$suffix");
 	if ( defined($idOnly) ) {
 		$line = $fields[0];
 	} 
@@ -81,8 +81,13 @@ while($line=<IN>) {
 	foreach $file ( @files ) {
 		open(DAT,'<',$file) or die("Cannot open $file for reading.\n");
 		$header = <DAT>; chomp($header);
+		$numCols = scalar(split("\t",$header));
+		$basename = basename($file);
+
 		if ( $firstData ) {
-			print "$hdrs\t",$header,"\n";
+			if ( ! $noHeader ) {
+				print "$hdrs\t",$header,"\n";
+			}
 			$firstData = 0;
 		}
 
