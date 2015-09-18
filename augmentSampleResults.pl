@@ -4,12 +4,14 @@
 use File::Basename;
 use Getopt::Long;
 GetOptions(	'word|W=s'=> \$word, 'suffix|S=s' => \$suffix, 'ID-only|I' => \$idOnly, 'infix|X=s' => \$infix,
-		'dir-field|F=i' =>  \$field, 'ignore-dir|G' => \$ignoreIDfield, "no-header|H" => \$noHeader
+		'dir-field|F=i' =>  \$field, 'ignore-dir|G' => \$ignoreIDfield, "no-header|H" => \$noHeader,
+		'no-key-header|K' => \$noKeyHeader
  );
 
 if ( scalar(@ARGV) != 1 ) {
 	$message = "Usage:\n\tperl $0 <key.txt> [options]\n";
 	$message .= "\t\t-H|--no-header\t\tDo not output header.\n";
+	$message .= "\t\t-K|--no-key-header\tDoes not contain a key header (implies -H).\n";
 	$message .= "\t\t-W|--word <STR>]\tContains <word> in table filename.\n";
 	$message .= "\t\t-S|--suffix <STR>\tTable filename ends in suffix.\n";
 	$message .= "\t\t-I|--ID-only\t\tKey just contains the ID.\n";
@@ -32,13 +34,20 @@ if ( defined($field) && $field > 0 ) {
 } else {
 	$sampleDirField = 1;
 }
-$first = 1;
+
 open(IN,'<',$ARGV[0]) or die("Cannot open $ARGV[0].\n");
-$hdrs =<IN>; chomp($hdrs);
-@tmp = split("\t",$hdrs);
-if ( defined($idOnly) ) {
-	$hdrs = $tmp[0];
+if ( $noKeyHeader ) {
+	$hdrs = '';	
+	$noHeader = 1;
+} else {
+	$hdrs =<IN>; chomp($hdrs);
+	@tmp = split("\t",$hdrs);
+	if ( defined($idOnly) ) {
+		$hdrs = $tmp[0];
+	}
 }
+
+$first = 1;
 if ( $ignoreIDfield ) {
 	$line = ''; $first = 1;
 	for($i = 0;$i<scalar(@tmp);$i++ ) {
@@ -54,7 +63,13 @@ if ( $ignoreIDfield ) {
 	$hdrs=$line;
 }
 
-$firstData = 1;
+if ( $noHeader ) {
+	$firstData = 0;
+} else {
+	$firstData = 1;
+}
+
+
 while($line=<IN>) {
 	chomp($line);
 	@fields = split("\t",$line);
@@ -85,9 +100,7 @@ while($line=<IN>) {
 		$basename = basename($file);
 
 		if ( $firstData ) {
-			if ( ! $noHeader ) {
-				print "$hdrs\t",$header,"\n";
-			}
+			print "$hdrs\t",$header,"\n";
 			$firstData = 0;
 		}
 
