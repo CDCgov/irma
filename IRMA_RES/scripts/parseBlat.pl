@@ -113,7 +113,6 @@ sub alignedBLAT($$$) {
 				$seq .= substr($s,$right,$qSize-$right);
 			}
 		}
-
 	}
 
 #	if ( $h =~ /MP/ ) {print STDERR '>',$v[9],"\n",$seq,"\n"; }
@@ -169,21 +168,21 @@ sub recordStats($$$) {
 $/ = "\n";
 open(IN,'<',$ARGV[0]) or die("Cannot open $ARGV[0] for reading.\n");
 for(1..5) { $junk=<IN>; }
-$prevID = 'ID'; $prevStr = 'strand'; $prevAnnot = 'annotation';
+$prevID = 'ID'; $prevStr = 'strand'; 
 %stats = ();
 while($line=<IN>) {
 	chomp($line);
 	@v = split("\t",$line);
-	($match,$mismatch,$strand,$query,$annot) = ($v[0],$v[1],$v[8],$v[9],$v[13]);
+	($match,$mismatch,$strand,$query,$target) = ($v[0],$v[1],$v[8],$v[9],$v[13]);
 	$score = $match - $mismatch;
 	if ( $score > $maxGene{$query}[1] ) {
 		$maxGene{$query}[1] = $score;
-	       	$maxGene{$query}[0] = $annot;
+	       	$maxGene{$query}[0] = $target;
 		$maxGene{$query}[2] = $line;
 		if ( $triplet ) {
-			if ( $annot =~ /_HA/ ) {
+			if ( $target =~ /_HA/ ) {
 				$class = 'HA';
-			} elsif ( $annot =~ /_NA/ ) {
+			} elsif ( $target =~ /_NA/ ) {
 				$class = 'NA';
 			} else {
 				$class = 'OG';
@@ -193,7 +192,7 @@ while($line=<IN>) {
 		}
 	}
 	$total{$query}++;
-	$stats{$query}{$annot}{$strand}++;
+	$stats{$query}{$target}{$strand}++;
 }
 close(IN);
 
