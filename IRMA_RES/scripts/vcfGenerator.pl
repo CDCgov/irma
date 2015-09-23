@@ -112,8 +112,8 @@ print '##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency">',"\n";
 print '##INFO=<ID=AQ,Number=A,Type=Float,Description="Average Allele Quality">',"\n";
 
 if ( $takeSig ) {
-	print '##INFO=<ID=QUB,Number=A,Type=Float,Description="Second-order corrected ',$sigLevel,'% negative binomial confidence upper bound on quality error estimate">',"\n";
-	print '##INFO=<ID=PUB,Number=.,Type=Float,Description="Second-order corrected ',$sigLevel,'% negative binomial confidence upper bound on paired error estimate">',"\n";
+	print '##INFO=<ID=QUB,Number=A,Type=Float,Description="Second-order corrected ',$sigLevel,'% binomial confidence upper bound on quality error estimate">',"\n";
+	print '##INFO=<ID=PUB,Number=.,Type=Float,Description="Second-order corrected ',$sigLevel,'% binomial confidence upper bound on paired error estimate">',"\n";
 }
 
 if ( $minTotal > 0 ) {
@@ -142,8 +142,8 @@ if ( $minConf > 0 ) {
 }
 
 if ( $takeSig ) {
-	print '##FILTER=<ID=sigP',$sigLevel,',Description="Second-order corrected ',$sigLevel,'% negative binomial confidence upper bound on paired error estimate">',"\n";
-	print '##FILTER=<ID=sigQ',$sigLevel,',Description="Second-order corrected ',$sigLevel,'% negative binomial confidence upper bound on quality error estimate">',"\n";
+	print '##FILTER=<ID=sigP',$sigLevel,',Description="Second-order corrected ',$sigLevel,'% binomial confidence upper bound on paired error estimate">',"\n";
+	print '##FILTER=<ID=sigQ',$sigLevel,',Description="Second-order corrected ',$sigLevel,'% binomial confidence upper bound on quality error estimate">',"\n";
 }
 
 %majorityTable = ();
@@ -163,6 +163,7 @@ while($record = <REF>) {
 		next;
 	}
 	$REF_LEN = length($REF_SEQ);
+	last;
 }
 close(REF);
 $/ = "\n";
