@@ -3,11 +3,14 @@
 # Sam Shepard - 8.2014
 
 use Storable;
+use POSIX;
 use Getopt::Long;
 GetOptions(	'name|N=s' => \$name, 'min-pad-count|M=i' => \$minPadCount, 
 		'delete-by-ambiguity|A' => \$deleteByAmbig,
 		 'skip-elongation|S' => \$skipExtension,
-		'debug-mode|D' => \$debug
+		'debug-mode|D' => \$debug,
+		'count-alt|C=i' => \$altCount,
+		'count-freq|F=f' => \$altFreq
 	);
 
 if ( scalar(@ARGV) < 1 ) {
@@ -22,6 +25,14 @@ if ( defined($skipExtension) ) {
 	$notSkipExtension = 0;
 } else {
 	$notSkipExtension = 1;
+}
+
+if ( !defined($altFreq) ) {
+	$altFreq = 2;
+}
+
+if ( !defined($altCount) ) {
+	$altCount = LONG_MAX;
 }
 
 sub max($$) {
@@ -65,7 +76,6 @@ for($i=0;$i<scalar(@ARGV);$i++) {
 			while( ($base, $trailerCount) = each(%{$statRef[2]{$p}}) ) {
 				$count3{$p}{$base} += $trailerCount;
 			}
-
 		} 
 	}
 }
@@ -76,64 +86,59 @@ if ( $debug ) {
 		foreach $b ( keys(%{$count[$p]}) ) {
 			print $p,"\t",$b,"\t",$count[$p]{$b},"\n";
 		}
-		
-        }
+       } 
 }
-
 
 if ( $name ) {
-	print '>',$name,"\n";
+	$header =  '>'.$name."\n";
+	$header2 = '>'.$name.'{alt}'."\n";
 } else {
-	print ">consensus\n";
+	$header = ">consensus\n";
+	$header2 = ">alternative\n";
 }
-$seq ='';
-
+$seqAlt = $seq ='';
 $Ncount = scalar(@count);
-$max5 = 0; $maxB = '';
-while( ($base, $matchCount) = each(%{$count[0]}) ) {
-	if ( $base ne '-' ) {
-		if ($matchCount > $max5) {
-			$max5 = $matchCount;
-			$maxB = $base;
-		}
-	}
-}
-if ( $deleteByAmbig && $maxB eq '' ) {
-	$seq .= 'N';
-} else {
-	$seq .= $maxB;
-}
 
-for($j = 1; $j < $Ncount - 1; $j++ ) {
-	$max = 0; $maxB = ''; $total = 0;
+
+# middle
+$max5 = $max3 = 0;
+for($j = 0; $j < $Ncount; $j++ ) {
+	$alt = $max = 0; $altB = $maxB = ''; $total = 0;
 	while( ($base, $matchCount) = each(%{$count[$j]}) ) {
 		if ( $base ne '-' ) {
+			$total += $matchCount;
 			if ($matchCount > $max) {
+				$alt = $max;
+				$altB = $maxB;
+
 				$max = $matchCount;
 				$maxB = $base;
+			} elsif ( $matchCount > $alt ) {
+				$alt = $matchCount;
+				$altB = $base;
 			}
 		}
 	}
+
 	if ( $deleteByAmbig && $maxB eq '' ) {
 		$seq .= 'N';
+		$seqAlt .= 'N';
 	} else {
 		$seq .= $maxB;
+		if ( $altB eq '' || $alt < $altCount || ($alt/$total) < $altFreq ) {
+			$seqAlt .= $maxB;
+		} else {
+			$seqAlt .= $altB;
+		}		
 	}
-}
 
-$max3 = 0; $maxB = '';
-while( ($base, $matchCount) = each(%{$count[$Ncount-1]}) ) {
-	if ( $base ne '-' ) {
-		if ($matchCount > $max3) {
-			$max3 = $matchCount;
-			$maxB = $base;
-		}
+	if ( $j == 0 ) {
+		$max5 = $max;
 	}
-}
-if ( $deleteByAmbig && $maxB eq '' ) {
-	$seq .= 'N';
-} else {
-	$seq .= $maxB;
+	
+	if ( $j == ($Ncount-1) ) {
+		$max3 = $max;
+	}
 }
 
 
@@ -176,7 +181,13 @@ if ( $notSkipExtension ) {
 			$trailer .= $maxB;
 		}
 	}
-	print $leader,$seq,$trailer,"\n";
+	print $header,$leader,$seq,$trailer,"\n";
+	if ( $seqAlt ne '' && $seq ne $seqAlt ) {
+		print $header2,$leader,$seqAlt,$trailer,"\n";
+	}
 } else {
-	print $seq,"\n";
+	print $header,$seq,"\n";
+	if ( $seqAlt ne '' && $seq ne $seqAlt ) {
+		print $header2,$seqAlt,"\n";
+	}
 }
