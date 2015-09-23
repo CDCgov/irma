@@ -5,7 +5,8 @@ GetOptions(	'no-header|H' => \$skipHeader,
 		'table-field|F=i' => \$field,
 		'table-delim|D=s' => \$delim,
 		'ref-name|N=s' => \$name,
-		'prefix|P=s' => \$prefix
+		'prefix|P=s' => \$prefix,
+		'inserts-to-ref|I' => \$insertsToRef
 	);
 
 if ( scalar(@ARGV) != 2 ) {
@@ -14,6 +15,8 @@ if ( scalar(@ARGV) != 2 ) {
 	$message .= "\t\t--table-delim|-D <CHA>\tField delimiter for table. DEFAULT = <TAB>\n";
 	$message .= "\t\t--ref-name|-N <STR>\tName of the reference sequence. DEFAULT = first record\n";
 	$message .= "\t\t--prefix|-P <STR>\tPrefix to table.\n";
+	$message .= "\t\t--inserts-to-ref|-I\tInserts relative to reference.\n";
+
 	die($message."\n");
 }
 
@@ -69,7 +72,7 @@ while( $record = <IN> ) {
 close(IN);
 
 if ( $refLength != $altLength ) {
-	die("ERROR $0: Unuqual lengths ($refLength <> $altLength).\n");
+	die("ERROR $0: Unequal lengths ($refLength <> $altLength).\n");
 }
 
 @ref = split('',$refSeq);
@@ -89,7 +92,7 @@ for($i=0;$i<$refLength;$i++) {
 	}
 
 	# MATCH
-	if ( $a ne '-' && $b ne '-' ) {
+	if ( $a ne '-' && $r ne '-' ) {
 		$refByAlt{$aCoord} = $rCoord;
 	# INSERTION relative to reference
 	} elsif ( $a ne '-' ) {
@@ -98,20 +101,35 @@ for($i=0;$i<$refLength;$i++) {
 	}
 }
 
-
 open(IN,'<',$ARGV[1]) or die("ERROR: Cannot open $ARGV[1] for reading.\n");
 $/ = "\n";
 $header = <IN>;
 if ( !$skipHeader) {
 	print $header;
 }
+@data = <IN>; 
+chomp(@data);
+close(IN);
+
+if ( $insertsToRef ) {
+	$removeInserts = 0;
+} else {
+	$removeInserts = 1;
+}
+
 $aCoord = $rCoord = 0;
-while($line = <IN>) {
-	chomp($line);
+foreach $line (@data) {
 	@fields = split($delim,$line);
 	$aCoord = $fields[$field];
+
+	if ( !defined($refByAlt{$aCoord}) ) {
+		print STDERR $aCoord,"\n";
+	}
 	$rCoord = $refByAlt{$aCoord};
+	if ( $removeInserts && $rCoord =~ /\./) {
+		next;		
+	}
+
 	$fields[$field] = $rCoord;
 	print $prefix,join($delim,@fields),"\n";
 }
-close(IN);
