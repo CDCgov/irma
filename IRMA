@@ -1,13 +1,13 @@
 #!/bin/bash
-PROGRAM="Iterative Refinement Module Assembler (IRMA)"
+PROGRAM="Iterative Refinement Meta-Assembler (IRMA)"
 AUTHOR="Samuel S. Shepard"
 EMAIL="vfn4@cdc.gov"
 AFFIL="NCIRD/OID/CDC"
-DATE="11 MAY 2015"
-VERSION="0.5.10"
+DATE="23 SEP 2015"
+VERSION="0.6.0"
 LICENSE="GPL version 3. This program comes with ABSOLUTELY NO WARRANTY. This is free software.
 You are welcome to redistribute it under certain conditions. See:  <http://www.gnu.org/licenses/>.
-Components of this pipeline have non-commercial resistrictions. See: IRMA_RES/scripst/packaged-citations-licenses"
+Components of this pipeline have non-commercial resistrictions. See: IRMA_RES/scripts/packaged-citations-licenses"
 
 if [ $# -eq 4 ];then
 	PAIRED=1
@@ -38,6 +38,8 @@ MIN_C=2			# minimum count for variants
 MIN_F=0.0075		# minimum frequency for variants
 MIN_FI=0.0075		# minimum frequency for insertion variations
 MIN_FD=0.0075		# minimum frequency for non-singleton deletion variations
+MIN_FA=0.0200		# minimum frequency for alternative finished assembly
+MIN_CA=20		# minimum count for alternative finished assembly
 MIN_AQ=24		# minimum average variant quality, does not apply to deletions
 MIN_TCC=100		# minimum non-ambiguous column coverage
 MIN_CONF=0.80		# minimum confidence not machine error
@@ -66,13 +68,17 @@ LANG=POSIX		# collation
 MAX_ITER_ASSEM=5	# maximum number of polish assembly iterations to perform, 3 should be sufficient with 4 to prove
 MATCH_PROC=80		# maximum processes for the MATCH
 ALIGN_PROC=25		# maximum processes for the rough align
+SORT_PROC=80		# maximum processes for sorting (does not apply to LABEL)
 ASSEMBLE_PROC=25	# maximum processes for assembly
 SINGLE_LOCAL_PROC=8	# maximum processes for QC on local node
 DOUBLE_LOCAL_PROC=4	# maximum processes for the left or right pairs
-MATCH_LIMIT=60000	# threshold before grid
-ALIGN_LIMIT=500		# threshold before grid
-SORT_LIMIT=1000		# threshold before grid
-ASSEM_LIMIT=80000	# threshold before grid
+LIMIT_BLAT=60000	# threshold before grid
+LIMIT_SAM=500		# threshold before grid
+LIMIT_LABEL=1000	# threshold before grid
+LIMIT_SSW=80000		# threshold before grid
+NO_MERGE=0		# should paired end reads undergo merging on overlaps
+ASSEM_REF=0		# use reference set for polishing assembly
+
 
 # DO NOT ALTER
 FASTA=0			# accept fasta format
@@ -99,7 +105,6 @@ check_prgm gzip
 
 LABEL=$(which LABEL)
 Lspath=$(dirname $LABEL)/LABEL_RES/scripts
-Lmpath=$(dirname $LABEL)/LABEL_RES/training_data/IRMA
 PARALLEL="$spath/parallel --will-cite"
 SAMTOOLS=$spath/samtools
 RSCRIPT="$(which Rscript) --vanilla"
@@ -127,15 +132,42 @@ else
 	mpath=$rpath/modules/$MODULE2	
 fi
 
-# initial BLAT database
-REF_SET=$mpath/blatDB.fasta
+# load reference dataset paths
+Lmpath=$(dirname $LABEL)/LABEL_RES/training_data/irma-$MODULE2
+if [ -n "$(shopt -s nullglob;echo $rpath/profiles/*.mod)" ];then
+	phmms=$rpath/profiles
+elif [ -r $Lmpath ];then
+	phmms=$Lmpath
+else
+	phmms="none"
+fi
+DEF_SET=$mpath/reference/consensus.fasta
+REF_SET=$DEF_SET
+
+# initialize option sets
+SAM_STAT_OPTS=""
+PARSE_SORT_OPTS=""
+COMBINE_ALIGN_OPTS=""
+BLAT_PARSE_OPTS=""
 
 # load module parameter file
-source $mpath/params-$MODULE.sh
+source $mpath/config/$MODULE.sh
+
+
+# check for profiles
+if [ "$phmms" == "none" -a "$ALIGN_PROG" == "SAM" ];then
+	echo "$(basename $0) ERROR: Alignment program is SAM but cannot find pHMM directory. Using BLAT."
+	ALIGN_PROG="BLAT"
+fi
+
+# check for skip align step
+if [ "$MAX_ROUNDS" -eq "1" -a "$ASSEM_REF" -eq "1" ];then
+	ALIGN_PROG="NONE"
+fi
 
 # define ppath
 if [ "$ALLOW_TMP" -eq "1" -a "$GRID_ON" -eq "0" ];then
-	ppath=/$TMP/$(whoami)/IRMAv$VERSION/$RUN
+	ppath=$TMP/$(whoami)/IRMAv$VERSION/$RUN
 else
 	ppath=$rpath/ppath/$RUN
 fi
@@ -156,32 +188,28 @@ assemp=$ppath/ASSEMBLY
 refp=$ppath/GENES
 mkdir $matchp $sortp $alignp $assemp $refp
 
-if [ "$AUTO_F" -eq 1 ];then
-	AUTO_F="-A"
-else
-	AUTO_F=""
-fi
-
-# Sort opts
-PARSE_SORT_OPTS=""
+# auto heuristics
+[ "$AUTO_F" -eq 1 ] && AUTO_F="-A" || AUTO_F=""
 
 # Enforce LABEL specific options
 [ "$SORT_PROG" != "LABEL" ] && LFASTM=0
 
 # BLAT PARSE options
 [ "$LFASTM" -eq "1" ] && BLAT_PARSE_OPTS="-T"
-[ "$SORT_PROG" == "BLAT" ] && BLAT_PARSE_OPTS="-C"
+[ "$SORT_PROG" == "BLAT" ] && BLAT_PARSE_OPTS="-C" && PARSE_SORT_OPTS="$PARSE_SORT_OPTS -G"
 [ "$ALIGN_PROG" == "BLAT" ] && BLAT_PARSE_OPTS="-C -A"
 [ "$INCL_CHIM" -eq "1" ] && BLAT_PARSE_OPTS="$BLAT_PARSE_OPTS -I"
 [ "$SKIP_E" -eq "1" ] && BLAT_PARSE_OPTS="$BLAT_PARSE_OPTS -S"
 
 # ALIGN editing options
-COMBINE_ALIGN_OPTS=""
 [ "$ALIGN_PROG" == "BLAT" ] && COMBINE_ALIGN_OPTS="-A"
 [ "$SKIP_E" -eq "1" ] && COMBINE_ALIGN_OPTS="$COMBINE_ALIGN_OPTS -S"
 
 # SSW options
 SSW_OPTS="-x $SSW_X -m $SSW_M -o $SSW_O -e $SSW_E"
+
+# Counting options for SAM files
+[ "$ASSEM_REF" -eq "1" ] && SAM_STAT_OPTS="-G"
 
 # BLAT options
 BLAT_OPTS="-oneOff=1 -minIdentity=80 -tileSize=10"
@@ -237,6 +265,20 @@ function moveProject() {
 	fi
 }
 
+function doLABEL() {
+	local queryDB=$1	# FASTA
+	local name=$2		# PROJECT
+	local labelmodule=$3	# CLASSIFICATION MODULE
+	local workdir=$4	# workdir
+	local limit=$5		# grid work
+	local Earg=0
+	local n=$(grep '>' $queryDB -c)
+	
+	[ "$n" -gt "$limit" -a "$GRID_ON" -eq "1" ] && Earg=2
+	[ "$n" -gt "0" ] && $LABEL -E $Earg -W $workdir $queryDB $name irma-$labelmodule > /dev/null 2>&1
+	mv $workdir/${name}/${name}_final.tab $workdir/SORTED_${name}.tab
+}
+
 function doBLAT() {
 	local refDB=$1
 	local queryDB=$2
@@ -244,9 +286,18 @@ function doBLAT() {
 	local name=$4
 	local workdir=$5
 	local procs=$6
-	local doGrid=$7
+	local limit=$7
+	local doGrid=0
 	local script=$workdir/${prefix}-${name}-BLAT
+	local n=$(grep '>' $queryDB -c)
 
+	if [ "$n" -gt "$limit" -a "$GRID_ON" -eq "1" ];then
+		doGrid=1
+	elif [ "$n" -ge "$SINGLE_LOCAL_PROC" ];then
+		procs=$SINGLE_LOCAL_PROC	
+	else
+		procs=1
+	fi
 ###
 cat >$script.sh  <<EOL
 #!/bin/bash
@@ -279,27 +330,14 @@ EOL
 function doMATCH() {
 	local DB=$1
 	local prefix=$2
-	local n=$3
 	local match_ext=""
 	local name="all"
 	local doGrid=0
 	local procs=0
 	local i=0
 
-	if [ $n -gt $MATCH_LIMIT -a $GRID_ON -eq "1" ];then
-		doGrid=1
-		procs=$MATCH_PROC
-	else
-		doGrid=0
-		if [ "$n" -lt "$SINGLE_LOCAL_PROC" ];then
-			procs=1
-		else
-			procs=$SINGLE_LOCAL_PROC
-		fi
-	fi
-
 	if [ "$MATCH_PROG" == "BLAT" ];then
-		doBLAT $REF_SET $DB $prefix $name $matchp $procs $doGrid
+		doBLAT $REF_SET $DB $prefix $name $matchp $MATCH_PROC $LIMIT_BLAT
 		match_ext="blat"
 	else
 		time_stamp "$prefix aborted, MATCH:$MATCH_PROG not implemented"
@@ -337,10 +375,9 @@ function doMATCH() {
 
 	# EXTEND to SORT
 	if [ "$SORT_PROG" == "$MATCH_PROG" ];then
-		mkdir $ppath/SORT/${prefix}
-		cat $matchp/${prefix}-${name}_????.class > $matchp/${prefix}.class
+		mkdir $sortp/${prefix}
+		cat $matchp/${prefix}-${name}_????.class > $sortp/$prefix/SORT_result.txt
 		rm $matchp/${prefix}-${name}_????.class
-		mv $matchp/${prefix}.class $ppath/SORT/$prefix/SORT_result.txt
 	fi
 
 	# EXTEND to ALIGN
@@ -349,66 +386,29 @@ function doMATCH() {
 	fi
 }
 
-function doSORTgrid() {
-	local DB=$1
-	local prefix=$2
-
-	if [ "$SORT_PROG" == "LABEL" ];then
-		if [ $# -eq "3" ];then
-			local Earg=$3
-		else
-			local Earg=2
-		fi
-
-		if [ $LFASTM -eq "1" ];then
-			mkdir $sortp/${prefix}
-			local groupFile=""
-			local geneGroup=""
-
-			for groupFile in $matchp/${prefix}.match.*;do
-				x=$(wc -l < $groupFile)
-				geneGroup=$(basename $groupFile|cut -f3 -d'.')
-
-				if [ $x -gt 0 ];then
-					$LABEL -E $Earg -W $sortp/${prefix} $groupFile $geneGroup irma$geneGroup > /dev/null 2>&1 &
-				fi
-			done
-			wait
-
-			for i in $sortp/${prefix}/*;do 
-				i=$(basename $i)
-				mv $sortp/${prefix}/${i}/LEVEL_trace.tab $sortp/${prefix}/${i}_LEVEL_trace.tab
-			done
-			cat $sortp/${prefix}/*/LEVEL_result.tab > $sortp/${prefix}/SORT_result.txt
-		else
-			# SORT using LABEL full
-			$LABEL -E $Earg -W $sortp $matchp/${prefix}.match $prefix IRMA > /dev/null 2>&1
-			mv $sortp/${prefix}/LEVEL_result.tab > $sortp/${prefix}/SORT_result.txt
-		fi
-	elif [ "$SORT_PROG" == "BLAT" ];then
-		# TO-DO: assumes BLAT was run on MATCH	
-		:
-	fi
-}
-
-function doSORTlocal() {
-	local DB=$1
-	local prefix=$2
-	
-	if [ "$SORT_PROG" == "LABEL" ];then
-		doSORTgrid $DB $prefix 0
-	elif [ "$SORT_PROG" == "BLAT" ];then
-		# TO-DO: assumes BLAT was run on MATCH	
-		:
-	fi
-}
-
 function doSORT() {
 	local DB=$1
 	local prefix=$2
-	local n=$3
 
-	if [ "$SORT_PROG" != "LABEL" -a "$SORT_PROG" != "BLAT" ];then
+	if [ "$SORT_PROG" == "LABEL" ];then
+		mkdir $sortp/${prefix}
+		if [ $LFASTM -eq "1" ];then
+			groupFile=""
+
+			for groupFile in $matchp/${prefix}.match.*;do
+				local geneGroup=$(basename $groupFile|cut -f3 -d'.')
+				doLABEL $groupFile "$MODULE2-$geneGroup" "$MODULE2-$geneGroup" $sortp/${prefix} $LIMIT_LABEL &
+			done
+			wait
+		else
+			# SORT using LABEL full
+			doLABEL $matchp/${prefix}.match $MODULE2 $MODULE2 $sortp/${prefix} $LIMIT_LABEL
+		fi
+		cat $sortp/${prefix}/SORTED_*.tab > $sortp/${prefix}/SORT_result.txt 2> /dev/null
+	elif [ "$SORT_PROG" == "BLAT" ];then
+		# TO-DO: assumes BLAT was run on MATCH	
+		:
+	else
 		time_stamp "$prefix aborted, SORT:$SORT_PROG not implemented"
 		if [ $R -gt 1 ];then
 			doPostProcessing
@@ -416,12 +416,6 @@ function doSORT() {
 		moveProject
 		time_stamp 'finished!'
 		exit
-	fi
-
-	if [ $n -gt $SORT_LIMIT -a "$GRID_ON" -eq "1" ];then
-		doSORTgrid $DB $prefix
-	else
-		doSORTlocal $DB $prefix
 	fi
 	time_stamp "$prefix sorted using $SORT_PROG"
 
@@ -450,10 +444,8 @@ function doSORT() {
 	$spath/parseSORTresults.pl $sortp/$prefix/SORT_result.txt $matchp/$prefix.match $sortp/$prefix $PARSE_SORT_OPTS -C $MIN_RC -D $MIN_RP
 
 	# CLEAN UP
-	cd $sortp/$prefix
-	tar  -cf - SORT_result.txt |gzip -4 - > $sortp/$prefix.tar.gz
-	cd - > /dev/null
-	rm -rf $sortp/$prefix &
+	cd $sortp/$prefix; tar  -cf - SORT_result.txt |gzip -4 - > $sortp/$prefix.tar.gz
+	cd - > /dev/null; rm -rf $sortp/$prefix
 }
 
 function doSAM() {
@@ -462,9 +454,19 @@ function doSAM() {
 	local name=$3
 	local workdir=$4
 	local procs=$5
-	local doGrid=$6
-	local mod=$Lmpath/${name}_hmm.mod
+	local limit=$6
+	local doGrid=0
+	local mod=$phmms/${name}_hmm.mod
 	local script=$workdir/$prefix-$name-SAM.sh
+	local n=$(grep '>' $queryDB -c)
+
+	if [ "$n" -gt "$limit" -a "$GRID_ON" -eq "1" ];then
+		doGrid=1
+	elif [ "$n" -ge "$SINGLE_LOCAL_PROC" ];then
+		procs=$SINGLE_LOCAL_PROC	
+	else
+		procs=1
+	fi
 			
 cat >$script.sh  <<EOL
 #!/bin/bash
@@ -498,8 +500,6 @@ EOL
 
 function doALIGN() {
 	local prefix=$1
-	local doGrid=0
-	local procs=0
 	local queryDB=""
 	local i=0
 	local j=0
@@ -508,30 +508,20 @@ function doALIGN() {
 
 	# FOR EACH GENE
 	for queryDB in $sortp/$prefix-*.fa;do
-		n=$(grep '>' $queryDB -c)
 		name=$(basename $queryDB .fa);name=${name#*-}
-		if [ $n -gt $ALIGN_LIMIT -a "$GRID_ON" -eq "1" ];then
-			doGrid=1
-			procs=$ALIGN_PROC
-		else
-			doGrid=0
-			if [ "$n" -lt "$SINGLE_LOCAL_PROC" ];then
-				procs=1
-			else	
-				procs=$SINGLE_LOCAL_PROC	
-			fi
-		fi
 
 		if [ "$ALIGN_PROG" == "SAM" ];then
-			doSAM $queryDB $prefix $name $alignp $procs $doGrid &
+			doSAM $queryDB $prefix $name $alignp $ALIGN_PROC $LIMIT_SAM &
 		elif [ "$ALIGN_PROG" == "BLAT" ];then
 			j=$(expr $R - 1)
 			if [ "$R" -gt 1 ];then
 				for i in $(seq $j);do
 					rm $alignp/R${j}-$name*.sto
-					doBLAT $refp/R${j}-$name.ref $sortp/R${i}-${name}.fa R$i $name $alignp $procs $doGrid &
+					doBLAT $refp/R${j}-$name.ref $sortp/R${i}-${name}.fa R$i $name $alignp $ALIGN_PROC $LIMIT_BLAT &
 				done
 			fi
+		elif [ "$ALIGN_PROG" == "NONE" ];then
+			:	
 		else
 			time_stamp "$prefix aborted, ALIGN:$ALIGN_PROG not implemented"
 			if [ $R -gt 1 ];then
@@ -546,22 +536,23 @@ function doALIGN() {
 	time_stamp "$prefix rough aligned reads using $ALIGN_PROG"
 
 	# CREATE NEW REFERENCES
-	for i in $sortp/$prefix-*.fa;do
-		name=$(basename $i .fa)
-		gene=${name#*-}
-		
-		$spath/combineALIGNstats.pl $COMBINE_ALIGN_OPTS -N $gene $alignp/R*-${gene}_????.sto > $refp/$name.ref &
-		# consider placing burden on the function itself to do the cleanup
-		[ "$ALIGN_PROG" == "BLAT" -a "$R" -gt 1 ] && rm $alignp/R*-${gene}_????.{match,nomatch,chim,fasta,class,blat} &
-	done
-	wait
+	if [ "$ALIGN_PROG" != "NONE" ];then
+		for i in $sortp/$prefix-*.fa;do
+			name=$(basename $i .fa)
+			gene=${name#*-}
+			$spath/combineALIGNstats.pl $COMBINE_ALIGN_OPTS -N $gene -C $MIN_CA -F $MIN_FA $alignp/R*-${gene}_????.sto > $refp/$name.ref &
+
+			# consider placing burden on the function itself to do the cleanup
+			[ "$ALIGN_PROG" == "BLAT" -a "$R" -gt 1 ] && rm $alignp/R*-${gene}_????.{match,nomatch,chim,fasta,class,blat} &
+		done
+		wait
+	fi
 }
 
 function doRound() {
 	local DB=$1
 	local prefix=$2
 	local n=$(grep '>' $DB -c)
-	local Earg=2	
 	local x=0
 	local y=0
 	local gene=""
@@ -576,7 +567,7 @@ function doRound() {
 	[ ! -d $ppath/GENES ] && mkdir $ppath/GENES
 
 	# MATCH stage
-	doMATCH $DB $prefix $n	
+	doMATCH $DB $prefix
 	n=$(grep '>' $matchp/${prefix}.match -c)
 	if [ "$n" -eq "0" ];then
 		time_stamp "$prefix aborted, no matches found"
@@ -590,7 +581,7 @@ function doRound() {
 	
 	### SORT stage ###
 	DB=$matchp/${prefix}.match
-	doSORT $DB $prefix $n
+	doSORT $DB $prefix
 
 	# PRIMARY vs SECONDARY tests
 	# if we have primary data from the current round
@@ -657,10 +648,12 @@ function doRound() {
 		exit
 	fi
 
-	cat $refp/${prefix}*.ref > $refp/${prefix}.refs
-	REF_SET=$refp/${prefix}.refs
-	QUERY_SET=$matchp/$prefix.nomatch
-	time_stamp "$prefix references created"
+	if [ "$ALIGN_PROG" != "NONE" ];then
+		cat $refp/${prefix}*.ref > $refp/${prefix}.refs
+		REF_SET=$refp/${prefix}.refs
+		QUERY_SET=$matchp/$prefix.nomatch
+		time_stamp "$prefix references created"
+	fi
 }
 
 #############################################
@@ -694,7 +687,8 @@ SAM=$assemp/F${iter}-${gene}-\$ID.sam
 STAT=$assemp/F${iter}-${gene}-\$ID.sto
 
 $spath/ssw -s -c -h -r $SSW_OPTS $ref \$FASTQ > \$SAM 2> /dev/null
-$spath/samStats.pl $ref \$SAM \$STAT
+$spath/winnowSAM.pl -I \$SAM
+$spath/samStats.pl $SAM_STAT_OPTS $ref \$SAM \$STAT
 EOL
 ###
 
@@ -715,7 +709,7 @@ EOL
 #-------------------------------------------#
 function ASSEM_SCORE_SSW() {
 	local SAM=$1
-	echo -n $(cut -f12 $SAM|$spath/sumField.pl -F 3 -D ':')
+	$spath/scoreSAM.pl $SAM
 }
 #############################################
 #############################################
@@ -805,60 +799,56 @@ function REFINE_ASSEMBLY_CALL_PHASE() {
 		exit
 	fi
 
-	local iter=1
+	# DEFINE local variables
 	local log=$assemp/$gene.log
-	local lastRef=""
-	local lastSAM=""
-	local currRef=$assemp/F${iter}-$gene.ref
-	local currSAM=$assemp/F${iter}-$gene.sam
-	local theBAM=""
+	local COMBINE_SAM_OPTS="-N $gene -I $INS_T -D $DEL_T -A $MIN_FA -C $MIN_CA"
+	local theRef="";local theStats="";local newRef=""
+	local theBAM="";local theSAM=""
+	local lastScore=0;local currentScore=0;local iter=1
 
-	$ASSEM_FUNCTION $iter $gene $currRef $procs $doGrid
-	local lastScore=0
-	local currScore=$($ASSEM_SCORE $currSAM)
-		echo -e "$currScore\t$currSAM" >> $log
-		while [ $lastScore -lt $currScore ];do
-			lastRef=$currRef
-			lastSAM=$currSAM
-			lastSTO=$assemp/F${iter}-$gene-*.sto
-			lastScore=$currScore
-			theBAM=$assemp/F${iter}-$gene.bam
-			$SAMTOOLS view -bS $currSAM > $theBAM 2> /dev/null
-			iter=$(expr $iter + 1)
-			currRef=$assemp/F${iter}-$gene.ref
-			currSAM=$assemp/F${iter}-$gene.sam
+	for (( iter=1; iter <= $MAX_ITER_ASSEM; iter++ ));do
+		# perform current assembly
+		theRef=$assemp/F${iter}-$gene.ref
+		$ASSEM_FUNCTION $iter $gene $theRef $procs $doGrid
 
-			# Generate current scaffold from previous SAM and reference, assemble & compare
-			$spath/combineSAMstats.pl $lastRef -N $gene -I $INS_T -D $DEL_T $lastSTO > $currRef
-			$ASSEM_FUNCTION $iter $gene $currRef $procs $doGrid 
-			currScore=$($ASSEM_SCORE $currSAM)
-			echo -e "$currScore\t$currSAM" >> $log
-			rm $lastSTO
-			[ $iter -eq $MAX_ITER_ASSEM ] && break
-		done
-		
-#		if [ $lastScore -eq $currScore ];then
-#			mv $currRef $lastRef
-#			mv $currSAM $lastSAM
-#		else 		
-#			rm $currRef
-#			iter=$(expr $iter - 1)
-#		fi
+		# convert SAM to BAM
+		theSAM=$assemp/F${iter}-$gene.sam;theBAM=$assemp/F${iter}-$gene.bam
+		$SAMTOOLS view -bS $theSAM > $theBAM 2> /dev/null
 
-		if [ $lastScore -gt $currScore ];then
-			rm $currRef $currSAM
-			# move back a tick
-			iter=$(expr $iter - 1)
-			
+		# save last score & take current score
+		lastScore=$currentScore;currentScore=$($ASSEM_SCORE $theSAM)
+		echo -e "$currentScore\t$theSAM" >> $log
+
+		theStats=$assemp/F${iter}-$gene-*.sto
+		if [ $lastScore -lt $currentScore ];then
+			if [ $iter -lt $MAX_ITER_ASSEM ];then
+				# generate next reference
+				newRef="$assemp/F$(expr $iter + 1)-$gene.ref"
+				$spath/combineSAMstats.pl $theRef $COMBINE_SAM_OPTS $theStats > $newRef
+			fi
+			rm $theStats
+		else
+			# we are finished
+			rm $theStats
+			break
 		fi
+	done
 
-		# CALL variants
+	# CALL variants
+	if [ $iter -gt $MAX_ITER_ASSEM ];then
+		doCALLS $MAX_ITER_ASSEM $gene $final $procs $doGrid
+	else
+		if [ $lastScore -gt $currentScore ];then
+			rm $theRef $theSAM $theBAM			
+			iter=$(expr $iter - 1)
+		fi
 		doCALLS $iter $gene $final $procs $doGrid
+	fi
 
-		# CLEAN UP
-		rm $assemp/${gene}_????.fastq
-		rm $assemp/*-${gene}-????.*
-		rm $assemp/*-${gene}.sh
+	# CLEAN UP
+	rm $assemp/${gene}_????.fastq
+	rm $assemp/*-${gene}-????.*
+	rm $assemp/*-${gene}.sh
 }
 
 function ASSEMBLE_REPORT() {
@@ -870,7 +860,7 @@ function ASSEMBLE_REPORT() {
 	local procs=0
 
 	# SCOPE
-	if [ $size -gt $ASSEM_LIMIT -a "$GRID_ON" -eq "1" ];then
+	if [ "$size" -gt "$LIMIT_SSW" -a "$GRID_ON" -eq "1" ];then
 		procs=$ASSEMBLE_PROC
 		doGrid=1
 	else
@@ -922,21 +912,40 @@ function ASSEMBLE_REPORT() {
 
 function doPostProcessing() {
 	# INFLATE TO FASTQ
-	for name in $($spath/finalRefs.pl $refp/*.refs);do
-		gene=${name#*-}
-		cat $sortp/R*-$gene.fa > $assemp/$gene.fa
-		$spath/xflate.pl -I -Q -R $ppath/R0.xfl $assemp/$gene.fa > $assemp/$gene.fastq &
-		ln $refp/$name.ref $assemp/F1-$gene.ref
-	done
+
+	if [ "$ASSEM_REF" -eq "1" ];then
+		if test -n "$(shopt -s nullglob;echo $refp/R0-*.ref)";then
+			for ref in $refp/R0-*.ref;do
+				name=$(basename $ref .ref)
+				gene=${name#*-}
+				if test -n "$(shopt -s nullglob;echo $sortp/R*-$gene.fa)";then
+					cat $sortp/R*-$gene.fa > $assemp/$gene.fa
+					$spath/xflate.pl -I -Q -R $ppath/R0.xfl $assemp/$gene.fa > $assemp/$gene.fastq &
+					$spath/ordinalHeaders.pl -O $gene $ref > $assemp/F1-$gene.ref	
+				fi
+			done
+		fi
+	else
+		# -G gets rid of alternative references
+		for name in $($spath/finalRefs.pl -G $refp/*.refs);do
+			gene=${name#*-}
+			cat $sortp/R*-$gene.fa > $assemp/$gene.fa
+			$spath/xflate.pl -I -Q -R $ppath/R0.xfl $assemp/$gene.fa > $assemp/$gene.fastq &
+			head -n2 $refp/$name.ref > $assemp/F1-$gene.ref
+		done
+	fi
+	wait
 	time_stamp 'converted back to fastq'
 
 	# SAVE unmatched read patterns
 	cd $matchp
 	tar -cf - R$(($R<=MAX_ROUNDS?$R:$MAX_ROUNDS)).nomatch|gzip -4 - > $ppath/unmatched_read_patterns.tar.gz &
 	cd - > /dev/null
-	cd $alignp
-	tar -cf - R*.sto|gzip -4 - > $alignp/storedCounts.tar.gz &
-	cd - > /dev/null
+	if [ "$ALIGN_PROG" != "NONE" ];then
+		cd $alignp
+		tar -cf - R*.sto|gzip -4 - > $alignp/storedCounts.tar.gz &
+		cd - > /dev/null
+	fi
 	wait
 	time_stamp 'saved unmatched read patterns'
 
@@ -973,7 +982,7 @@ function doPostProcessing() {
 	### end experimental ###
 	grep '>' $matchp/R?.{match,nomatch,chim} $ppath/R0.fa -c > $ppath/NR_COUNTS_log.txt
 	rm $ppath/R0.{fa,xfl} &
-	rm $alignp/R*.sto &
+	[ "$ALIGN_PROG" != "NONE" ] && rm $alignp/R*.sto &
 	rm $refp/R*.refs &
 	rm $matchp/R*.{match,nomatch,chim} &
 	rm $sortp/R*.fa &
@@ -1052,7 +1061,6 @@ function doPostProcessing() {
 	[ -r $ppath/READ_COUNTS.txt.tmp ] && cat $ppath/READ_COUNTS.txt.tmp >> $ppath/READ_COUNTS.txt && rm $ppath/READ_COUNTS.txt.tmp
 	$RSCRIPT $spath/percentages.R $ppath/READ_COUNTS.txt $ppath/READ_PERCENTAGES.pdf $PAIRED > /dev/null 2>&1
 
-
 	# save figures
 	[ ! -d $ppath/figures ] && mkdir $ppath/figures
 	[ -n "$(shopt -s nullglob;echo $ppath/*.pdf)" ] && mv $ppath/*.pdf $ppath/figures
@@ -1067,7 +1075,6 @@ function doPostProcessing() {
 	mv $sortp $ppath/intermediate/2-SORT_$SORT_PROG
 	mv $alignp $ppath/intermediate/3-ALIGN_$ALIGN_PROG
 	mv $assemp $ppath/intermediate/4-ASSEMBLE_$ASSEM_PROG
-
 }
 
 ### START ####
@@ -1086,12 +1093,44 @@ else
 	time_stamp 'pre-processed'
 fi
 
+[ "$NO_MERGE" -eq "1" ] && PAIRED=0
 
 if [ ! -s $ppath/R0.fa ];then
 	time_stamp "found no QC'd data, review QC_log.txt"
 	moveProject
 	time_stamp 'finished!'
 	exit
+fi
+
+if [ "$ASSEM_REF" -eq "1" ];then
+	mkdir $sortp/R0
+	# Sort out the references
+	if [ "$SORT_PROG" == "LABEL" ];then
+		doLABEL $REF_SET $MODULE2 $MODULE2 $sortp/R0 $LIMIT_LABEL
+		cat $sortp/R0/SORTED_*.tab > $sortp/R0/SORT_result.txt 2> /dev/null
+	elif [ "$SORT_PROG" == "BLAT" ];then
+		if [ -r "$DEF_SET" ];then
+			doBLAT $DEF_SET $REF_SET R0 $MODULE2 $sortp/R0 $SORT_PROC $LIMIT_BLAT
+			cat $sortp/R0/R0-${MODULE2}_????.class > $sortp/R0/SORT_result.txt
+			rm $sortp/R0/R0-${MODULE2}_????.class
+		fi
+	fi
+	$spath/parseSORTresults.pl $sortp/R0/SORT_result.txt $REF_SET $refp/R0 $PARSE_SORT_OPTS -C 0 -D 0
+	cd $sortp/R0; tar  -cf - SORT_result.txt |gzip -4 - > $sortp/R0.tar.gz
+	cd - > /dev/null; rm -rf $sortp/R0
+
+	if test -n "$(shopt -s nullglob;echo $refp/R0-*.fa)";then
+		for fasta in $refp/R0-*.fa;do
+			name=$(basename $fasta .fa)
+			gene=${name#*-}
+			$spath/ordinalHeaders.pl -N $gene $fasta > $refp/${name}.ref
+		done
+		cat $refp/R0-*.ref > $refp/R0.refs; rm $refp/R0-*.fa; REF_SET=$refp/R0.refs
+		time_stamp 'sorted user supplied reference set'
+	else
+		time_stamp "run aborted, sequences in $REF_SET not ${MODULE2}-like"
+		moveProject; time_stamp 'finished!'; exit
+	fi
 fi
 
 QUERY_SET=$ppath/R0.fa
@@ -1121,6 +1160,8 @@ match	$MATCH_PROG
 align	$ALIGN_PROG
 sort	$SORT_PROG
 assemble	$ASSEM_PROG
+profiles	$phmms
+no_merge	$NO_MERGE
 EOF
 
 moveProject
