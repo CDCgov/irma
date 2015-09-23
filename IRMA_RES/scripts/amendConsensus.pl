@@ -14,7 +14,8 @@ GetOptions(
 		'min-del-freq|D=f' => \$minFreqDel,
 		'min-ins-freq|I=f' => \$minFreqIns,
 		'deletion-file|d=s'=> \$delFile,
-		'insertion-file|i=s'=> \$insFile
+		'insertion-file|i=s'=> \$insFile,
+		'rewrite-coverage|c=s' => \$covgRewrite
 	);
 
 if ( scalar(@ARGV) != 2 ) {
@@ -159,7 +160,7 @@ if ( defined($delFile) ) {
 		($Reference_Name,$Upstream_Position,$Length,$Context,$Called,$Count,$Total,$Frequency,$PairedUB) = split("\t",$line);
 		if ( $Count >= $minCount && $Frequency >= $minFreqDel && $Total >= $minTotal  ) {
 			for $p ( $Upstream_Position .. ($Upstream_Position + $Length - 1) ) {
-				# deletion merely stack
+				# deletions merely stack
 				$seq[$p] = '-';
 			}
 		}
@@ -169,7 +170,6 @@ if ( defined($delFile) ) {
 
 %insertions = ();
 if ( defined($insFile) ) {
-	
 	open(IN,'<',$insFile) or die("Cannot open $insFile for reading.\n");
 	$header = <IN>;
 	while($line=<IN>) {
@@ -179,9 +179,9 @@ if ( defined($insFile) ) {
 		if ( $Count >= $minCount && $Frequency >= $minFreqIns && $Total >= $minTotal ) {
 			# most frequent insertion wins
 			if ( !defined($insertions{$p}) ) {
-				$insertions{$p} = [$Insert,$Frequency];
+				$insertions{$p} = [$Insert,$Frequency,$Total];
 			} elsif ( $Frequency > $insertions{$p}[1] ) {
-				$insertions{$p} = [$Insert,$Frequency];
+				$insertions{$p} = [$Insert,$Frequency,$Total];
 			}
 		}
 	}
@@ -192,7 +192,7 @@ if ( defined($insFile) ) {
 open(OUT,'>',$prefix.'/'.$outHdr.'.fa') or die("Cannot open $outHdr.fa for writing.\n");
 print OUT '>',$outHdr,"\n";
 for $p (0..$#seq) {
-	if ( $seq[$p] ne '-' ) {
+	if ( $seq[$p] ne '-' && $seq[$p] ne '.' ) {
 		print OUT $seq[$p];
 	}
 
@@ -202,6 +202,47 @@ for $p (0..$#seq) {
 }
 print OUT "\n";
 close(OUT);
+
+
+
+if ( $covgRewrite ) {
+	$/ = "\n";
+	open(IN,'<',$covgRewrite) or die("Cannot open $covgRewrite.\n");
+	$header = <IN>; chomp($header);
+	@coverages = <IN>; chomp(@coverages); close(IN);
+
+	open(OUT,'>',$prefix.'/'.$outHdr.'-coverage.txt') or die("Cannot open $outHdr-coverage.txt.\n");
+	print OUT $header,"\n";
+
+	$iPos = 1; $iCon = 3; $cursor = 1; $offset = 0;
+	foreach $line ( @coverages ) {
+		@fields = split("\t",$line);
+
+		if ( $fields[$iCon] eq '.' ) {
+			next;
+		} else {
+			$p = $fields[$iPos]-1;
+		}
+
+		if ( $fields[$iCon] ne '-' && $seq[$p] ne '-' ) {
+			$fields[$iPos] = $cursor;
+			print OUT join("\t",@fields),"\n";
+			$cursor++;
+		}
+
+
+		# Add insertions		
+		if ( defined($insertions{$p}) ) {
+			@insertedBases = split('', $insertions{$p}[0] );
+			$total = $insertions{$p}[2];
+			foreach $insert ( @insertedBases ) {
+				print OUT $fields[0],"\t",($cursor++),"\t",$total,"\t",$insert,"\tNA\tNA\n";
+			}		
+		}
+	}
+	close(OUT);	
+}
+
 
 # function ENCODE
 # Accepts string of alleles.
