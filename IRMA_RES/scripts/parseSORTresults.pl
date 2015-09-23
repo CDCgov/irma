@@ -3,7 +3,8 @@
 # Sam Shepard 9.2014
 
 use Getopt::Long;
-GetOptions(	'pattern-list|P=s' => \$patternList, 'min-read-count|C=i' => \$minimumRcount, 'min-read-patterns|D=i' => \$minimumRPcount );
+GetOptions(	'pattern-list|P=s' => \$patternList, 'ignore-annotations|G' => \$ignoreAnnotations,
+		'min-read-count|C=i' => \$minimumRcount, 'min-read-patterns|D=i' => \$minimumRPcount );
 
 if ( scalar(@ARGV) != 3 ) {
 	$message = "Usage:\n\tperl $0 <SORT_results.tab> <match.FASTA> <PREFIX> [significance]";
@@ -23,14 +24,25 @@ $/ = "\n";
 open(IN,'<',$ARGV[0]) or die("Cannot open $ARGV[0] for reading.\n");
 while($line=<IN>) {
 	chomp($line);
-	($ID,$annot,$sig_threshold) = split("\t",$line);
-	$counts{$annot}++;
-	$IDs{$ID} = $annot;
+	($ID,$target,$sig_threshold) = split("\t",$line);
+	if ( $ignoreAnnotations && $target =~ /^([^{]+){[^}]*}$/ ) {
+		$target = $1;
+	}
+
+	$counts{$target}++;
+	$IDs{$ID} = $target;
 	if ( $ID =~ /C\d+%(\d+)%/ ) {
-		$rCounts{$annot} += $1;
+		$rCounts{$target} += $1;
 	}
 }
 close(IN);
+
+
+foreach $target ( %counts ) {
+	if ( !defined( $rCounts{$target} ) ) {
+		$rCounts{$target} = $counts{$target};
+	}
+}
 
 if ( defined($patternList) ) {
 	@patterns = split(',',$patternList);
