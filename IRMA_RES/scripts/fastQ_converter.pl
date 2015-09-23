@@ -15,7 +15,8 @@ GetOptions(	'read-quality|T=i'=> \$qualityThreshold,
 		'save-stats|A=s' => \$saveStats,	 
 		'skip-remaining|K' => \$skipRemaining,
 		'log-file|G=s' => \$logFile,
-		'log-id|g=s' => \$logID
+		'log-id|g=s' => \$logID,
+		'keep-header|H' => \$keepHeader
 	);
 
 
@@ -31,8 +32,19 @@ if ( -t STDIN && scalar(@ARGV) != 1 ) {
 	$message .= "\t\t-S|--save-quality <STR>\t\t\tSave quality file for back-mapping.\n";
 	$message .= "\t\t-A|--save-stats <STR>\t\t\tSave quality length file for analysis.\n";
 	$message .= "\t\t-K|--skip-remaining\t\t\tDo not output data FASTA/FASTQ data (assumes -A).\n";
+	$message .= "\t\t-H|--keep-header\t\t\tKeep header as usual.\n";
 	die($message."\n");
 }
+
+
+if ( defined($keepHeader) ) {
+	$keepHeader = 1;
+	$notKeepHeader = 0;
+} else {
+	$keepHeader = 0;
+	$notKeepHeader = 1;
+}
+
 if ( !defined($useMedian) ) {
 	$useMedian = 0;
 } else {
@@ -133,7 +145,8 @@ while($hdr=<>) {
 	if ( $q >= $qualityThreshold ) {
 		$act++;
 		$hdr = substr($hdr,1);
-		$hdr =~ s/ /_/;
+
+		if ( $notKeepHeader ) { $hdr =~ tr/ /_/; }
 
 		if ( $ordinal ) {
 			if ( $fastQformat ) {
