@@ -58,6 +58,7 @@ while($record = <REF>) {
 		next;
 	}
 	$REF_LEN = length($REF_SEQ);
+	last;
 }
 close(REF);
 if ( !defined($REF_LEN) ) { die("No reference found.\n"); }

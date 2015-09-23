@@ -3,6 +3,8 @@
 # Sam Shepard - 9.2014
 
 use Storable;
+use Getopt::Long;
+GetOptions(	'ignore-annotation|G' => \$ignoreAnnotation );
 if ( scalar(@ARGV) != 3 ) {
 	die("Usage:\t$0 <REF> <SAM> <OUT>\n");
 }
@@ -18,10 +20,14 @@ while($record = <REF>) {
 		next;
 	}
 	$N = length($REF_SEQ);
+	last;
 }
 close(REF);
 if ( !defined($N) ) { die("ERROR: no reference found in $ARGV[0].\n"); }
 
+if ( $ignoreAnnotation && $REF_NAME =~ /^([^{]+){[^}]*}/  ) {
+	$REF_NAME = $1;
+}
 
 open(SAM,'<',$ARGV[1]) or die("Cannot open SAM $ARGV[1] for reading.\n");
 $/ = "\n"; @table = ();
@@ -32,8 +38,10 @@ while($line=<SAM>) {
 	}
 
 	($qname,$flag,$rname,$pos,$mapq,$cigar,$mrnm,$mpos,$isize,$seq,$qual) = split("\t",$line);
+	if ( $cigar eq '*' ) { next; }
+	if ( $ignoreAnnotation && $rname =~ /^([^{]+){[^}]*}/  ) { $rname = $1; }
+
 	if ( $REF_NAME eq $rname ) {
-		$N = $lenByRname{$rname};
 		$seq = uc($seq);
 		$rpos=$pos-1;
 		$qpos=0;
