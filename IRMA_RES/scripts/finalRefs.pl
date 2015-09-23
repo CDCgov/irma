@@ -2,6 +2,10 @@
 # Sam Shepard - 4.2014
 # final refs
 use File::Basename;
+use Getopt::Long;
+GetOptions(	'ignore-annotation|G' => \$ignoreAnnotation,
+		'exclude-alternative|X' => \$excludeAlt
+	 );
 
 $/ = '>';
 foreach $file ( @ARGV ) {
@@ -19,6 +23,14 @@ foreach $file ( @ARGV ) {
 
 		if ( length($sequence) <= 0 ) {
 			next;
+		}
+
+		if ( $excludeAlt && $gene =~ /{alt}/ ) {
+			next;
+		}
+
+		if ( $ignoreAnnotation && $gene =~ /^([^{]+){[^}]*}/  ) {
+			$gene = $1;
 		}
 
 		if ( !defined($maxRoundByGene) || $maxRoundByGene{$gene} < $round ) {
