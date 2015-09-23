@@ -1,3 +1,0 @@
-blat database 
-influenza A & B, genome sets version 1
-contains all 8 segments, HA subtypes 1-16 and NA subtypes 1-9
