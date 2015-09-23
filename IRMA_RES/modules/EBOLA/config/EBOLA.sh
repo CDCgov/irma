@@ -51,4 +51,3 @@ SSW_E=1					# smith-waterman gap extension penalty
 # DO NOT ALTER
 NONSEGMENTED=1				# non-segmented virus
 PARSE_SORT_OPTS="-P EBOV"		# Pattern list for sorting
-Lmpath=$mpath				# HMM module path

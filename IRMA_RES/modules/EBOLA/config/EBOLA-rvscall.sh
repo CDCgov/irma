@@ -1,5 +1,5 @@
 # HEADER
-PARAM_FILE_NAME="EBOLA-fast"
+PARAM_FILE_NAME="EBOLA"
 PARAM_FILE_AUTHOR="S. Shepard"
 PARAM_FILE_VERSION="1.0"
 PARAM_FILE_DATE="2015-04-17"
@@ -7,7 +7,7 @@ PARAM_FILE_DATE="2015-04-17"
 # STAGES
 MATCH_PROG="BLAT"
 SORT_PROG="BLAT"
-ALIGN_PROG="BLAT"
+ALIGN_PROG="SAM"
 ASSEM_PROG="SSW"
 
 # PERFORMANCE
@@ -26,8 +26,8 @@ MIN_FD=0.0045				# minimum deletion variant frequency
 MIN_F=0.015				# minimum frequency for variants
 MIN_C=2					# minimum count for variants
 MIN_AQ=24				# minimum average variant quality, does not apply to deletions
-MIN_TCC=100				# minimum non-ambiguous column coverage
-MIN_CONF=0.80				# minimum confidence not machine error
+MIN_TCC=250				# minimum non-ambiguous column coverage
+MIN_CONF=0				# minimum confidence not machine error
 SIG_LEVEL=0.999				# significance test level for variant calling (.90,.95,.99,.999). 
 
 # CONSENSUS REFINEMENT & READ SELECTION
@@ -51,4 +51,3 @@ SSW_E=1					# smith-waterman gap extension penalty
 # DO NOT ALTER
 NONSEGMENTED=1				# non-segmented virus
 PARSE_SORT_OPTS="-P EBOV"		# Pattern list for sorting
-Lmpath=$mpath				# HMM module path
