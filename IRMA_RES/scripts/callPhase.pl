@@ -260,10 +260,10 @@ if ( $printAllAlleles ) {
 }
 open(VARS,'>',$prefix.'-variants.txt') or die("ERROR: cannot open $prefix-variants.txt for writing.\n");
 print VARS 'Reference_Name',"\t",'Position',"\t",'Total';
-print VARS "\t",'Major Allele',"\t",'Minor Allele';
-print VARS "\t",'Major Count',"\t",'Minor Count';
-print VARS "\t",'Major Frequency',"\t",'Minor Frequency';
-print VARS "\t",'Major_Average_Quality',"\t",'Minor_Average_Quality';
+print VARS "\t",'Consensus_Allele',"\t",'Minority_Allele';
+print VARS "\t",'Consensus_Count',"\t",'Minority_Count';
+print VARS "\t",'Consensus_Frequency',"\t",'Minority_Frequency';
+print VARS "\t",'Consensus_Average_Quality',"\t",'Minority_Average_Quality';
 print VARS "\t",'ConfidenceNotMacErr',"\t",'PairedUB',"\t",'QualityUB',"\n";
 
 print COVG "Reference_Name\tPosition\tCoverage Depth\tConsensus\tDeletions\tAmbiguous\n";
@@ -349,7 +349,7 @@ for($p=0;$p<$REF_LEN;$p++) {
 					$qualityUB = UB($ee,$total);
 				}
 				print ALLA $REF_NAME,"\t",($p+1),"\t",$base,"\t",$conCount,"\t",$total,"\t",$conFreq,"\t",$quality;
-				print ALLA "\t",$confidence,"\t",$pairedUB,"\t",$qualityUB,"\t",'Majority',"\n";
+				print ALLA "\t",$confidence,"\t",$pairedUB,"\t",$qualityUB,"\t",'Consensus',"\n";
 			}
 		} else {
 			$count = $cTable[$p]{$base};
@@ -450,8 +450,6 @@ foreach $p ( sort { $a <=> $b } keys(%dcTable) ) {
 			next;
 		}
 
-		if ( $quality < $minQuality ) { $called = "FALSE"; }
-
 		# VALID if not able to hang: 0 < $p < ($N-1)
 		$total=0; $pp=$p+$inc+1;
 		foreach $theSeq ( keys(%alignments) ) {
@@ -469,8 +467,7 @@ foreach $p ( sort { $a <=> $b } keys(%dcTable) ) {
 		if ( $freq < $minFreqDel || $total < $minTotal ) { $called = "FALSE"; }
 
 		$pairedUB = UB($DE,$total);
-
-		if ( $freq <= $pairedUB || $freq <= $qualityUB ) { $called = "FALSE"; }
+		if ( $freq <= $pairedUB ) { $called = "FALSE"; }
 
 		$left = $right = '';
 		if ( $p < 5 ) {
