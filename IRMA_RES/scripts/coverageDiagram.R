@@ -12,9 +12,8 @@ pdfFile=args[4]
 
 D=read.table(COVG,header=TRUE,sep="\t")
 V=read.table(VARS,header=TRUE,sep="\t")
-
-V$Minor.Allele=substr(V$Minor.Allele,1,1)
-V$Major.Allele=substr(V$Major.Allele,1,1)
+V$Minority_Allele=substr(V$Minority_Allele,1,1)
+V$Consensus_Allele=substr(V$Consensus_Allele,1,1)
 
 gene=sub(x=VARS,pattern=".+/(\\w+?)-variants.+",replacement="\\1")
 C=max(D$Coverage); Xrange=c(1,max(D$Position)); Vlen=nrow(V); H=C/Vlen*as.integer(rownames(V)); C2=C/2
@@ -34,7 +33,7 @@ variants=vector(length=Vlen)
 for(i in 1:Vlen ) { 
 	d=which(D$Position==V$Position[i])
 	c=D$Coverage[d]
-	a=V$Minor.Allele[i]
+	a=V$Minority_Allele[i]
 
 	if ( a == "A" ) {
 		color="#1F77B4"
@@ -55,20 +54,20 @@ for(i in 1:Vlen ) {
 	} else {
 		segments(D$Position[d],0,D$Position[d],c,col=color)
 	}
-	variants[i] = paste(D$Consensus[d],'2',V$Minor.Allele[i],sep='')
+	variants[i] = paste(D$Consensus[d],'2',V$Minority_Allele[i],sep='')
 }
-Sizes=V$Minor.Frequency+1
-points(x=V$Position,y=H,,ylab="Nth Variant",xlim=Xrange,pch=as.character(V$Minor.Allele),xlab="Position",cex=Sizes,col="white")
+Sizes=V$Minority_Frequency+1
+points(x=V$Position,y=H,,ylab="Nth Variant",xlim=Xrange,pch=as.character(V$Minority_Allele),xlab="Position",cex=Sizes,col="white")
 
 
 if ( file.exists(STAT) ) {
 	S=read.table(STAT,header=FALSE,sep="\t")
 	EE=S[S$V2=="ExpectedErrorRate",3]
-	bp=barplot(c(EE,V$Minor.Frequency),beside=TRUE,names.arg=c('exp. err',variants),ylab="Observed frequency",xlab="minor variants",col=c('black',Cols),las=2)
-	text(bp,c(0,V$Minor.Frequency*.5),labels=c('',V$Position),col="white",cex=.75)
+	bp=barplot(c(EE,V$Minority_Frequency),beside=TRUE,names.arg=c('exp. err',variants),ylab="Observed frequency",xlab="minor variants",col=c('black',Cols),las=2)
+	text(bp,c(0,V$Minority_Frequency*.5),labels=c('',V$Position),col="white",cex=.75)
 	abline(h=EE,col="#282828",lty=2,lwd=.75)
 } else {
-	bp=barplot(V$Minor.Frequency,beside=TRUE,names.arg=variants,ylab="Observed frequency",xlab="minor variants",col=Cols,las=2)
-	text(bp,(max(V$Minor.Frequency)*.03),labels=c(V$Position),col="white",cex=.75)
+	bp=barplot(V$Minority_Frequency,beside=TRUE,names.arg=variants,ylab="Observed frequency",xlab="minor variants",col=Cols,las=2)
+	text(bp,(max(V$Minority_Frequency)*.03),labels=c(V$Position),col="white",cex=.75)
 }
 dev.off()
