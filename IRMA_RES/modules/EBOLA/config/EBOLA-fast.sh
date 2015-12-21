@@ -14,7 +14,7 @@ ASSEM_PROG="SSW"
 MAX_ROUNDS=2
 
 # ASSEMBLY
-MAX_ITER_SSW=5				# max num of SSW iterations to perform, 3 should be sufficient w/4 to prove
+MAX_ITER_SSW=3				# max num of SSW iterations to perform, 3 should be sufficient
 SSW_M=2					# smith-waterman match score
 SSW_X=5					# smith-waterman mismatch penalty
 SSW_O=10				# smith-waterman gap open penalty
