@@ -1,0 +1,70 @@
+[ "$USE_MEDIAN" -eq "-M" ] && USE_MEDIAN=1 || USE_MEDIAN=0
+if [ "$MATCH_PROG" -eq "BLAT" ];then
+	MATCH_OPTS=" ($BLAT_OTS)"
+else
+	MATCH_OPTS=""	
+fi
+
+if  [ "$SORT_PROG" -eq "LABEL" ];then
+	SORT_OPTS=" (LFASTM=$LFASTM)"
+elif [ "$SORT_PROG" -eq "BLAT" ];then
+	SORT_OPTS=""
+else
+	SORT_OPTS=""
+fi
+
+if [ "$ALIGN_PROG" -eq "SAM" ];then
+	ALIGN_PROG=""
+elif [ "$ALIGN_PROG" -eq "BLAT" ];then
+	ALIGN_PROG=""
+else
+	ALIGN_PROG=""
+fi
+
+if [ "$ASSEM_PROG" -eq "SSW" ];then
+	ASSEM_OPTS=" ($SSW_OPTS)"
+else
+	ASSEM_OPTS=""
+fi
+
+cat <<EOF > $ppath/logs/run_info.txt
+sample	RUN	$RUN
+data	LEFT;RIGHT	$LEFT;$RIGHT
+program_name	PROGRAM	$PROGRAM
+program_version	VERSION	$VERSION
+module_name	MODULE2	$MODULE2
+module_param_call	MODULE $MODULE
+parameter_file_name	PARAM_FILE_NAME	$PARAM_FILE_NAME
+parameter_file_version	PARAM_FILE_VERSION	$PARAM_FILE_VERSION
+match_step_program	MATCH_PROG	$MATCH_PROG$MATCH_OPTS
+align_step_program	ALIGN_PROG	$ALIGN_PROG$ALIGN_OPTS
+sort_step_program	SORT_PROG	$SORT_PROG$SORT_OPTS
+assemble_step_program	ASSEM_PROG	$ASSEM_PROG$ASSEM_OPTS
+profiles	phmms	$phmms
+do_not_merge_read_pairs	NO_MERGE	$NO_MERGE
+starting_reference	REF_SET	$REF_SET
+grid_acceleration_on	GRID_ON	$GRID_ON
+working_directory	ppath	$ppath
+alternative_frequency	MIN_FA	$MIN_FA
+alternative_count	MIN_CA	$MIN_CA
+skip_reference_elongation	SKIP_E	$SKIP_E
+read_statistic	USE_MEDIAN	$READ_STATISTIC
+minimum_statistic_quality	QUAL_THRESHOLD	$QUAL_THRESHOLD
+minimum_read_length	MIN_LEN	$MIN_LEN
+interval_significance_level	SIG_LEVEL	$SIG_LEVEL
+maximum_read_gathering_rounds	MAX_ROUNDS	$MAX_ROUNDS
+read_fasta_input	FASTA	$FASTA
+minimum_read_patterns	MIN_RP	$MIN_RP
+minimum_reads	MIN_RC	$MIN_RC
+minimum_insertion_edit_threshold	INS_T	$INT_T
+minimum_deletion_edit_threshold	DEL_T	$DEL_T
+minimum_frequency_for_mixed_consensus_call	MIN_AMBIG	$MIN_AMBIG
+auto_adjust_minimum_variant_frequency	AUTO_F	$AUTO_F
+minimum_deletion_variant_frequency	MIN_FD	$MIN_FD
+minimum_insertion_variant_frequency	MIN_FI	$MIN_FI
+minimum_variant_frequency	MIN_F	$MIN_F
+minimum_variant_count	MIN_C	$MIN_C
+minimum_variant_average_quality	MIN_AQ	$MIN_AQ
+minimum_variant_depth	MIN_TCC	$MIN_TCC
+minimum_confidence_not_sequencer_error	MIN_CONF	$MINUSE_MEDIAN
+EOF
