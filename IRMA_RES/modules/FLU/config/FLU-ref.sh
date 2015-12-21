@@ -1,0 +1,11 @@
+# HEADER
+PARAM_FILE_NAME="FLU-ref"
+PARAM_FILE_AUTHOR="S. Shepard"
+PARAM_FILE_VERSION="1.0"
+PARAM_FILE_DATE="2015-12-21"
+
+# Alternative reference
+CUSTOM_REF_FILE="example.fa"	# custom ref file
+
+# REFERENCE SET
+REF_SET=$(dirname $REF_SET)/$CUSTOM_REF_FILE
