@@ -33,6 +33,13 @@ fi
 
 
 # variables
+OS="Linux"
+command -v uname >/dev/null 2>&1 && OS=$(uname -s)
+if [ "$OS" != "Linux" -a "$OS" != "Darwin" ];then
+	time_stamp "Your $OS OS not yet supported."
+	exit 0
+fi
+
 R=1			# current round
 LANG=POSIX		# collation
 owd=$(pwd)
@@ -59,7 +66,9 @@ check_prgm gzip
 LABEL=$(which LABEL)
 Lspath=$(dirname $LABEL)/LABEL_RES/scripts
 PARALLEL="$spath/parallel --will-cite"
-SAMTOOLS=$spath/samtools
+SAMTOOLS=$spath/samtools_$OS
+BLAT=$spath/blat_$OS
+SSW=$spath/ssw_$OS
 RSCRIPT="$(which Rscript) --vanilla"
 
 
@@ -267,7 +276,7 @@ fi
 INPUT=$workdir/${prefix}-${name}_\$ID.fasta
 OUTPUT=$workdir/${prefix}-${name}_\$ID.blat
 
-$spath/blat $refDB \$INPUT \$OUTPUT $BLAT_OPTS
+$spath/$BLAT $refDB \$INPUT \$OUTPUT $BLAT_OPTS
 $spath/parseBlat.pl \$OUTPUT \$INPUT $BLAT_PARSE_OPTS -P $prefix
 EOL
 ###
@@ -641,7 +650,7 @@ FASTQ=$assemp/${gene}_\$ID.fastq
 SAM=$assemp/F${iter}-${gene}-\$ID.sam
 STAT=$assemp/F${iter}-${gene}-\$ID.sto
 
-$spath/ssw -s -c -h -r $SSW_OPTS $ref \$FASTQ > \$SAM 2> /dev/null
+$spath/$SSW -s -c -h -r $SSW_OPTS $ref \$FASTQ > \$SAM 2> /dev/null
 $spath/winnowSAM.pl -I \$SAM
 $spath/samStats.pl $SAM_STAT_OPTS $ref \$SAM \$STAT
 EOL
