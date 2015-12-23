@@ -30,58 +30,11 @@ else
 	exit 1
 fi
 
-# FREE VARIABLES
-QUAL_THRESHOLD=30	# average or median threshold
-INS_T=0.15		# threshold for insertion refinement of references
-DEL_T=0.75		# threshold for deletion refinement of references
-MIN_C=2			# minimum count for variants
-MIN_F=0.0075		# minimum frequency for variants
-MIN_FI=0.0075		# minimum frequency for insertion variations
-MIN_FD=0.0075		# minimum frequency for non-singleton deletion variations
-MIN_FA=0.0200		# minimum frequency for alternative finished assembly
-MIN_CA=20		# minimum count for alternative finished assembly
-MIN_AQ=24		# minimum average variant quality, does not apply to deletions
-MIN_TCC=100		# minimum non-ambiguous column coverage
-MIN_CONF=0.80		# minimum confidence not machine error
-MIN_AMBIG=0.25		# minimum ambiguous nucleotides for amended consensus (with ambig codes)
-SIG_LEVEL=0.999		# significance test level for variant calling (.90,.95,.99,.999). 
-LFASTM=1		# LABEL sort fast-mode
-AUTO_F=1		# auto-adjust frequency threshold
-NONSEGMENTED=0		# segmented versus non-segmented virus
-MIN_RP=15		# minimum read pattern count
-MIN_RC=15		# minimum read count
-SKIP_E=1		# skip reference elongation
-INCL_CHIM=0		# whether or not to get rid of chimera
 
-# ALTER AT RISK
-GRID_ON=1		# enable cluster/grid computation
-ALLOW_TMP=1		# if GRID_ON=0, try to use /tmp for working directory
-TMP=/tmp		# the scratch/tmpfs for working on the assemblies
-SSW_M=1			# smith-waterman match score
-SSW_X=5			# smith-waterman mismatch penalty
-SSW_O=10		# smith-waterman gap open penalty
-SSW_E=1			# smith-waterman gap extension penalty
-MIN_LEN=150		# minimum read length for QUALITY reads
-MAX_ROUNDS=2		# maximum number of iterations to BLAT
+
+# variables
 R=1			# current round
 LANG=POSIX		# collation
-MAX_ITER_ASSEM=5	# maximum number of polish assembly iterations to perform, 3 should be sufficient with 4 to prove
-MATCH_PROC=80		# maximum processes for the MATCH
-ALIGN_PROC=25		# maximum processes for the rough align
-SORT_PROC=80		# maximum processes for sorting (does not apply to LABEL)
-ASSEMBLE_PROC=25	# maximum processes for assembly
-SINGLE_LOCAL_PROC=8	# maximum processes for QC on local node
-DOUBLE_LOCAL_PROC=4	# maximum processes for the left or right pairs
-LIMIT_BLAT=60000	# threshold before grid
-LIMIT_SAM=500		# threshold before grid
-LIMIT_LABEL=1000	# threshold before grid
-LIMIT_SSW=80000		# threshold before grid
-NO_MERGE=0		# should paired end reads undergo merging on overlaps
-ASSEM_REF=0		# use reference set for polishing assembly
-
-
-# DO NOT ALTER
-FASTA=0			# accept fasta format
 owd=$(pwd)
 bpath=
 if [ "$bpath" == "" ]; then
@@ -110,12 +63,6 @@ SAMTOOLS=$spath/samtools
 RSCRIPT="$(which Rscript) --vanilla"
 
 
-# STAGES
-MATCH_PROG="BLAT"
-SORT_PROG="LABEL"
-ALIGN_PROG="SAM"
-ASSEM_PROG="SSW"
-
 # select cat for reading reads
 if [ ${LEFT: -3} == ".gz" ];then
 	CAT="zcat"
@@ -141,6 +88,7 @@ elif [ -r $Lmpath ];then
 else
 	phmms="none"
 fi
+
 DEF_SET=$mpath/reference/consensus.fasta
 REF_SET=$DEF_SET
 
@@ -151,6 +99,13 @@ COMBINE_ALIGN_OPTS=""
 BLAT_PARSE_OPTS=""
 
 # load module parameter file
+if [ -r $rpath/defaults.sh ];then
+	source $rpath/defaults.sh
+else
+	time_stamp "Missing defaults. ABORTING. Please restore from $rpath/.defaults.sh.bak" 
+fi
+
+[ -r $mpath/init.sh ] && source $mpath/init.sh
 source $mpath/config/$MODULE.sh
 
 
@@ -1147,22 +1102,7 @@ while [ $R -le $MAX_ROUNDS ];do
 done
 doPostProcessing
 
-cat <<EOF > $ppath/logs/run_version.txt
-sample	$RUN
-data	$LEFT $RIGHT
-program	$PROGRAM
-version	$VERSION
-module	$MODULE2
-mod_param	$MODULE
-param	$PARAM_FILE_NAME
-param_version	$PARAM_FILE_VERSION
-match	$MATCH_PROG
-align	$ALIGN_PROG
-sort	$SORT_PROG
-assemble	$ASSEM_PROG
-profiles	$phmms
-no_merge	$NO_MERGE
-EOF
+source $spath/run_info.sh
 
 moveProject
 time_stamp 'finished!'
