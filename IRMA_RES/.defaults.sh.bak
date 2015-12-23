@@ -13,6 +13,7 @@ MIN_FA=1		# no alternative reference [0..1]
 MIN_CA=20		# minimum count for alternative finished assembly
 SKIP_E=1		# skip reference elongation
 REF_SET=$DEF_SET	# Same as the "consensus.fasta" in the reference folder for the module.
+ASSEM_REF=0
 
 ### READ GATHERING ###
 FASTA=0			# accept fasta format
@@ -20,6 +21,7 @@ MAX_ROUNDS=5		# round of read gathering
 USE_MEDIAN=1		# use the median quality or the average [1,0]
 QUAL_THRESHOLD=30	# minimum read statistic
 MIN_LEN=125		# minimum read length
+INCL_CHIM=0		# includes chimera or not [0,1]
 
 ## MATCH STEP
 MATCH_PROC=20		# grid maximum processes for the MATCH

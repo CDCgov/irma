@@ -31,7 +31,6 @@ else
 fi
 
 
-
 # variables
 OS="Linux"
 command -v uname >/dev/null 2>&1 && OS=$(uname -s)
@@ -64,6 +63,7 @@ check_prgm perl
 check_prgm gzip
 
 LABEL=$(which LABEL)
+LABEL=~/Tools/deployed/label/LABEL
 Lspath=$(dirname $LABEL)/LABEL_RES/scripts
 PARALLEL="$spath/parallel --will-cite"
 SAMTOOLS=$spath/samtools_$OS
@@ -125,6 +125,7 @@ if [ "$phmms" == "none" -a "$ALIGN_PROG" == "SAM" ];then
 fi
 
 # check for skip align step
+echo $MAX_ROUNDS $ASSEM_REF
 if [ "$MAX_ROUNDS" -eq "1" -a "$ASSEM_REF" -eq "1" ];then
 	ALIGN_PROG="NONE"
 fi
