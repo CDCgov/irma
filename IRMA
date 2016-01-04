@@ -57,14 +57,20 @@ function check_prgm() {
 }
 
 # Check and find supporting code
-check_prgm LABEL
+if [ -d "$bpath/LABEL_RES/scripts/" ];then
+	Lspath="$bpath/LABEL_RES/scripts/"
+	check_prgm $bpath/LABEL
+	LABEL=$bpath/LABEL
+else
+	check_prgm LABEL
+	LABEL=$(which LABEL)
+	Lspath="$(dirname $LABEL)/LABEL_RES/scripts"
+fi
+
 check_prgm Rscript
 check_prgm perl
 check_prgm gzip
 
-LABEL=$(which LABEL)
-LABEL=~/Tools/deployed/label/LABEL
-Lspath=$(dirname $LABEL)/LABEL_RES/scripts
 PARALLEL="$spath/parallel --will-cite"
 SAMTOOLS=$spath/samtools_$OS
 BLAT=$spath/blat_$OS
