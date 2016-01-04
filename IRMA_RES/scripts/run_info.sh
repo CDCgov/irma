@@ -1,27 +1,27 @@
-[ "$USE_MEDIAN" -eq "-M" ] && USE_MEDIAN=1 || USE_MEDIAN=0
-if [ "$MATCH_PROG" -eq "BLAT" ];then
+[ "$USE_MEDIAN" == "-M" ] && USE_MEDIAN=1 || USE_MEDIAN=0
+if [ "$MATCH_PROG" == "BLAT" ];then
 	MATCH_OPTS=" ($BLAT_OTS)"
 else
 	MATCH_OPTS=""	
 fi
 
-if  [ "$SORT_PROG" -eq "LABEL" ];then
+if  [ "$SORT_PROG" == "LABEL" ];then
 	SORT_OPTS=" (LFASTM=$LFASTM)"
-elif [ "$SORT_PROG" -eq "BLAT" ];then
+elif [ "$SORT_PROG" == "BLAT" ];then
 	SORT_OPTS=""
 else
 	SORT_OPTS=""
 fi
 
-if [ "$ALIGN_PROG" -eq "SAM" ];then
+if [ "$ALIGN_PROG" == "SAM" ];then
 	ALIGN_PROG=""
-elif [ "$ALIGN_PROG" -eq "BLAT" ];then
+elif [ "$ALIGN_PROG" == "BLAT" ];then
 	ALIGN_PROG=""
 else
 	ALIGN_PROG=""
 fi
 
-if [ "$ASSEM_PROG" -eq "SSW" ];then
+if [ "$ASSEM_PROG" == "SSW" ];then
 	ASSEM_OPTS=" ($SSW_OPTS)"
 else
 	ASSEM_OPTS=""
@@ -29,6 +29,7 @@ fi
 
 cat <<EOF > $ppath/logs/run_info.txt
 sample	RUN	$RUN
+paired_end_reads PAIRED $PAIRED
 data	LEFT;RIGHT	$LEFT;$RIGHT
 program_name	PROGRAM	$PROGRAM
 program_version	VERSION	$VERSION
