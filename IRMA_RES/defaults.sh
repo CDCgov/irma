@@ -41,7 +41,7 @@ ALIGN_PROG="SAM"	# rough assembly / alignment to working reference [SAM,BLAT]
 ALIGN_PROC=20		# grid maximum processes for the rough align
 
 ### FINISHING ASSEMBLY ###
-MAX_ITER_ASSEM=1	# max assembly iteration [5]
+MAX_ITER_ASSEM=5	# max assembly iteration [5]
 NO_MERGE=0		# do not merge read pairs [0]
 ASSEM_PROG="SSW"	# assembly program [SSW]
 ASSEM_PROC=20		# grid maximum processes for assembly
