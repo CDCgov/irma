@@ -3,7 +3,7 @@ PROGRAM="Iterative Refinement Meta-Assembler (IRMA)"
 AUTHOR="Samuel S. Shepard"
 EMAIL="vfn4@cdc.gov"
 AFFIL="NCIRD/OID/CDC"
-DATE="23 SEP 2015"
+DATE="7 JAN 2016"
 VERSION="0.6.0"
 LICENSE="GPL version 3. This program comes with ABSOLUTELY NO WARRANTY. This is free software.
 You are welcome to redistribute it under certain conditions. See:  <http://www.gnu.org/licenses/>.
@@ -69,6 +69,7 @@ PARALLEL="$spath/parallel --will-cite"
 SAMTOOLS=$spath/samtools_$OS
 BLAT=$spath/blat_$OS
 SSW=$spath/ssw_$OS
+A2M=$Lspath/align2model_$OS
 RSCRIPT="$(which Rscript) --vanilla"
 
 
@@ -125,7 +126,6 @@ if [ "$phmms" == "none" -a "$ALIGN_PROG" == "SAM" ];then
 fi
 
 # check for skip align step
-echo $MAX_ROUNDS $ASSEM_REF
 if [ "$MAX_ROUNDS" -eq "1" -a "$ASSEM_REF" -eq "1" ];then
 	ALIGN_PROG="NONE"
 fi
@@ -277,7 +277,7 @@ fi
 INPUT=$workdir/${prefix}-${name}_\$ID.fasta
 OUTPUT=$workdir/${prefix}-${name}_\$ID.blat
 
-$spath/$BLAT $refDB \$INPUT \$OUTPUT $BLAT_OPTS
+$BLAT $refDB \$INPUT \$OUTPUT $BLAT_OPTS
 $spath/parseBlat.pl \$OUTPUT \$INPUT $BLAT_PARSE_OPTS -P $prefix
 EOL
 ###
@@ -447,7 +447,7 @@ DB=$workdir/${prefix}-${name}_\$ID.fasta
 RUN=$workdir/${prefix}-${name}_\$ID
 MOD=$mod
 
-$Lspath/align2model \$RUN -modelfile \$MOD -db \$DB
+$A2M \$RUN -modelfile \$MOD -db \$DB
 $spath/a2mToMatchStats.pl \$RUN.a2m \$RUN.sto $SKIP_E
 EOL
 
@@ -651,7 +651,7 @@ FASTQ=$assemp/${gene}_\$ID.fastq
 SAM=$assemp/F${iter}-${gene}-\$ID.sam
 STAT=$assemp/F${iter}-${gene}-\$ID.sto
 
-$spath/$SSW -s -c -h -r $SSW_OPTS $ref \$FASTQ > \$SAM 2> /dev/null
+$SSW -s -c -h -r $SSW_OPTS $ref \$FASTQ > \$SAM 2> /dev/null
 $spath/winnowSAM.pl -I \$SAM
 $spath/samStats.pl $SAM_STAT_OPTS $ref \$SAM \$STAT
 EOL
@@ -844,12 +844,7 @@ function ASSEMBLE_REPORT() {
 		$Lspath/interleavedSamples.pl -G $procs -Q $fastq $assemp/$gene > /dev/null
 	fi
 	time_stamp "started $gene ($size)"
-#	if [ "$doGrid" -eq "0" ];then
-#		$PARALLEL --semaphore --semaphorename IRMA -j1 REFINE_ASSEMBLY_CALL_PHASE $gene $procs $doGrid $final
-#		$PARALLEL --semaphore --semaphorename IRMA --wait
-#	else
 	REFINE_ASSEMBLY_CALL_PHASE $gene $procs $doGrid $final
-#	fi
 	
 	local n=$(wc -l < ${final}-variants.txt)
 	if [ $n -gt 2 ]; then
@@ -877,7 +872,6 @@ function ASSEMBLE_REPORT() {
 
 function doPostProcessing() {
 	# INFLATE TO FASTQ
-
 	if [ "$ASSEM_REF" -eq "1" ];then
 		if test -n "$(shopt -s nullglob;echo $refp/R0-*.ref)";then
 			for ref in $refp/R0-*.ref;do
@@ -904,7 +898,8 @@ function doPostProcessing() {
 
 	# SAVE unmatched read patterns
 	cd $matchp
-	tar -cf - R$(($R<=MAX_ROUNDS?$R:$MAX_ROUNDS)).nomatch|gzip -4 - > $ppath/unmatched_read_patterns.tar.gz &
+	local LAST_ROUND=$(($R<=MAX_ROUNDS?$R:$MAX_ROUNDS))
+	tar -cf - R${LAST_ROUND}.nomatch|gzip -4 - > $ppath/unmatched_read_patterns.tar.gz &
 	cd - > /dev/null
 	if [ "$ALIGN_PROG" != "NONE" ];then
 		cd $alignp
@@ -934,7 +929,7 @@ function doPostProcessing() {
 	echo -e "2-afterQC\t${raw}\t${pats}\tNA" >> $ppath/READ_COUNTS.txt
 	
 	read raw1 pats1 <<<$(grep '>' $matchp/*.chim|cut -f2 -d'%'|$spath/sumField.pl -S)
-	read raw2 pats2 <<<$(grep '>' $matchp/R${MAX_ROUNDS}.nomatch|cut -f2 -d'%'|$spath/sumField.pl -S)
+	read raw2 pats2 <<<$(grep '>' $matchp/R${LAST_ROUND}.nomatch|cut -f2 -d'%'|$spath/sumField.pl -S)
 	echo -e "3-chimeric\t${raw1}\t${pats1}\tNA" >> $ppath/READ_COUNTS.txt
 	echo -e "3-nomatch\t${raw2}\t${pats2}\tNA" >> $ppath/READ_COUNTS.txt
 
@@ -975,9 +970,6 @@ function doPostProcessing() {
 	cd - > /dev/null
 	grep '>' $assemp/*.fa -Hc >> $ppath/NR_COUNTS_log.txt
 	rm $assemp/*.fastq $assemp/*.fa
-
-#	local readSize=$(expr $(zcat $ppath/ASSEMBLY/reads.tar.gz |wc -l) / 4)
-#	$RSCRIPT $spath/percentages.R $ppath/QC_log.txt $readSize $ppath/NR_COUNTS_log.txt $ppath/READ_log.txt $ppath/READ_PERCENTAGES.pdf $PAIRED > /dev/null 2>&1
 
 	[ ! -d $ppath/amended_consensus ] && mkdir $ppath/amended_consensus
 	[ -n "$(shopt -s nullglob;echo $ppath/*.fa)" ] && mv $ppath/*.fa $ppath/amended_consensus
@@ -1046,14 +1038,14 @@ function doPostProcessing() {
 time_stamp "started run '$RUN'"
 if [ "$PAIRED" -eq "1" ];then
 	$spath/xflate.pl -C -Q -L INTER $ppath/R0.xfl \
-		<($CAT $LEFT|$PARALLEL --pipe -L4 -j$DOUBLE_LOCAL_PROC $spath/fastQ_converter.pl $FASTQ_CONV_OPTS -G $ppath/LEFT.log -g {#}) \
-		<($CAT $RIGHT|$PARALLEL --pipe -L4 -j$DOUBLE_LOCAL_PROC $spath/fastQ_converter.pl $FASTQ_CONV_OPTS -G $ppath/RIGHT.log -g {#}) \
+		<($CAT < $LEFT|$PARALLEL --pipe -L4 -j$DOUBLE_LOCAL_PROC $spath/fastQ_converter.pl $FASTQ_CONV_OPTS -G $ppath/LEFT.log -g {#}) \
+		<($CAT < $RIGHT|$PARALLEL --pipe -L4 -j$DOUBLE_LOCAL_PROC $spath/fastQ_converter.pl $FASTQ_CONV_OPTS -G $ppath/RIGHT.log -g {#}) \
 		> $ppath/R0.fa
 	cat $ppath/{LEFT,RIGHT}.log > $ppath/QC_log.txt && rm $ppath/{LEFT,RIGHT}.log
 	time_stamp 'pre-processed'
 else
 	$spath/xflate.pl -C -Q -L INTER $ppath/R0.xfl \
-		<($CAT $LEFT|$PARALLEL --pipe -L4 -j$SINGLE_LOCAL_PROC $spath/fastQ_converter.pl $FASTQ_CONV_OPTS -G $ppath/QC_log.txt -g {#}) \
+		<($CAT < $LEFT|$PARALLEL --pipe -L4 -j$SINGLE_LOCAL_PROC $spath/fastQ_converter.pl $FASTQ_CONV_OPTS -G $ppath/QC_log.txt -g {#}) \
 		> $ppath/R0.fa
 	time_stamp 'pre-processed'
 fi

@@ -41,12 +41,17 @@ ALIGN_PROG="SAM"	# rough assembly / alignment to working reference [SAM,BLAT]
 ALIGN_PROC=20		# grid maximum processes for the rough align
 
 ### FINISHING ASSEMBLY ###
+MAX_ITER_ASSEM=1	# max assembly iteration [5]
+NO_MERGE=0		# do not merge read pairs [0]
 ASSEM_PROG="SSW"	# assembly program [SSW]
 ASSEM_PROC=20		# grid maximum processes for assembly
 INS_T=0.25		# minimum frquenncy threshold for insertion refinement
 DEL_T=0.60		# minimum frequency threshold for deletion refinement 
 MIN_AMBIG=0.25		# minimum called SNV frequency for mixed base in amended consensus folder
-
+SSW_M=2			# smith-waterman match score
+SSW_X=5			# smith-waterman mismatch penalty
+SSW_O=10		# smith-waterman gap open penalty
+SSW_E=1			# smith-waterman gap extension penalty
 
 ### VARIANT CALLING ###
 # HEURISTICS
