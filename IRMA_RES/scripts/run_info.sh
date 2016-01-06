@@ -1,6 +1,6 @@
 [ "$USE_MEDIAN" == "-M" ] && USE_MEDIAN=1 || USE_MEDIAN=0
 if [ "$MATCH_PROG" == "BLAT" ];then
-	MATCH_OPTS=" ($BLAT_OTS)"
+	MATCH_OPTS=" ($BLAT_OPTS)"
 else
 	MATCH_OPTS=""	
 fi
@@ -14,11 +14,11 @@ else
 fi
 
 if [ "$ALIGN_PROG" == "SAM" ];then
-	ALIGN_PROG=""
+	ALIGN_OPTS=""
 elif [ "$ALIGN_PROG" == "BLAT" ];then
-	ALIGN_PROG=""
+	ALIGN_OPTS=""
 else
-	ALIGN_PROG=""
+	ALIGN_OPTS=""
 fi
 
 if [ "$ASSEM_PROG" == "SSW" ];then
@@ -49,7 +49,7 @@ working_directory	ppath	$ppath
 alternative_frequency	MIN_FA	$MIN_FA
 alternative_count	MIN_CA	$MIN_CA
 skip_reference_elongation	SKIP_E	$SKIP_E
-read_statistic	USE_MEDIAN	$READ_STATISTIC
+read_statistic	USE_MEDIAN	$USE_MEDIAN
 minimum_statistic_quality	QUAL_THRESHOLD	$QUAL_THRESHOLD
 minimum_read_length	MIN_LEN	$MIN_LEN
 interval_significance_level	SIG_LEVEL	$SIG_LEVEL
@@ -57,7 +57,7 @@ maximum_read_gathering_rounds	MAX_ROUNDS	$MAX_ROUNDS
 read_fasta_input	FASTA	$FASTA
 minimum_read_patterns	MIN_RP	$MIN_RP
 minimum_reads	MIN_RC	$MIN_RC
-minimum_insertion_edit_threshold	INS_T	$INT_T
+minimum_insertion_edit_threshold	INS_T	$INS_T
 minimum_deletion_edit_threshold	DEL_T	$DEL_T
 minimum_frequency_for_mixed_consensus_call	MIN_AMBIG	$MIN_AMBIG
 auto_adjust_minimum_variant_frequency	AUTO_F	$AUTO_F
@@ -67,5 +67,5 @@ minimum_variant_frequency	MIN_F	$MIN_F
 minimum_variant_count	MIN_C	$MIN_C
 minimum_variant_average_quality	MIN_AQ	$MIN_AQ
 minimum_variant_depth	MIN_TCC	$MIN_TCC
-minimum_confidence_not_sequencer_error	MIN_CONF	$MINUSE_MEDIAN
+minimum_confidence_not_sequencer_error	MIN_CONF	$MIN_CONF
 EOF
