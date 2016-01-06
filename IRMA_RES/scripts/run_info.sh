@@ -27,12 +27,18 @@ else
 	ASSEM_OPTS=""
 fi
 
+if [ "$PAIRED" -eq "1" ];then
+	DATA_VAR="LEFT;RIGHT	$LEFT;$RIGHT"
+else
+	DATA_VAR=LEFT	$LEFT"
+fi
+
 cat <<EOF > $ppath/logs/run_info.txt
-sample	RUN	$RUN
-paired_end_reads PAIRED $PAIRED
-data	LEFT;RIGHT	$LEFT;$RIGHT
 program_name	PROGRAM	$PROGRAM
 program_version	VERSION	$VERSION
+sample	RUN	$RUN
+paired_end_reads PAIRED $PAIRED
+data	$DATA_VAR
 module_name	MODULE2	$MODULE2
 module_param_call	MODULE $MODULE
 parameter_file_name	PARAM_FILE_NAME	$PARAM_FILE_NAME

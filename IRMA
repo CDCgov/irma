@@ -113,6 +113,7 @@ SAM_STAT_OPTS=""
 PARSE_SORT_OPTS=""
 COMBINE_ALIGN_OPTS=""
 BLAT_PARSE_OPTS=""
+A2M_TO_MATCH_STATS_OPTS=""
 
 # load module parameter file
 if [ -r $rpath/defaults.sh ];then
@@ -160,7 +161,7 @@ refp=$ppath/GENES
 mkdir $matchp $sortp $alignp $assemp $refp
 
 # auto heuristics
-[ "$AUTO_F" -eq 1 ] && AUTO_F="-A" || AUTO_F=""
+[ "$AUTO_F" -eq 1 ] && AUTO_F_OPT="-A" || AUTO_F_OPT=""
 
 # Enforce LABEL specific options
 [ "$SORT_PROG" != "LABEL" ] && LFASTM=0
@@ -170,11 +171,11 @@ mkdir $matchp $sortp $alignp $assemp $refp
 [ "$SORT_PROG" == "BLAT" ] && BLAT_PARSE_OPTS="-C" && PARSE_SORT_OPTS="$PARSE_SORT_OPTS -G"
 [ "$ALIGN_PROG" == "BLAT" ] && BLAT_PARSE_OPTS="-C -A"
 [ "$INCL_CHIM" -eq "1" ] && BLAT_PARSE_OPTS="$BLAT_PARSE_OPTS -I"
-[ "$SKIP_E" -eq "1" ] && BLAT_PARSE_OPTS="$BLAT_PARSE_OPTS -S"
+[ "$SKIP_E" -eq "1" ] && BLAT_PARSE_OPTS="$BLAT_PARSE_OPTS -S" && A2M_TO_MATCH_STATS_OPTS="-S"
 
 # ALIGN editing options
 [ "$ALIGN_PROG" == "BLAT" ] && COMBINE_ALIGN_OPTS="-A"
-[ "$SKIP_E" -eq "1" ] && COMBINE_ALIGN_OPTS="$COMBINE_ALIGN_OPTS -S"
+[ "$SKIP_E" -eq "1" ] && COMBINE_ALIGN_OPTS="$COMBINE_ALIGN_OPTS -S" 
 
 # SSW options
 SSW_OPTS="-x $SSW_X -m $SSW_M -o $SSW_O -e $SSW_E"
@@ -188,12 +189,6 @@ BLAT_OPTS="-oneOff=1 -minIdentity=80 -tileSize=10"
 # FASTQ converter/QC options
 FASTQ_CONV_OPTS="-Q -M -T $QUAL_THRESHOLD -L $MIN_LEN"
 
-# Reference elongation
-if [ "$SKIP_E" -eq 1 ];then
-	SKIP_E="-S"
-else
-	SKIP_E=""
-fi
 
 #### FUNCTIONS ####
 
@@ -454,7 +449,7 @@ RUN=$workdir/${prefix}-${name}_\$ID
 MOD=$mod
 
 $A2M \$RUN -modelfile \$MOD -db \$DB
-$spath/a2mToMatchStats.pl \$RUN.a2m \$RUN.sto $SKIP_E
+$spath/a2mToMatchStats.pl \$RUN.a2m \$RUN.sto $A2M_TO_MATCH_STATS_OPTS
 EOL
 
 	$Lspath/interleavedSamples.pl $queryDB $workdir/$prefix-$name -G $procs > /dev/null
@@ -746,7 +741,7 @@ EOL
 	$spath/catSAMfiles.pl ${prefix2}-*.sam > ${final}.sam
 
 	# DO the CALL step
-	local callPhaseArgs="-C $MIN_C -F $MIN_F -I $MIN_FI -D $MIN_FD -Q $MIN_AQ -T $MIN_TCC -M $MIN_CONF -S $SIG_LEVEL $AUTO_F"
+	local callPhaseArgs="-C $MIN_C -F $MIN_F -I $MIN_FI -D $MIN_FD -Q $MIN_AQ -T $MIN_TCC -M $MIN_CONF -S $SIG_LEVEL $AUTO_F_OPT"
 	[ "$PAIRED" -eq "1" ] && $spath/getPairingStats.pl ${prefix2}-*.sto > $final-pairingStats.txt
 	$spath/callPhase.pl -P -G $callPhaseArgs $pstats $ref $final $assemp/V${iter}-${gene}-*.sto
 }
@@ -865,7 +860,7 @@ function ASSEMBLE_REPORT() {
 	$RSCRIPT $spath/heuristicDiagram.R ${final}-allAlleles.txt ${final}-heuristics.pdf > /dev/null 2>&1
 	$spath/amendConsensus.pl -C $MIN_C -N $RUN -S -F $MIN_AMBIG ${final}.fasta ${final}-variants.txt -P $ppath
 	if [ -r ${final}-insertions.txt -a -r ${final}-deletions.txt ];then
-		local callPhaseArgs="-C $MIN_C -F $MIN_F -I $MIN_FI -D $MIN_FD -Q $MIN_AQ -T $MIN_TCC -M $MIN_CONF -S $SIG_LEVEL $AUTO_F"
+		local callPhaseArgs="-C $MIN_C -F $MIN_F -I $MIN_FI -D $MIN_FD -Q $MIN_AQ -T $MIN_TCC -M $MIN_CONF -S $SIG_LEVEL $AUTO_F_OPT"
 		$spath/vcfGenerator.pl $callPhaseArgs ${final}.fasta ${final}-allAlleles.txt ${final}-insertions.txt ${final}-deletions.txt > ${final}.vcf
 	fi
 
