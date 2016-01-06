@@ -28,9 +28,9 @@ else
 fi
 
 if [ "$PAIRED" -eq "1" ];then
-	DATA_VAR="LEFT;RIGHT	$LEFT;$RIGHT"
+	INPUT_READ_DATA="LEFT;RIGHT	$LEFT;$RIGHT"
 else
-	DATA_VAR=LEFT	$LEFT"
+	INPUT_READ_DATA="LEFT	$LEFT"
 fi
 
 cat <<EOF > $ppath/logs/run_info.txt
@@ -38,7 +38,7 @@ program_name	PROGRAM	$PROGRAM
 program_version	VERSION	$VERSION
 sample	RUN	$RUN
 paired_end_reads PAIRED $PAIRED
-data	$DATA_VAR
+data	$INPUT_READ_DATA
 module_name	MODULE2	$MODULE2
 module_param_call	MODULE $MODULE
 parameter_file_name	PARAM_FILE_NAME	$PARAM_FILE_NAME
