@@ -1,21 +1,22 @@
 #!/usr/bin/env Rscript
 args = commandArgs(TRUE)
 if (length(args) != 4) {
-	cat("Usage:\n\tRscript ./sqmHeatmap.R <COVG.txt> <VARS.txt> <STATS.txt> <out.pdf>\n")
+	cat("Usage:\n\tRscript ./sqmHeatmap.R <run> <gene> <COVG.txt> <VARS.txt> <STATS.txt> <out.pdf>\n")
 	q()
 }
 
-COVG=args[1]
-VARS=args[2]
-STAT=args[3]
-pdfFile=args[4]
+run=args[1]
+gene=args[2]
+COVG=args[3]
+VARS=args[4]
+STAT=args[5]
+pdfFile=args[6]
 
 D=read.table(COVG,header=TRUE,sep="\t")
 V=read.table(VARS,header=TRUE,sep="\t")
 V$Minority_Allele=substr(V$Minority_Allele,1,1)
 V$Consensus_Allele=substr(V$Consensus_Allele,1,1)
 
-gene=sub(x=VARS,pattern=".+/(\\w+?)-variants.+",replacement="\\1")
 C=max(D$Coverage); Xrange=c(1,max(D$Position)); Vlen=nrow(V); H=C/Vlen*as.integer(rownames(V)); C2=C/2
 Cols=vector()
 #Cols[["A"]] = "#1F77B4"
@@ -26,7 +27,7 @@ Cols=vector()
 
 pdf(pdfFile,width=10.5,height=8)
 par(mfrow=c(2,1),mar=c(4, 5, .1, 1))
-plot(D$Position,D$Coverage,col="black",xlim=Xrange,ylab="Coverage depth",xlab=paste(gene,"position"))
+plot(D$Position,D$Coverage,col="black",xlim=Xrange,ylab="Coverage depth",xlab=paste(gene,"position (",run,")"))
 rect(par("usr")[1],par("usr")[3],par("usr")[2],par("usr")[4],col = "black")
 segments(D$Position,0,D$Position,D$Coverage,col="gray")
 variants=vector(length=Vlen)
