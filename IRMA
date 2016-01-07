@@ -1105,6 +1105,7 @@ while [ $R -le $MAX_ROUNDS ];do
 done
 doPostProcessing
 
+[ -r $rpath/.commit ] && LAST_COMMIT="$(cat $rpath/.commit)" || LAST_COMMIT="NOT_AVAILBLE"
 source $spath/run_info.sh
 source $spath/run_config.sh
 

@@ -36,6 +36,7 @@ fi
 cat <<EOF > $ppath/logs/run_info.txt
 program_name	PROGRAM	$PROGRAM
 program_version	VERSION	$VERSION
+last_git_commit_hash	LAST_COMMIT	$LAST_COMMIT
 sample	RUN	$RUN
 paired_end_reads	PAIRED	$PAIRED
 data	$INPUT_READ_DATA

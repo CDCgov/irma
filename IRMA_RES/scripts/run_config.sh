@@ -4,7 +4,7 @@ cat <<EOF > $ppath/logs/FLU-$RUN.sh
 ### BACKGROUND INFO ###
 # $PROGRAM, v$VERSION, $DATE
 # $AUTHOR ($AFFIL), $EMAIL
-# Git commit: $COMMIT
+# Last commit: $LAST_COMMIT
 
 ### START CONFIG ###
 PARAM_FILE_NAME=$PARAM_FILE_NAME
