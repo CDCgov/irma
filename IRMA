@@ -853,9 +853,9 @@ function ASSEMBLE_REPORT() {
 	fi
 
 	if [ $n -gt 1 ]; then
-		$RSCRIPT $spath/coverageDiagram.R $final-coverage.txt $final-variants.txt $final-pairingStats.txt $final-coverageDiagram.pdf #> /dev/null 2>&1
+		$RSCRIPT $spath/coverageDiagram.R $RUN $gene $final-coverage.txt $final-variants.txt $final-pairingStats.txt $final-coverageDiagram.pdf > /dev/null 2>&1
 	else
-		$RSCRIPT $spath/simpleCoverageDiagram.R $final-coverage.txt $final-coverageDiagram.pdf #> /dev/null 2>&1
+		$RSCRIPT $spath/simpleCoverageDiagram.R $RUN $gene $final-coverage.txt $final-coverageDiagram.pdf > /dev/null 2>&1
 	fi
 	$RSCRIPT $spath/heuristicDiagram.R ${final}-allAlleles.txt ${final}-heuristics.pdf > /dev/null 2>&1
 	$spath/amendConsensus.pl -C $MIN_C -N $RUN -S -F $MIN_AMBIG ${final}.fasta ${final}-variants.txt -P $ppath
