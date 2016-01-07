@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 args = commandArgs(TRUE)
-if (length(args) != 2) {
+if (length(args) != 4) {
 	cat("Usage:\n\tRscript ./sqmHeatmap.R <RUN> <GENE> <COVG.txt> <out.pdf>\n")
 	q()
 }
@@ -20,7 +20,7 @@ Cols[["T"]] = "#D62728"
 Cols[["-"]] = "#FFFFFF"
 
 pdf(pdfFile,width=10.5,height=8)
-plot(D$Position,D$Coverage,col="black",xlim=Xrange,ylab="Coverage depth",xlab=paste(gene,"position (",run,")"))
+plot(D$Position,D$Coverage,col="black",xlim=Xrange,ylab="Coverage depth",xlab=paste(sep="",gene," position (",run,")"))
 rect(par("usr")[1],par("usr")[3],par("usr")[2],par("usr")[4],col = "black")
 segments(D$Position,0,D$Position,D$Coverage,col="gray")
 dev.off()

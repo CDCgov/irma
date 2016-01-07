@@ -2,17 +2,17 @@
 # Sam Shepard
 
 args = commandArgs(TRUE)
-if (length(args) != 3) {
-        cat("Usage:\n\tRscript ./percentages.R <COUNTS.txt> <OUTPUT.pdf> <PAIRED:1/0>\n")
+if (length(args) != 4) {
+        cat("Usage:\n\tRscript ./percentages.R <run> <COUNTS.txt> <OUTPUT.pdf> <PAIRED:1/0>\n")
         q()
 }
 
 tableau10=c("#1F77B4","#FF7F0E","#2CA02C","#D62728","#9467BD","#8C564B","#E377C2","#7F7F7F","#BCBD22","#17BECF")
 
-
-countsFile=args[1]
-outputFile=args[2]
-paired=as.numeric(args[3])
+run=args[1]
+countsFile=args[2]
+outputFile=args[3]
+paired=as.numeric(args[4])
 
 pdf(outputFile,width=12,height=11)
 par(mfrow=c(2,2),mar=c(3, 3, 3, 3))
@@ -128,8 +128,7 @@ if ( paired ) {
 	pie(x=vals,labels=perc,col=cols,main="3. Percentages of assembled reads")
 }
 
-plot.default(c(0,250),c(0,250), type="n", axes=FALSE,
-ylab="", xlab="")
+plot.default(c(0,250),c(0,250), type="n", axes=FALSE,main=paste(sep="","SAMPLE \"",run,"\""),ylab="", xlab="")
 if ( paired ) {
 text(20, 30,
 "READ PROPORTIONS.

@@ -857,7 +857,7 @@ function ASSEMBLE_REPORT() {
 	else
 		$RSCRIPT $spath/simpleCoverageDiagram.R $RUN $gene $final-coverage.txt $final-coverageDiagram.pdf > /dev/null 2>&1
 	fi
-	$RSCRIPT $spath/heuristicDiagram.R ${final}-allAlleles.txt ${final}-heuristics.pdf > /dev/null 2>&1
+	$RSCRIPT $spath/heuristicDiagram.R $MIN_AQ $MIN_F $MIN_TCC $MIN_CONF ${final}-allAlleles.txt ${final}-heuristics.pdf > /dev/null 2>&1
 	$spath/amendConsensus.pl -C $MIN_C -N $RUN -S -F $MIN_AMBIG ${final}.fasta ${final}-variants.txt -P $ppath
 	if [ -r ${final}-insertions.txt -a -r ${final}-deletions.txt ];then
 		local callPhaseArgs="-C $MIN_C -F $MIN_F -I $MIN_FI -D $MIN_FD -Q $MIN_AQ -T $MIN_TCC -M $MIN_CONF -S $SIG_LEVEL $AUTO_F_OPT"
@@ -1017,7 +1017,7 @@ function doPostProcessing() {
 
 	# adjust counts
 	[ -r $ppath/READ_COUNTS.txt.tmp ] && cat $ppath/READ_COUNTS.txt.tmp >> $ppath/READ_COUNTS.txt && rm $ppath/READ_COUNTS.txt.tmp
-	$RSCRIPT $spath/percentages.R $ppath/READ_COUNTS.txt $ppath/READ_PERCENTAGES.pdf $PAIRED > /dev/null 2>&1
+	$RSCRIPT $spath/percentages.R $RUN $ppath/READ_COUNTS.txt $ppath/READ_PERCENTAGES.pdf $PAIRED > /dev/null 2>&1
 
 	# save figures
 	[ ! -d $ppath/figures ] && mkdir $ppath/figures
