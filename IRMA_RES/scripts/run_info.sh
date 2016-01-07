@@ -37,7 +37,7 @@ cat <<EOF > $ppath/logs/run_info.txt
 program_name	PROGRAM	$PROGRAM
 program_version	VERSION	$VERSION
 sample	RUN	$RUN
-paired_end_reads PAIRED $PAIRED
+paired_end_reads	PAIRED	$PAIRED
 data	$INPUT_READ_DATA
 module_name	MODULE2	$MODULE2
 module_param_call	MODULE $MODULE
