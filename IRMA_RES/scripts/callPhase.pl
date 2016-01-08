@@ -476,10 +476,10 @@ foreach $p ( sort { $a <=> $b } keys(%dcTable) ) {
 			$left = substr($consensusSeq,$p-4,5);
 		}
 
-		if ( $p > ($REF_LEN-6) ) {
-			$right = substr($consensusSeq,$p+1,$REF_LEN-$p-1);
+		if ( $p > ($REF_LEN-6-$inc) ) {
+			$right = substr($consensusSeq,$pp,$REF_LEN-$pp;
 		} else {
-			$right = substr($consensusSeq,$p+1,5);
+			$right = substr($consensusSeq,$pp,5);
 		}
 	
 		$mid = '-' x $inc;
@@ -542,9 +542,9 @@ foreach $p ( sort { $a <=> $b } keys(%icTable) ) {
 		}
 
 		if ( $p > ($REF_LEN-6) ) {
-			$right = substr($consensusSeq,$p+1,$REF_LEN-$p-1);
+			$right = substr($consensusSeq,$pp,$REF_LEN-$pp);
 		} else {
-			$right = substr($consensusSeq,$p+1,5);
+			$right = substr($consensusSeq,$pp,5);
 		}
 
 		print INSV $REF_NAME,"\t",($p+1),"\t",uc($insert),"\t",lc($left),uc($insert),lc($right);
