@@ -38,14 +38,14 @@ MIN_LEN=$MIN_LEN		# minimum read length
 INCL_CHIM=$INCL_CHIM		# includes chimera or not [0,1]
 
 ## MATCH STEP
-MATCH_PROC=$MATCH_PROG		# grid maximum processes for the MATCH
-MATCH_PROG="$MATCH_PRG"	# match (all or any match) program [BLAT]
+MATCH_PROC=$MATCH_PROC		# grid maximum processes for the MATCH
+MATCH_PROG="$MATCH_PROG"	# match (all or any match) program [BLAT]
 MIN_RP=$MIN_RP		# minimum read pattern count to continue
 MIN_RC=$MIN_RC		# minimum read count to continue
 
 ## SORT STEP 
 SORT_PROG="$SORT_PROG"	# [LABEL,BLAT]
-SORT_PROC="$SORT_PROC"		# currently not used
+SORT_PROC=$SORT_PROC		# currently not used
 NONSEGMENTED=$NONSEGMENTED		# segmented! [0,1]
 # LABEL
 LFASTM=$LFASTM		# LABEL sorting fast-mode
