@@ -982,8 +982,12 @@ function doPostProcessing() {
 	cat $assemp/*.log >> $ppath/ASSEMBLY_log.txt
 	rm $assemp/*.log $ppath/*.sam
 
+	# handle logs
 	mkdir $ppath/logs
 	mv $ppath/*log.txt $ppath/logs
+	[ -r $rpath/.commit ] && LAST_COMMIT="$(cat $rpath/.commit)" || LAST_COMMIT="NOT_AVAILBLE"
+	source $spath/run_info.sh
+	source $spath/run_config.sh
 
 	# final order
 	mkdir $ppath/secondary
@@ -1104,10 +1108,6 @@ while [ $R -le $MAX_ROUNDS ];do
 	fi
 done
 doPostProcessing
-
-[ -r $rpath/.commit ] && LAST_COMMIT="$(cat $rpath/.commit)" || LAST_COMMIT="NOT_AVAILBLE"
-source $spath/run_info.sh
-source $spath/run_config.sh
 
 moveProject
 time_stamp 'finished!'
