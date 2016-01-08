@@ -477,7 +477,7 @@ foreach $p ( sort { $a <=> $b } keys(%dcTable) ) {
 		}
 
 		if ( $p > ($REF_LEN-6-$inc) ) {
-			$right = substr($consensusSeq,$pp,$REF_LEN-$pp;
+			$right = substr($consensusSeq,$pp,$REF_LEN-$pp);
 		} else {
 			$right = substr($consensusSeq,$pp,5);
 		}
