@@ -26,7 +26,7 @@ TMP=$TMP		# the scratch/tmpfs for working on the assemblies
 MIN_FA=$MIN_FA		# no alternative reference [0..1]
 MIN_CA=$MIN_CA		# minimum count for alternative finished assembly
 SKIP_E=$SKIP_E		# skip reference elongation
-REF_SET=$DEF_SET	# Same as the "consensus.fasta" in the reference folder for the module.
+REF_SET=$REF1_SET	# Starting reference, usually default for \$DEF_SET
 ASSEM_REF=$ASSEM_REF
 
 ### READ GATHERING ###

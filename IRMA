@@ -105,9 +105,6 @@ else
 	phmms="none"
 fi
 
-DEF_SET=$mpath/reference/consensus.fasta
-REF_SET=$DEF_SET
-
 # initialize option sets
 SAM_STAT_OPTS=""
 PARSE_SORT_OPTS=""
@@ -116,15 +113,17 @@ BLAT_PARSE_OPTS=""
 A2M_TO_MATCH_STATS_OPTS=""
 
 # load module parameter file
+DEF_SET=$mpath/reference/consensus.fasta
 if [ -r $rpath/defaults.sh ];then
 	source $rpath/defaults.sh
 else
 	time_stamp "Missing defaults. ABORTING. Please restore from $rpath/.defaults.sh.bak" 
 fi
 
+# init variables from config files
 [ -r $mpath/init.sh ] && source $mpath/init.sh
 source $mpath/config/$MODULE.sh
-
+REF1_SET=$REF_SET
 
 # check for profiles
 if [ "$phmms" == "none" -a "$ALIGN_PROG" == "SAM" ];then

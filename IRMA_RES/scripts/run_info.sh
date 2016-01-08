@@ -50,7 +50,7 @@ sort_step_program	SORT_PROG	$SORT_PROG$SORT_OPTS
 assemble_step_program	ASSEM_PROG	$ASSEM_PROG$ASSEM_OPTS
 profiles	phmms	$phmms
 do_not_merge_read_pairs	NO_MERGE	$NO_MERGE
-starting_reference	REF_SET	$REF_SET
+starting_reference	REF_SET	$REF1_SET
 grid_acceleration_on	GRID_ON	$GRID_ON
 working_directory	ppath	$ppath
 alternative_frequency	MIN_FA	$MIN_FA
