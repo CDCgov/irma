@@ -347,7 +347,9 @@ function doMATCH() {
 
 	# EXTEND to ALIGN
 	if [ "$ALIGN_PROG" == "$MATCH_PROG" ];then
-		mv $matchp/*.sto $alignp
+		if test -n "$(shopt -s nullglob;echo $matchp/*.sto)";then
+			mv $matchp/*.sto $alignp
+		fi
 	fi
 }
 
@@ -481,7 +483,7 @@ function doALIGN() {
 			j=$(expr $R - 1)
 			if [ "$R" -gt 1 ];then
 				for i in $(seq $j);do
-					rm $alignp/R${j}-$name*.sto
+					rm $alignp/R${i}-$name*.sto
 					doBLAT $refp/R${j}-$name.ref $sortp/R${i}-${name}.fa R$i $name $alignp $ALIGN_PROC $LIMIT_BLAT &
 				done
 			fi
