@@ -35,6 +35,7 @@ SORT_PROC=80		# currently not used
 NONSEGMENTED=0		# segmented! [0,1]
 # LABEL
 LFASTM=1		# LABEL sorting fast-mode
+LIMIT_LABEL=1000	# limit on LABEL grid activation (self-adjusts)
 
 ## ALIGN STEP ##
 ALIGN_PROG="SAM"	# rough assembly / alignment to working reference [SAM,BLAT]
