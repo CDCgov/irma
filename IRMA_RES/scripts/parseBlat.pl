@@ -27,9 +27,9 @@ if ( scalar(@ARGV) != 2 ) {
 
 
 if ( defined($skipExtension) ) {
-	$notSkipExtension = 0;
+	$elongateReference = 0;
 } else {
-	$notSkipExtension = 1;
+	$elongateReference = 1;
 }
 
 sub alignedBLAT($$$) {
@@ -45,22 +45,25 @@ sub alignedBLAT($$$) {
 	my $left = 0;
 	my $right = 0;
 	my $seq = '';
+	my $leader = '';
+	my $trailer = '';
 	
 	if ( scalar(@v) < 22 ) {
 		if ( $bCount == 1 ) {
 			$left = $tStarts[0];
 			$right = $tSize-($tStarts[0]+$bLengths[0]);
+
 			if ( $qStarts[0] > 0 ) {
-				$seq = substr($s,0,$qStarts[0]);	
+				$leader = substr($s,0,$qStarts[0]);	
 			}
 			$seq .=('-'x$left).uc(substr($s,$qStarts[0],$bLengths[0])).('-'x$right);
 			$right = $qStarts[0]+$bLengths[0];
 			if ( $right < $qSize  ) {
-				$seq .= substr($s,$right,$qSize-$right);
+				$trailer = substr($s,$right,$qSize-$right);
 			}
 		} else {
 			if ( $qStarts[0] > 0 ) {
-				$seq = substr($s,0,$qStarts[0]);	
+				$leader = substr($s,0,$qStarts[0]);	
 			}
 
 			$left = $tStarts[0];
@@ -75,9 +78,9 @@ sub alignedBLAT($$$) {
 			$seq .= '-'x$right;
 			
 			$right = $qStarts[$bCount-1]+$bLengths[$bCount-1];
-			
+		
 			if ( $right < $qSize  ) {
-				$seq .= substr($s,$right,$qSize-$right);
+				$trailer = substr($s,$right,$qSize-$right);
 			}
 		}
 	# PSLX mode
@@ -87,16 +90,16 @@ sub alignedBLAT($$$) {
 			$left = $tStarts[0];
 			$right = $tSize-($tStarts[0]+$bLengths[0]);
 			if ( $qStarts[0] > 0 ) {
-				$seq = substr($s,0,$qStarts[0]);	
+				$leader = substr($s,0,$qStarts[0]);	
 			}
 			$seq .=('-'x$left).uc($qSeqs[0]).('-'x$right);
 			$right = $qStarts[0]+$bLengths[0];
 			if ( $right < $qSize  ) {
-				$seq .= substr($s,$right,$qSize-$right);
+				$trailer = substr($s,$right,$qSize-$right);
 			}
 		} else {
 			if ( $qStarts[0] > 0 ) {
-				$seq = substr($s,0,$qStarts[0]);	
+				$leader = substr($s,0,$qStarts[0]);	
 			}
 
 			$left = $tStarts[0];
@@ -110,58 +113,64 @@ sub alignedBLAT($$$) {
 			$seq .= '-'x$right;
 			$right = $qStarts[$bCount-1]+$bLengths[$bCount-1];
 			if ( $right < $qSize  ) {
-				$seq .= substr($s,$right,$qSize-$right);
+				$trailer = substr($s,$right,$qSize-$right);
 			}
 		}
 	}
 
 #	if ( $h =~ /MP/ ) {print STDERR '>',$v[9],"\n",$seq,"\n"; }
-	return $seq;
+	return ($leader,$seq,$trailer);
 }
 
-sub recordStats($$$) {
+sub recordStats($$@) {
 	my $hashRef = $_[0];
-	my $sequence = $_[1];
-	my $gene = $_[2];
+	my $gene = $_[1];
+	my $leader = $_[2];
+	my $sequence = $_[3];
+	my $trailer = $_[4];
 	my $x = '';
-	my $leader = '';
-	my $trailer = '';
 	my $gap = '';
-	my $length = length($sequence);
+	my $length = 0;
+	my $leaderLen = 0;
+	my $trailerLen = 0;
 
-	if ( $notSkipExtension ) {
-		if ( $sequence =~ /^([actgn.]*)([-]{0,2}[ACTGN])/ ) {
-			$leader = $1;
+	$length = length($sequence);
+
+	# repair as necessary
+	$trailerLen = length($trailer);
+	$leaderLen = length($leader);
+	if ( $leaderLen && $sequence =~ /^([-]{1,7})[ACTGN]/ ) {
+		$gap = length($1);
+		if ( $leaderLen >= $gap ) {
+			substr($sequence,0,$gap) = uc(substr($leader,-$gap));
+			$leader = substr($leader,0,$leaderLen-$gap);
+		}
+	}
+
+	if ( $trailerLen > 0 && $sequence =~ /[ACTGN]([-]{1,7})$/ ) {
+		$gap = length($1);
+		if ( $trailerLen >= $gap ) {
+			substr($sequence,$-[1],$gap) = uc(substr($trailer,0,$gap));
+			$trailer = substr($trailer,-($trailerLen-$gap));
+		}
+	}
+
+	for $x ( 0 .. $length ) {
+		 $hashRef->{$gene}[0][$x]{substr($sequence,$x,1)}++;
+	}
+
+	if ( $elongateReference ) {
+		if ( $sequence =~ /^[ACTGN]/ ) {
 			for $x ( - length($leader) .. -1 ) {
 				$hashRef->{$gene}[1]{$x}{substr($leader,$x,1)}++;
 			}
 		}
 
-		if ( $sequence =~ /[ATCGN][-]{0,2}([actgn.]*)$/ ) {
-			$trailer = $1;
+		if ( $sequence =~ /[ATCGN]$/ ) {
 			for $x ( 0..length($trailer)-1 ) {
 				$hashRef->{$gene}[2]{$x}{substr($trailer,$x,1)}++;
 			}
 		}
-	} else {
-		if ( $sequence =~ /^([actg]{1,2}[actgn.]*)([-]{1,2})[ACTGN]/ ) {
-			$leader = $1; $gap = length($2);
-			if ( length($leader) >= $gap ) {
-				substr($sequence,$+[2]-$gap,$gap) = uc(substr($leader,-$gap));
-			}
-		}
-
-		if ( $sequence =~ /[ATCGN]([-]{1,2})([actg]{1,2}[actgn.]*)$/ ) {
-			$trailer = $2; $gap = length($1);
-			if ( length($trailer) >= $gap ) {
-				substr($sequence,$-[1],$gap) = uc(substr($trailer,0,$gap));
-			}
-		}
-	}
-
-	$length -= ($sequence =~ tr/[a-z.]//d)+1;
-	for $x ( 0 .. $length) {
-		 $hashRef->{$gene}[0][$x]{substr($sequence,$x,1)}++;
 	}
 }
 
@@ -282,7 +291,7 @@ while( $record = <IN> ) {
 			if ( $S{$header} eq '+' ) {
 				print MATCH '>',$header,"\n",$sequence,"\n";
 				if ( defined($alignSequences) ) {
-					recordStats(\%alignStats, alignedBLAT($maxGene{$header}[2],$sequence,$maxGene{$header}[0]), $maxGene{$header}[0]);
+					recordStats(\%alignStats,$maxGene{$header}[0], alignedBLAT($maxGene{$header}[2],$sequence,$maxGene{$header}[0]) );
 				}
 
 				if ( $classify ) {
@@ -303,7 +312,7 @@ while( $record = <IN> ) {
 
 				print MATCH '>',$header,"{c}\n",$sequence,"\n";
 				if ( defined($alignSequences) ) {
-					recordStats(\%alignStats, alignedBLAT($maxGene{$header}[2],$sequence,$maxGene{$header}[0]), $maxGene{$header}[0]);
+					recordStats(\%alignStats, $maxGene{$header}[0],alignedBLAT($maxGene{$header}[2],$sequence,$maxGene{$header}[0]));
 				}
  
 				if ( $classify ) {
