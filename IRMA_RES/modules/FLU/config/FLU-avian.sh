@@ -11,6 +11,6 @@ SKIP_E=0				# skip reference elongation
 
 # STAGES
 MATCH_PROG="BLAT"
-SORT_PROG="BLAT"
+SORT_PROG="LABEL"
 ALIGN_PROG="SAM"
 ASSEM_PROG="SSW"
