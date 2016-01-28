@@ -13,9 +13,9 @@ if ( scalar(@ARGV) != 2 ) {
 }
 
 if ( defined($skipExtension) ) {
-	$notSkipExtension = 0;
+	$elongateReference = 0;
 } else {
-	$notSkipExtension = 1;
+	$elongateReference = 1;
 }
 
 # PROCESS fasta data
@@ -28,48 +28,59 @@ while( $record = <IN> ) {
 	@lines = split(/\r\n|\n|\r/, $record);
 	$header = shift(@lines);
 	$sequence = join('',@lines);
+	$sequence =~ tr/.//d;
 	$length = length($sequence);
 
 	if ( $length == 0 ) {
 		next;
 	} else {
-		if ( $notSkipExtension ) {
-			if ( $sequence =~ /^([actgn.]*)([-]{0,2}[ACTGN])/ ) {
-				$leader = $1;
-				$leader =~ tr/.//d;
+		$leader = $trailer = "";
+		if ( $sequence =~ /^([actgn]+)[ACTGN-]/ ) {
+			$leader = $1;
+		}
+
+		if ($sequence =~ /[ACTGN-]([actgn]+)$/ ) {
+			$trailer = $1;
+		}
+		
+		$sequence =~ tr/[a-z]//d;
+		$length = length($sequence);
+
+		# repair as necessary
+		$trailerLen = length($trailer);
+		$leaderLen = length($leader);
+		if ( $leaderLen && $sequence =~ /^([-]{1,7})[ACTGN]/ ) {
+			$gap = length($1);
+			if ( $leaderLen >= $gap ) {
+				substr($sequence,0,$gap) = uc(substr($leader,-$gap));
+				$leader = substr($leader,0,$leaderLen-$gap);
+			}
+		}
+
+		if ( $trailerLen > 0 && $sequence =~ /[ACTGN]([-]{1,7})$/ ) {
+			$gap = length($1);
+			if ( $trailerLen >= $gap ) {
+				substr($sequence,$-[1],$gap) = uc(substr($trailer,0,$gap));
+				$trailer = substr($trailer,-($trailerLen-$gap));
+			}
+		}
+
+		for $p ( 0 .. $length ) {
+			 $count[0][$p]{substr($sequence,$p,1)}++;
+		}
+
+		if ( $elongateReference ) {
+			if ( $sequence =~ /^[ACTGN]/ ) {
 				for $x ( - length($leader) .. -1 ) {
 					$count[1]{$x}{substr($leader,$x,1)}++;
 				}
 			}
 
-			if ( $sequence =~ /[ATCGN][-]{0,2}([actgn.]*)$/ ) {
-				$trailer = $1;
-				$trailer =~ tr/.//d;
+			if ( $sequence =~ /[ATCGN]$/ ) {
 				for $x ( 0..length($trailer)-1 ) {
 					$count[2]{$x}{substr($trailer,$x,1)}++;
 				}
 			}
-		} else {
-			if ( $sequence =~ /^([actg]{1,2}[actgn.]*)([-]{1,2})[ACTGN]/ ) {
-				$leader = $1; $gap = length($2);
-				$leader =~ tr/.//d;
-				if ( length($leader) >= $gap ) {
-					substr($sequence,$+[2]-$gap,$gap) = uc(substr($leader,-$gap));
-				}
-			}
-
-			if ( $sequence =~ /[ATCGN]([-]{1,2})([actg]{1,2}[actgn.]*)$/ ) {
-				$trailer = $2; $gap = length($1);
-				$trailer =~ tr/.//d;
-				if ( length($trailer) >= $gap ) {
-					substr($sequence,$-[1],$gap) = uc(substr($trailer,0,$gap));
-				}
-			}
-		}
-
-		$length -= ($sequence =~ tr/[a-z.]//d)+1;
-		for $p ( 0 .. $length) {
-			 $count[0][$p]{substr($sequence,$p,1)}++;
 		}
 		$i++;
 	}
