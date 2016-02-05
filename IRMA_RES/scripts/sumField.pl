@@ -14,9 +14,25 @@ GetOptions(
 		'newline|N' => \$newline,
 		'minimum|M' => \$takeMinimum,
 		'maximum|X' => \$takeMaximum,
-		'everything|E' => \$takeEverything
+		'everything|E' => \$takeEverything,
+		'help|?' => \$printHelp
 	);
 
+if ( $printHelp ) {
+		$message = "Usage:\nsumField.pl <file or STDIN> [options]\n";
+		$message .= "\t\t-H|--ignore-header|H\t\tSkips header line for calculations.\n";
+		$message .= "\t\t-C|--comment-char <CHAR>\tSkip lines beginning with the comment field.\n";
+		$message .= "\t\t-F|--field-number <NUM>\t\tField number (1..N) to calculate on.\n";
+		$message .= "\t\t-D|--field-delim <CHAR>\t\tDelimiter for fields, default <tab>.\n";
+		$message .= "\t\t-A|--average\t\t\tTake the average of the column, default sum.\n";
+		$message .= "\t\t-S|--sum-count\t\t\tCalculate the sum and the count.\n";
+		$message .= "\t\t-C|--take-count\t\t\tTake the count of the column.\n";
+		$message .= "\t\t-N|--newline\t\t\tPrint trailing newline.\n";
+		$message .= "\t\t-M|--minimum\t\t\tTake the minimum of the column.\n";
+		$message .= "\t\t-X|--maximum\t\t\tTake the maximum of the column.\n";
+		$message .= "\t\t-E|--everything\t\t\tTake the count, sum, min, max, and average.\n";
+		die($message);
+}
 
 if ( !defined($newline) ) {
 	$newline = '';
