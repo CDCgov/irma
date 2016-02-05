@@ -155,7 +155,7 @@ sub recordStats($$@) {
 		}
 	}
 
-	for $x ( 0 .. $length ) {
+	for $x ( 0 .. ($length-1) ) {
 		 $hashRef->{$gene}[0][$x]{substr($sequence,$x,1)}++;
 	}
 

@@ -65,7 +65,7 @@ while( $record = <IN> ) {
 			}
 		}
 
-		for $p ( 0 .. $length ) {
+		for $p ( 0 .. ($length-1) ) {
 			 $count[0][$p]{substr($sequence,$p,1)}++;
 		}
 
