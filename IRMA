@@ -240,8 +240,10 @@ function doLABEL() {
 	local n=$(grep '>' $queryDB -c)
 	
 	[ "$n" -gt "$limit" -a "$GRID_ON" -eq "1" ] && Earg=2
-	[ "$n" -gt "0" ] && $LABEL -E $Earg -W $workdir $queryDB $name irma-$labelmodule > /dev/null 2>&1
-	mv $workdir/${name}/${name}_final.tab $workdir/SORTED_${name}.tab
+	if [ "$n" -gt "0" ]; then
+		$LABEL -E $Earg -W $workdir $queryDB $name irma-$labelmodule > /dev/null 2>&1
+		mv $workdir/${name}/${name}_final.tab $workdir/SORTED_${name}.tab
+	fi
 }
 
 function doBLAT() {
