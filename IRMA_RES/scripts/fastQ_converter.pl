@@ -16,7 +16,8 @@ GetOptions(	'read-quality|T=i'=> \$qualityThreshold,
 		'skip-remaining|K' => \$skipRemaining,
 		'log-file|G=s' => \$logFile,
 		'log-id|g=s' => \$logID,
-		'keep-header|H' => \$keepHeader
+		'keep-header|H' => \$keepHeader,
+		'clip-adapter|c=s' => \$clipAdapter
 	);
 
 
@@ -33,7 +34,17 @@ if ( -t STDIN && scalar(@ARGV) != 1 ) {
 	$message .= "\t\t-A|--save-stats <STR>\t\t\tSave quality length file for analysis.\n";
 	$message .= "\t\t-K|--skip-remaining\t\t\tDo not output data FASTA/FASTQ data (assumes -A).\n";
 	$message .= "\t\t-H|--keep-header\t\t\tKeep header as usual.\n";
+	$message .= "\t\t-c|--clip-adapter <STR>\t\t\tClip adapter. Clip 5' of forward or 3' of reverse.\n";
 	die($message."\n");
+}
+
+if ( defined($clipAdapter) ) {
+	$forwardAdapter = lc($clipAdapter);
+	$reverseAdapter = reverse($forwardAdapter);
+	$reverseAdapter =~ tr/atgc/tacg/;
+	$clipAdapter = 1;
+} else {
+	$clipAdapter = 0;
 }
 
 
@@ -110,10 +121,19 @@ while($hdr=<>) {
 	$seq=<>; chomp($seq);
 	$junk=<>; chomp($junk);
 	$quality=<>; chomp($quality);
+
+	if ( $clipAdapter ) {
+		if ( $seq  =~ /$reverseAdapter/i ) {
+			$seq = substr($seq,0,$-[0]);
+			$quality = substr($quality,0,$-[0]);
+		} elsif ( $seq =~ /$forwardAdapater/i ) {
+			$seq = substr($seq,$+[0]);	
+			$quality = substr($quality,$+[0]);	
+		}
+	}
+
 	@a = unpack("c* i*",$quality);
-
 	$q = 0; $n = scalar(@a);
-
 	$id++;
 	if ( length($seq) < $minLength ) {
 		next;

@@ -5,9 +5,11 @@
 use Storable;
 use POSIX;
 use Getopt::Long;
-GetOptions(	'name|N=s' => \$name, 'min-pad-count|M=i' => \$minPadCount, 
+GetOptions(	'name|N=s' => \$name,
+		'min-pad-count|M=i' => \$minPadCount, 
 		'delete-by-ambiguity|A' => \$deleteByAmbig,
-		 'skip-elongation|S' => \$skipExtension,
+		'skip-elongation|S' => \$skipExtension,
+		'keep-deleted|K=s' => \$referenceSeq,
 		'debug-mode|D' => \$debug,
 		'count-alt|C=i' => \$altCount,
 		'count-freq|F=f' => \$altFreq
@@ -15,6 +17,30 @@ GetOptions(	'name|N=s' => \$name, 'min-pad-count|M=i' => \$minPadCount,
 
 if ( scalar(@ARGV) < 1 ) {
 	die("Usage:\t$0 <STAT> <...>\n");
+}
+
+if ( defined($referenceSeq) ) {
+	$/ = ">"; $keepDeleted = 1;
+	open(REF,'<',$referenceSeq) or die("Cannot open $referenceSeq for reading.\n");
+	while($record = <REF>) {
+		chomp($record);
+		@lines = split(/\r\n|\n|\r/, $record);
+		$REF_NAME = shift(@lines);
+		$REF_SEQ = join('',@lines);
+		if ( length($REF_SEQ) < 1 ) {
+			next;
+		}
+		$REF_LEN = length($REF_SEQ);
+		last;
+	}
+	close(REF);
+	if ( !defined($REF_LEN) ) {
+		print STDERR "WARNING (combineALIGNstats): reference $referenceSeq has no length, turning off keep-deleted.\n";
+		$keepDeleted = 0;
+	}
+	@REF_SITES = split('',lc($REF_SEQ));
+} else {
+	$keepDeleted = 0;
 }
 
 if (!defined($minPadCount) ) {
@@ -119,6 +145,10 @@ if ( $name ) {
 $seqAlt = $seq ='';
 $Ncount = scalar(@count);
 
+if ( $keepDeleted && $Ncount != $REF_LEN ) {
+	print STDERR "WARNING (combineALIGNstats): $Ncount != $REF_LEN, bad reference ($REF_NAME), turning off keep-deleted.\n";
+	$keepDeleted = 0;
+}
 
 # middle
 $max5 = $max3 = 0;
@@ -140,17 +170,20 @@ for($j = 0; $j < $Ncount; $j++ ) {
 		}
 	}
 
-	if ( $deleteByAmbig && $maxB eq '' ) {
-		$seq .= 'N';
-		$seqAlt .= 'N';
-	} else {
+	if ( $maxB ne '' ) {
 		$seq .= $maxB;
 		if ( $altB eq '' || $alt < $altCount || ($alt/$total) < $altFreq ) {
 			$seqAlt .= $maxB;
 		} else {
 			$seqAlt .= $altB;
 		}		
-	}
+	} elsif ( $deleteByAmbig ) {
+		$seq .= 'N';
+		$seqAlt .= 'N';
+	} elsif ( $keepDeleted ) {
+		$seq .= $REF_SITES[$j];
+		$seqAlt .= $REF_SITES[$j];	
+	} # else deleted
 
 	if ( $j == 0 ) {
 		$max5 = $max;
