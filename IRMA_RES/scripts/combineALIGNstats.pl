@@ -12,11 +12,22 @@ GetOptions(	'name|N=s' => \$name,
 		'keep-deleted|K=s' => \$referenceSeq,
 		'debug-mode|D' => \$debug,
 		'count-alt|C=i' => \$altCount,
-		'count-freq|F=f' => \$altFreq
+		'count-freq|F=f' => \$altFreq,
+		'denominator|O=i' => \$denom
 	);
 
 if ( scalar(@ARGV) < 1 ) {
 	die("Usage:\t$0 <STAT> <...>\n");
+}
+
+if ( !defined($denom) ) {
+	$denom = 4
+} else {
+	if ( $denom < 2 ) {
+		$denom = 2;
+	} else {
+		$denom = int($denom);
+	}
 }
 
 if ( defined($referenceSeq) ) {
@@ -197,7 +208,7 @@ for($j = 0; $j < $Ncount; $j++ ) {
 
 if ( $notSkipExtension ) {
 	# LEADER
-	$leader =''; $threshold = max($minPadCount,int($max5/4)+1);
+	$leader =''; $threshold = max($minPadCount,int($max5/$denom)+1);
 	foreach $p ( 1 .. scalar(keys(%count5)) ) {
 		$max = 0; $maxB = ''; $total = 0;
 		while( ($base, $leaderCount) = each(%{$count5{"-$p"}}) ) {
@@ -217,7 +228,7 @@ if ( $notSkipExtension ) {
 	$leader = reverse($leader);
 
 	# TRAILER
-	$trailer = ''; $threshold = max($minPadCount,int($max3/4)+1);
+	$trailer = ''; $threshold = max($minPadCount,int($max3/$denom)+1);
 	foreach $p ( 0 .. scalar(keys(%count3)) - 1 ) {
 		$max = 0; $maxB = ''; $total = 0;
 		while( ($base, $trailerCount) = each(%{$count3{$p}}) ) {

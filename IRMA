@@ -204,6 +204,7 @@ mkdir $matchp $sortp $alignp $assemp $refp
 # ALIGN editing options
 [ "$ALIGN_PROG" == "BLAT" ] && COMBINE_ALIGN_OPTS="-A"
 [ "$SKIP_E" -eq "1" ] && COMBINE_ALIGN_OPTS="$COMBINE_ALIGN_OPTS -S" 
+[ "$DENOM" != "" ] && COMBINE_ALIGN_OPTS="$COMBINE_ALIGN_OPTS -O $DENOM"
 
 # SSW options
 SSW_OPTS="-x $SSW_X -m $SSW_M -o $SSW_O -e $SSW_E"
