@@ -513,7 +513,6 @@ function doALIGN() {
 	time_stamp "$prefix rough aligned reads using $ALIGN_PROG"
 
 	# CREATE NEW REFERENCES
-	local PREV=$(expr $R - 1)
 	if [ "$ALIGN_PROG" != "NONE" ];then
 		for i in $sortp/$prefix-*.fa;do
 			name=$(basename $i .fa)
@@ -579,6 +578,7 @@ function doRound() {
 		done
 	fi
 
+	# add R0 for tracing history better
 	if [ "$ASSEM_REF" -eq "0" -a "$R" -eq "1" ];then
 		if test -n "$(shopt -s nullglob;echo $sortp/$prefix-*.fa)";then
 			name=$(basename $i .fa)
