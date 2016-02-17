@@ -556,6 +556,11 @@ close(INSV);
 
 
 if ( scalar(keys(%variants)) > 1 ) {
+	$varFile = $prefix.'-vars.sto';
+	$patFile = $prefix.'-pats.sto';
+#	store(\%variants,$varFile);
+
+
 	open(EXP,'>',$prefix."-EXPENRD.sqm") or die("Cannot open ${prefix}_EXPENRD.sqm for writing.\n");
 	open(JAC,'>',$prefix."-JACCARD.sqm") or die("Cannot open ${prefix}_JACCARD.sqm for writing.\n");
 	open(MUT,'>',$prefix."-MUTUALD.sqm") or die("Cannot open ${prefix}_MUTUALD.sqm for writing.\n");
@@ -572,6 +577,8 @@ if ( scalar(keys(%variants)) > 1 ) {
 			$readPats{$aln} += $alignments{$sequence};
 		}
 	}
+
+#	store(\%readPats,$patFile);
 
 	$V = scalar(@vars);
 	for($i=0;$i<$V;$i++) {
@@ -650,8 +657,8 @@ if ( scalar(keys(%variants)) > 1 ) {
 					$jacc = 1 - $Fb1b2/($mx1+$mx2-$Fb1b2);
 					$expd = 1 - (($Fb1b2*$mnA)/($mx1*$mx2));
 					$njop = 1 - 2*$Fb1b2;
-					print JAC "\t$mutd";
-					print MUT "\t$jacc";
+					print JAC "\t$jacc";
+					print MUT "\t$mutd";
 					print EXP "\t$expd";
 					print JOP "\t$njop";
 				}
