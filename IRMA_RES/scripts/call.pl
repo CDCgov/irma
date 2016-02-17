@@ -558,13 +558,8 @@ close(INSV);
 if ( scalar(keys(%variants)) > 1 ) {
 	$varFile = $prefix.'-vars.sto';
 	$patFile = $prefix.'-pats.sto';
-#	store(\%variants,$varFile);
+	store(\%variants,$varFile);
 
-
-	open(EXP,'>',$prefix."-EXPENRD.sqm") or die("Cannot open ${prefix}_EXPENRD.sqm for writing.\n");
-	open(JAC,'>',$prefix."-JACCARD.sqm") or die("Cannot open ${prefix}_JACCARD.sqm for writing.\n");
-	open(MUT,'>',$prefix."-MUTUALD.sqm") or die("Cannot open ${prefix}_MUTUALD.sqm for writing.\n");
-	open(JOP,'>',$prefix."-NJOINTP.sqm") or die("Cannot open ${prefix}_NJOINTP.sqm for writing.\n");
 	%readPats = ();
 	@vars = sort { $a <=> $b } keys(%variants);
 	foreach $sequence ( keys(%alignments) ) {
@@ -578,99 +573,5 @@ if ( scalar(keys(%variants)) > 1 ) {
 		}
 	}
 
-#	store(\%readPats,$patFile);
-
-	$V = scalar(@vars);
-	for($i=0;$i<$V;$i++) {
-		$v1 = $vars[$i];
-		@B1 = keys(%{$variants{$v1}});
-		foreach $b1 (@B1) {
-			print MUT ($v1+1),$b1;
-			print JAC ($v1+1),$b1;
-			print EXP ($v1+1),$b1;
-			print JOP ($v1+1),$b1;
-			for($j=0;$j<$V;$j++) {
-				$v2 = $vars[$j];
-				@B2 = keys(%{$variants{$v2}});
-				foreach $b2 (@B2) {
-					if ( $i == $j ) {
-						if (  $b1 eq $b2 ) {
-							print MUT "\t0";
-							print JAC "\t0";
-							print EXP "\t0";
-							print JOP "\t0";
-							next;
-						} else {
-							print MUT "\t1";
-							print JAC "\t1";
-							print EXP "\t1";
-							print JOP "\t1";
-							next;
-						}
-					}
-					
-					$Fb1 = $variants{$v1}{$b1};
-					$Fb2 = $variants{$v2}{$b2};
-					if ( $Fb1 == 0 || $Fb2 == 0 ) {
-						print MUT "\t1";
-						print JAC "\t1";
-						print EXP "\t1";
-						print JOP "\t1";
-						next;
-					}
-
-					$total = $Fb1b2 = $Eb1 = $Eb2 = 0;
-					foreach $pat ( keys(%readPats) ) {
-						$s1 = substr($pat,$i,1);
-						$s2 = substr($pat,$j,1);
-						if ( $s1 eq '.' || $s2 eq '.' ) { next; }
-						
-						$X = $readPats{$pat};
-						$total += $X;
-						if ( $s1 eq $b1 && $s2 eq $b2 ) 	{ $Fb1b2 += $X;	}	
-						if ( $s1 eq $b1 ) 			{ $Eb1 += $X	}
-						if ( $s2 eq $b2 ) 			{ $Eb2 += $X	}
-					}
-
-					if ( $total != 0 ) {
-						$Fb1b2 /= $total;
-						$Eb1 /= $total;
-						$Eb2 /= $total;
-						if ( $Fb1b2 == 0 || $Eb1 == 0 || $Eb2 == 0 ) {
-							print MUT "\t1";
-							print JAC "\t1";
-							print EXP "\t1";
-							print JOP "\t1";
-							next;
-						}
-					} else {
-						print MUT "\t1";
-						print EXP "\t1";
-						print JAC "\t1";
-						print JOP "\t1";
-						next;
-					}
-
-					$mn1 = min($Eb1,$Fb1); $mn2 = min($Eb2,$Fb2); $mnA = min($mn2,$mn1);
-					$mx1 = max($Eb1,$Fb1); $mx2 = max($Eb2,$Fb2);
-					$mutd = 1 - $Fb1b2**2/($mx1*$mx2);
-					$jacc = 1 - $Fb1b2/($mx1+$mx2-$Fb1b2);
-					$expd = 1 - (($Fb1b2*$mnA)/($mx1*$mx2));
-					$njop = 1 - 2*$Fb1b2;
-					print JAC "\t$jacc";
-					print MUT "\t$mutd";
-					print EXP "\t$expd";
-					print JOP "\t$njop";
-				}
-			}
-			print MUT "\n";
-			print JAC "\n";
-			print EXP "\n";
-			print JOP "\n";
-		}
-	}
-	close(MUT);
-	close(JAC);
-	close(EXP);
-	close(JOP);
+	store(\%readPats,$patFile);
 }
