@@ -8,9 +8,10 @@ PARAM_FILE_DATE="2015-01-29"
 INS_T=0.25				# threshold for insertion refinement
 DEL_T=0.60				# threshold for deletion refinement
 SKIP_E=0				# skip reference elongation
+MIN_LEN=75				# relaxed threshold for UTR elongation with SAM
 
 # STAGES
 MATCH_PROG="BLAT"
 SORT_PROG="BLAT"
-ALIGN_PROG="BLAT"
+ALIGN_PROG="SAM BLAT"
 ASSEM_PROG="SSW"

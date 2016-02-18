@@ -98,7 +98,6 @@ SSW=$spath/ssw_$OS
 A2M=$Lspath/align2model_$OS
 RSCRIPT="$(which Rscript) --vanilla"
 
-
 # select cat for reading reads
 if [ ${LEFT: -3} == ".gz" ];then
 	CAT="zcat"
@@ -125,13 +124,6 @@ else
 	phmms="none"
 fi
 
-# initialize option sets
-SAM_STAT_OPTS=""
-PARSE_SORT_OPTS=""
-COMBINE_ALIGN_OPTS=""
-BLAT_PARSE_OPTS=""
-A2M_TO_MATCH_STATS_OPTS=""
-
 # load module parameter file
 DEF_SET=$mpath/reference/consensus.fasta
 if [ -r $rpath/defaults.sh ];then
@@ -154,15 +146,14 @@ else
 fi
 REF1_SET=$REF_SET
 
-# check for profiles
-if [ "$phmms" == "none" -a "$ALIGN_PROG" == "SAM" ];then
-	echo "$(basename $0) ERROR: Alignment program is SAM but cannot find pHMM directory. Using BLAT."
-	ALIGN_PROG="BLAT"
-fi
-
+# build arrays
+declare -a MATCH_PROGS=($MATCH_PROG)
+declare -a SORT_PROGS=($SORT_PROG)
+declare -a ALIGN_PROGS=($ALIGN_PROG)
+	
 # check for skip align step
 if [ "$MAX_ROUNDS" -eq "1" -a "$ASSEM_REF" -eq "1" ];then
-	ALIGN_PROG="NONE"
+	ALIGN_PROGS[0]="NONE"
 fi
 
 # define ppath
@@ -188,36 +179,16 @@ assemp=$ppath/ASSEMBLY
 refp=$ppath/GENES
 mkdir $matchp $sortp $alignp $assemp $refp
 
-# auto heuristics
-[ "$AUTO_F" -eq 1 ] && AUTO_F_OPT="-A" || AUTO_F_OPT=""
-
 # Enforce LABEL specific options
 [ "$SORT_PROG" != "LABEL" ] && LFASTM=0
 
-# BLAT PARSE options
-[ "$LFASTM" -eq "1" ] && BLAT_PARSE_OPTS="-T"
-[ "$SORT_PROG" == "BLAT" ] && BLAT_PARSE_OPTS="-C" && PARSE_SORT_OPTS="$PARSE_SORT_OPTS -G"
-[ "$ALIGN_PROG" == "BLAT" ] && BLAT_PARSE_OPTS="-C -A"
-[ "$INCL_CHIM" -eq "1" ] && BLAT_PARSE_OPTS="$BLAT_PARSE_OPTS -I"
-[ "$SKIP_E" -eq "1" ] && BLAT_PARSE_OPTS="$BLAT_PARSE_OPTS -S" && A2M_TO_MATCH_STATS_OPTS="-S"
-
-# ALIGN editing options
-[ "$ALIGN_PROG" == "BLAT" ] && COMBINE_ALIGN_OPTS="-A"
-[ "$SKIP_E" -eq "1" ] && COMBINE_ALIGN_OPTS="$COMBINE_ALIGN_OPTS -S" 
-[ "$DENOM" != "" ] && COMBINE_ALIGN_OPTS="$COMBINE_ALIGN_OPTS -O $DENOM"
-
-# SSW options
+# global program options
 SSW_OPTS="-x $SSW_X -m $SSW_M -o $SSW_O -e $SSW_E"
-
-# Counting options for SAM files
-[ "$ASSEM_REF" -eq "1" ] && SAM_STAT_OPTS="-G"
-
-# BLAT options
 BLAT_OPTS="-oneOff=1 -minIdentity=80 -tileSize=10"
 
 # FASTQ converter/QC options
 FASTQ_CONV_OPTS="-Q -M -T $QUAL_THRESHOLD -L $MIN_LEN"
-[ "$PAIRED" -eq "1" -a "$ADAPTER" != "" ] && FASTQ_CONV_OPTS="$FASTQ_CONV_OPTS -c $ADAPTER"
+[ "$PAIRED" -eq "1" -a "$ADAPTER" != "" ] && FASTQ_CONV_OPTS+=" -c $ADAPTER"
 
 
 #####################
@@ -232,7 +203,7 @@ function moveProject() {
 	else
 		local outpath=${mvpath}-V$x
 		while [ -d $outpath ];do
-			x=$(expr $x + 1)
+			((x++))
 			outpath=${mvpath}-V$x
 		done
 		mv $ppath $outpath
@@ -274,6 +245,20 @@ function doBLAT() {
 	else
 		procs=1
 	fi
+
+	local options=""
+	if [ "$SORT_PROG" == "BLAT" ];then
+		if [ "$ALIGN_PROG" == "BLAT" ];then
+			options="-C -A"
+		else
+			options="-C"
+		fi
+	elif [ "$LFASTM" -eq "1" ];then 
+		options="-T"
+	fi
+	[ "$INCL_CHIM" -eq "1" ] && options+=" -I"
+	[ "$SKIP_E" -eq "1" ] && options+=" -S"
+
 ###
 cat >$script.sh  <<EOL
 #!/bin/bash
@@ -289,7 +274,7 @@ INPUT=$workdir/${prefix}-${name}_\$ID.fasta
 OUTPUT=$workdir/${prefix}-${name}_\$ID.blat
 
 $BLAT $refDB \$INPUT \$OUTPUT $BLAT_OPTS
-$spath/parseBlat.pl \$OUTPUT \$INPUT $BLAT_PARSE_OPTS -P $prefix
+$spath/parseBlat.pl \$OUTPUT \$INPUT $options -P $prefix
 EOL
 ###
 	$Lspath/interleavedSamples.pl -G $procs $queryDB $workdir/$prefix-$name > /dev/null 2>&1
@@ -419,7 +404,9 @@ function doSORT() {
 		exit
 	fi
 
-	$spath/parseSORTresults.pl $sortp/$prefix/SORT_result.txt $matchp/$prefix.match $sortp/$prefix $PARSE_SORT_OPTS -C $MIN_RC -D $MIN_RP
+	local options="-C $MIN_RC -D $MIN_RP"
+	[ "$SORT_PROG" == "BLAT" ] && options+=" -G"
+	$spath/parseSORTresults.pl $sortp/$prefix/SORT_result.txt $matchp/$prefix.match $sortp/$prefix $options
 
 	# CLEAN UP
 	cd $sortp/$prefix; tar  -cf - SORT_result.txt |gzip -4 - > $sortp/$prefix.tar.gz
@@ -445,6 +432,9 @@ function doSAM() {
 	else
 		procs=1
 	fi
+
+	local options=""
+	[ "$SKIP_E" -eq "1" ] && options+="-S"
 			
 cat >$script.sh  <<EOL
 #!/bin/bash
@@ -461,7 +451,7 @@ RUN=$workdir/${prefix}-${name}_\$ID
 MOD=$mod
 
 $A2M \$RUN -modelfile \$MOD -db \$DB
-$spath/a2mToMatchStats.pl \$RUN.a2m \$RUN.sto $A2M_TO_MATCH_STATS_OPTS
+$spath/a2mToMatchStats.pl \$RUN.a2m \$RUN.sto $options
 EOL
 
 	$Lspath/interleavedSamples.pl $queryDB $workdir/$prefix-$name -G $procs > /dev/null
@@ -491,7 +481,7 @@ function doALIGN() {
 		if [ "$ALIGN_PROG" == "SAM" ];then
 			doSAM $queryDB $prefix $name $alignp $ALIGN_PROC $LIMIT_SAM &
 		elif [ "$ALIGN_PROG" == "BLAT" ];then
-			j=$(expr $R - 1)
+			j=$(($R - 1))
 			if [ "$R" -gt 1 ];then
 				for i in $(seq $j);do
 					rm $alignp/R${i}-$name*.sto
@@ -514,11 +504,15 @@ function doALIGN() {
 	time_stamp "$prefix rough aligned reads using $ALIGN_PROG"
 
 	# CREATE NEW REFERENCES
+	local options="-C $MIN_CA -F $MIN_FA"
+	[ "$ALIGN_PROG" == "BLAT" ] && options+=" -A"
+	[ "$SKIP_E" -eq "1" ] && options+=" -S" 
+	[ "$DENOM" != "" ] && options+=" -O $DENOM"
 	if [ "$ALIGN_PROG" != "NONE" ];then
 		for i in $sortp/$prefix-*.fa;do
 			name=$(basename $i .fa)
 			gene=${name#*-}
-			$spath/combineALIGNstats.pl $COMBINE_ALIGN_OPTS -N $gene -C $MIN_CA -F $MIN_FA $alignp/R*-${gene}_????.sto > $refp/$name.ref &
+			$spath/combineALIGNstats.pl -N $gene $options $alignp/R*-${gene}_????.sto > $refp/$name.ref &
 
 			# consider placing burden on the function itself to do the cleanup
 			[ "$ALIGN_PROG" == "BLAT" -a "$R" -gt 1 ] && rm $alignp/R*-${gene}_????.{match,nomatch,chim,fasta,class,blat} &
@@ -653,6 +647,9 @@ function ASSEM_RUN_SSW() {
 	local doGrid=$5
 	local script=$assemp/F${iter}-${gene}
 
+	local options=""
+	[ "$ASSEM_REF" -eq "1" ] && options+=" -G"
+
 ###
 cat > $script.sh  <<EOL
 #!/bin/bash
@@ -670,7 +667,7 @@ STAT=$assemp/F${iter}-${gene}-\$ID.sto
 
 $SSW -s -c -h -r $SSW_OPTS $ref \$FASTQ > \$SAM 2> /dev/null
 $spath/winnowSAM.pl -I \$SAM
-$spath/samStats.pl $SAM_STAT_OPTS $ref \$SAM \$STAT
+$spath/samStats.pl $options $ref \$SAM \$STAT
 EOL
 ###
 
@@ -757,9 +754,10 @@ EOL
 	$spath/catSAMfiles.pl ${prefix2}-*.sam > ${final}.sam
 
 	# DO the CALL step
-	local callPhaseArgs="-C $MIN_C -F $MIN_F -I $MIN_FI -D $MIN_FD -Q $MIN_AQ -T $MIN_TCC -M $MIN_CONF -S $SIG_LEVEL $AUTO_F_OPT"
+	local options="-C $MIN_C -F $MIN_F -I $MIN_FI -D $MIN_FD -Q $MIN_AQ -T $MIN_TCC -M $MIN_CONF -S $SIG_LEVEL"
+	[ "$AUTO_F" -eq 1 ] && options+=" -A"
 	[ "$PAIRED" -eq "1" ] && $spath/getPairingStats.pl ${prefix2}-*.sto > $final-pairingStats.txt
-	$spath/call.pl -P -G $callPhaseArgs $pstats $ref $final $assemp/V${iter}-${gene}-*.sto
+	$spath/call.pl -P -G $options $pstats $ref $final $assemp/V${iter}-${gene}-*.sto
 }
 
 
@@ -770,7 +768,7 @@ function doPHASING() {
 	local doGrid=0
 	local script=${final}-phasing
 	local n=$(wc -l < ${final}-variants.txt)
-	n=$(( $n - 1 ))
+	((n--))
  	local ops=$(( (($n*$n)-$n)/2 ))
 	if [ "$n" -lt "2" ];then
 		rm ${final}-pats.sto ${final}-vars.sto
@@ -867,7 +865,7 @@ function REFINE_ASSEMBLY_CALL_VARIANTS() {
 		if [ $lastScore -lt $currentScore ];then
 			if [ $iter -lt $MAX_ITER_ASSEM ];then
 				# generate next reference
-				newRef="$assemp/F$(expr $iter + 1)-$gene.ref"
+				newRef="$assemp/F$(( $iter + 1 ))-$gene.ref"
 				$spath/combineSAMstats.pl $theRef $COMBINE_SAM_OPTS $theStats > $newRef
 			fi
 			rm $theStats
@@ -884,7 +882,7 @@ function REFINE_ASSEMBLY_CALL_VARIANTS() {
 	else
 		if [ $lastScore -gt $currentScore ];then
 			rm $theRef $theSAM $theBAM			
-			iter=$(expr $iter - 1)
+			((iter--))
 		fi
 		doCALLS $iter $gene $final $procs $doGrid
 	fi
@@ -900,7 +898,7 @@ function ASSEMBLE_REPORT() {
 	local gene=$1
 	local final=$ppath/$gene
 	local fastq=$assemp/$gene.fastq
-	local size=$(expr $(wc -l < $fastq) / 4)
+	local size=$(( $(wc -l < $fastq) / 4 ))
 	local doGrid=0
 	local procs=0
 	local last_iter=1
@@ -943,8 +941,9 @@ function ASSEMBLE_REPORT() {
 	$RSCRIPT $spath/heuristicDiagram.R $MIN_AQ $MIN_F $MIN_TCC $MIN_CONF ${final}-allAlleles.txt ${final}-heuristics.pdf > /dev/null 2>&1
 	$spath/amendConsensus.pl -C $MIN_C -N $RUN -S -F $MIN_AMBIG ${final}.fasta ${final}-variants.txt -P $ppath
 	if [ -r ${final}-insertions.txt -a -r ${final}-deletions.txt ];then
-		local callPhaseArgs="-C $MIN_C -F $MIN_F -I $MIN_FI -D $MIN_FD -Q $MIN_AQ -T $MIN_TCC -M $MIN_CONF -S $SIG_LEVEL $AUTO_F_OPT"
-		$spath/vcfGenerator.pl $callPhaseArgs ${final}.fasta ${final}-allAlleles.txt ${final}-insertions.txt ${final}-deletions.txt > ${final}.vcf
+		local options="-C $MIN_C -F $MIN_F -I $MIN_FI -D $MIN_FD -Q $MIN_AQ -T $MIN_TCC -M $MIN_CONF -S $SIG_LEVEL"
+		[ "$AUTO_F" -eq 1 ] && options+=" -A"
+		$spath/vcfGenerator.pl $options ${final}.fasta ${final}-allAlleles.txt ${final}-insertions.txt ${final}-deletions.txt > ${final}.vcf
 	fi
 
 	$SAMTOOLS view -bS ${final}.sam > ${final}.bam 2> /dev/null
@@ -1006,7 +1005,7 @@ function doPostProcessing() {
 	fi
 	raw1=$(cat $ppath/QC_log.txt|$spath/sumField.pl -F 2)
 	raw2=$(cat $ppath/QC_log.txt|$spath/sumField.pl -F 3)
-	raw3=$(expr $raw1 - $raw2)
+	raw3=$(( $raw1 - $raw2 ))
 	read raw pats <<<$(grep '>' $ppath/R0.fa|cut -f2 -d'%'|$spath/sumField.pl -S)
 	echo -e "1-initial\t${raw1}\tNA\tNA" >> $ppath/READ_COUNTS.txt
 	echo -e "2-failQC\t${raw3}\tNA\tNA" >> $ppath/READ_COUNTS.txt
@@ -1122,6 +1121,47 @@ function doPostProcessing() {
 	mv $assemp $ppath/intermediate/4-ASSEMBLE_$ASSEM_PROG
 }
 
+function setPrograms() {
+	local i=$(($R-1))
+	if [ -z "${MATCH_PROGS[$i]}" ];then
+		MATCH_PROG=${MATCH_PROGS[${#MATCH_PROGS[@]}-1]}
+	elif [[ "${MATCH_PROGS[$i]}" =~ ^(BLAT)$ ]];then
+		MATCH_PROG=${MATCH_PROGS[$i]}
+	else
+		MATCH_PROG="BLAT"
+		MATCH_PROGS[$i]="BLAT"
+		time_stamp "match program '${MATCH_PROGS[$i]}' requested but not found. Using $MATCH_PROG"
+	fi
+
+	if [ -z "${SORT_PROGS[$i]}" ];then
+		SORT_PROG=${SORT_PROGS[${#SORT_PROGS[@]}-1]}
+	elif [[ "${SORT_PROGS[$i]}" =~ ^(BLAT|LABEL)$ ]];then
+		SORT_PROG=${SORT_PROGS[$i]}
+	else
+		SORT_PROG="BLAT"
+		SORT_PROGS[$i]="BLAT"
+		time_stamp "sort program '${SORT_PROGS[$i]}' requested but not found. Using $SORT_PROG"
+	fi
+
+	if [ -z "${ALIGN_PROGS[$i]}" ];then
+		ALIGN_PROG=${ALIGN_PROGS[${#ALIGN_PROGS[@]}-1]}
+	elif [[ "${ALIGN_PROGS[$i]}" =~ ^(BLAT|SAM|NONE)$ ]];then
+		ALIGN_PROG=${ALIGN_PROGS[$i]}
+	else
+		ALIGN_PROG="SAM"
+		ALIGN_PROGS[$i]="SAM"
+		time_stamp "align program '${ALIGN_PROGS[$i]}' requested but not found. Trying $ALIGN_PROG"
+	fi
+
+	# check for profiles
+	if [ "$phmms" == "none" -a "$ALIGN_PROG" == "SAM" ];then
+		time_stamp "align program is SAM but cannot find pHMM directory. Using BLAT"
+		ALIGN_PROG="BLAT"
+		ALIGN_PROGS[$i]="BLAT"
+	fi
+}
+
+
 ### START ####
 time_stamp "started run '$RUN'"
 if [ "$PAIRED" -eq "1" ];then
@@ -1160,7 +1200,10 @@ if [ "$ASSEM_REF" -eq "1" ];then
 			rm $sortp/R0/R0-${MODULE2}_????.class
 		fi
 	fi
-	$spath/parseSORTresults.pl $sortp/R0/SORT_result.txt $REF_SET $refp/R0 $PARSE_SORT_OPTS -C 0 -D 0
+
+	local options="-C $MIN_RC -D $MIN_RP"
+	[ "$SORT_PROG" == "BLAT" ] && options+=" -G"
+	$spath/parseSORTresults.pl $sortp/R0/SORT_result.txt $REF_SET $refp/R0 $options
 	cd $sortp/R0; tar  -cf - SORT_result.txt |gzip -4 - > $sortp/R0.tar.gz
 	cd - > /dev/null; rm -rf $sortp/R0
 
@@ -1180,12 +1223,13 @@ fi
 
 QUERY_SET=$ppath/R0.fa
 while [ $R -le $MAX_ROUNDS ];do
+	setPrograms
 	doRound $QUERY_SET R$R
 	MIN_RC=1
 	MIN_RP=1
 
 	if [ -s $QUERY_SET ];then
-		R=$(expr $R + 1)
+		((R++))
 	else
 		break
 	fi
