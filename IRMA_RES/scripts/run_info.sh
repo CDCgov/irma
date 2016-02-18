@@ -44,10 +44,13 @@ module_name	MODULE2	$MODULE2
 module_param_call	MODULE $MODULE
 parameter_file_name	PARAM_FILE_NAME	$PARAM_FILE_NAME
 parameter_file_version	PARAM_FILE_VERSION	$PARAM_FILE_VERSION
-match_step_program	MATCH_PROG	$MATCH_PROG$MATCH_OPTS
-align_step_program	ALIGN_PROG	$ALIGN_PROG$ALIGN_OPTS
-sort_step_program	SORT_PROG	$SORT_PROG$SORT_OPTS
-assemble_step_program	ASSEM_PROG	$ASSEM_PROG$ASSEM_OPTS
+match_last_program	MATCH_PROG	$MATCH_PROG$MATCH_OPTS
+align_last_program	ALIGN_PROG	$ALIGN_PROG$ALIGN_OPTS
+sort_last_program	SORT_PROG	$SORT_PROG$SORT_OPTS
+assemble_last_program	ASSEM_PROG	$ASSEM_PROG$ASSEM_OPTS
+match_programs	MATCH_PROGS	${MATCH_PROGS[@]}
+sort_programs	SORT_PROGS	${SORT_PROGS[@]}
+align_programs	ALIGN_PROGS	${ALIGN_PROGS[@]}
 profiles	phmms	$phmms
 do_not_merge_read_pairs	NO_MERGE	$NO_MERGE
 starting_reference	REF_SET	$REF1_SET

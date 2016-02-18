@@ -771,8 +771,7 @@ function doPHASING() {
 	((n--))
  	local ops=$(( (($n*$n)-$n)/2 ))
 	if [ "$n" -lt "2" ];then
-		rm ${final}-pats.sto ${final}-vars.sto
-		return;
+		return 0;
 	elif [ "$n" -gt "$LIMIT_PHASE" -a "$GRID_ON" -eq "1" ];then
 		procs=$PHASE_PROC
 		doGrid=1

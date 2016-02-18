@@ -39,19 +39,19 @@ INCL_CHIM=$INCL_CHIM		# includes chimera or not [0,1]
 
 ## MATCH STEP
 MATCH_PROC=$MATCH_PROC		# grid maximum processes for the MATCH
-MATCH_PROG="$MATCH_PROG"	# match (all or any match) program [BLAT]
+MATCH_PROG="${MATCH_PROGS[@]}"	# match (all or any match) program [BLAT]
 MIN_RP=$MIN_RP		# minimum read pattern count to continue
 MIN_RC=$MIN_RC		# minimum read count to continue
 
 ## SORT STEP 
-SORT_PROG="$SORT_PROG"	# [LABEL,BLAT]
+SORT_PROG="${SORT_PROGS[@]}"	# [LABEL,BLAT]
 SORT_PROC=$SORT_PROC		# currently not used
 NONSEGMENTED=$NONSEGMENTED		# segmented! [0,1]
 # LABEL
 LFASTM=$LFASTM		# LABEL sorting fast-mode
 
 ## ALIGN STEP ##
-ALIGN_PROG="$ALIGN_PROG"	# rough assembly / alignment to working reference [SAM,BLAT]
+ALIGN_PROG="${ALIGN_PROGS[@]}"	# rough assembly / alignment to working reference [SAM,BLAT]
 ALIGN_PROC=$ALIGN_PROC		# grid maximum processes for the rough align
 
 ### FINISHING ASSEMBLY ###
