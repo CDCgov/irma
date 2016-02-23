@@ -283,7 +283,7 @@ EOL
 		rm $script.{o,sh}
 	else 
 		chmod 755 $script.sh
-		$PARALLEL --workdir $workdir -j $SINGLE_LOCAL_PROC $script.sh {} ::: $(seq $procs) > /dev/null 2>&1
+		$PARALLEL --workdir $workdir -j $procs $script.sh {} ::: $(seq $procs) > /dev/null 2>&1
 		rm $script.sh
 	fi
 }
@@ -406,6 +406,7 @@ function doSORT() {
 
 	local options="-C $MIN_RC -D $MIN_RP"
 	[ "$SORT_PROG" == "BLAT" ] && options+=" -G"
+	[ "$SORT_GROUPS" != "" ] && options+=" -P $SORT_GROUPS"
 	$spath/parseSORTresults.pl $sortp/$prefix/SORT_result.txt $matchp/$prefix.match $sortp/$prefix $options
 
 	# CLEAN UP
@@ -460,7 +461,7 @@ EOL
 		rm $script.{o,sh}
 	else
 		chmod 755 $script.sh
-		$PARALLEL --workdir $workdir -j $SINGLE_LOCAL_PROC $script.sh {} ::: $(seq $procs) > /dev/null 2>&1
+		$PARALLEL --workdir $workdir -j $procs $script.sh {} ::: $(seq $procs) > /dev/null 2>&1
 		rm $script.sh
 	fi
 	rm $workdir/${prefix}-${name}_????.{fasta,a2m}
@@ -676,7 +677,7 @@ EOL
 		qsub -t 1-$ASSEMBLE_PROC:1 -N F${iter}-$gene -sync y -wd $assemp -j y -o $script.o $script.sh > /dev/null 2>&1
 	else
 		chmod 755 $script.sh
-		$PARALLEL --workdir $ppath -j $SINGLE_LOCAL_PROC $script.sh {} ::: $(seq $procs)
+		$PARALLEL --workdir $ppath -j $procs $script.sh {} ::: $(seq $procs)
 	fi
 	$spath/catSAMfiles.pl $assemp/F${iter}-${gene}-*.sam > $assemp/F${iter}-$gene.sam
 	rm $script.sh
@@ -747,7 +748,7 @@ EOL
 		qsub -t 1-$ASSEMBLE_PROC:1 -N $prefix -sync y -wd $assemp -j y -o $assemp/${prefix}.o $assemp/${prefix}.sh > /dev/null 2>&1
 	else
 		chmod 755 $assemp/${prefix}.sh
-		$PARALLEL --workdir $ppath -j $SINGLE_LOCAL_PROC $assemp/${prefix}.sh {} ::: $(seq $procs)
+		$PARALLEL --workdir $ppath -j $procs $assemp/${prefix}.sh {} ::: $(seq $procs)
 	fi
 
 	# GROUP
@@ -808,7 +809,7 @@ EOL
 		rm $script.{o,sh} ${final}-pats.sto ${final}-vars.sto
 	else 
 		chmod 755 $script.sh
-		$PARALLEL --workdir $ppath -j $SINGLE_LOCAL_PROC $script.sh {} ::: $(seq $procs) > /dev/null 2>&1
+		$PARALLEL --workdir $ppath -j $procs $script.sh {} ::: $(seq $procs) > /dev/null 2>&1
 		rm ${script}.sh ${final}-pats.sto ${final}-vars.sto
 	fi
 
@@ -1202,6 +1203,7 @@ if [ "$ASSEM_REF" -eq "1" ];then
 
 	local options="-C $MIN_RC -D $MIN_RP"
 	[ "$SORT_PROG" == "BLAT" ] && options+=" -G"
+	[ "$SORT_GROUPS" != "" ] && options+=" -P $SORT_GROUPS"
 	$spath/parseSORTresults.pl $sortp/R0/SORT_result.txt $REF_SET $refp/R0 $options
 	cd $sortp/R0; tar  -cf - SORT_result.txt |gzip -4 - > $sortp/R0.tar.gz
 	cd - > /dev/null; rm -rf $sortp/R0

@@ -35,6 +35,7 @@ MIN_RC=15		# minimum read count to continue
 ## SORT STEP 
 SORT_PROG="BLAT"	# [LABEL,BLAT]
 SORT_PROC=80		# currently not used
+SORT_GROUPS=""		# if blank, default is "PB2,PB1,PA,HA,NP,NA,MP,NS"
 NONSEGMENTED=0		# segmented! [0,1]
 # LABEL
 LFASTM=1		# LABEL sorting fast-mode
