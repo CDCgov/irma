@@ -179,9 +179,6 @@ assemp=$ppath/ASSEMBLY
 refp=$ppath/GENES
 mkdir $matchp $sortp $alignp $assemp $refp
 
-# Enforce LABEL specific options
-[ "$SORT_PROG" != "LABEL" ] && LFASTM=0
-
 # global program options
 SSW_OPTS="-x $SSW_X -m $SSW_M -o $SSW_O -e $SSW_E"
 BLAT_OPTS="-oneOff=1 -minIdentity=80 -tileSize=10"
@@ -253,7 +250,7 @@ function doBLAT() {
 		else
 			options="-C"
 		fi
-	elif [ "$LFASTM" -eq "1" ];then 
+	elif [ "$SORT_PROG" == "LABEL" -a "$LFASTM" -eq "1" ];then 
 		options="-T"
 	fi
 	[ "$INCL_CHIM" -eq "1" ] && options+=" -I"
@@ -318,7 +315,7 @@ function doMATCH() {
 	wait
 
 	# LABEL fast mode consoldiation
-	if [ $LFASTM -eq "1" -a $SORT_PROG == "LABEL" ];then
+	if [ $LFASTM -eq "1" -a "$SORT_PROG" == "LABEL" ];then
 		cat $matchp/${prefix}-${name}_????.match.HA > $matchp/${prefix}.match.HA 2> /dev/null &
 		cat $matchp/${prefix}-${name}_????.match.NA > $matchp/${prefix}.match.NA 2> /dev/null &
 		cat $matchp/${prefix}-${name}_????.match.OG > $matchp/${prefix}.match.OG 2> /dev/null &
@@ -355,7 +352,7 @@ function doSORT() {
 
 	if [ "$SORT_PROG" == "LABEL" ];then
 		mkdir $sortp/${prefix}
-		if [ $LFASTM -eq "1" ];then
+		if [ "$LFASTM" -eq "1" ];then
 			groupFile=""
 
 			for groupFile in $matchp/${prefix}.match.*;do
@@ -993,7 +990,7 @@ function doPostProcessing() {
 	time_stamp 'saved unmatched read patterns'
 
 	# CLEAN UP
-	[ $LFASTM -eq "1" ] && rm $matchp/R?.match.{HA,NA,OG}
+	[ "$LFASTM" -eq "1" -a "$SORT_PROG" == "LABEL" ] && rm $matchp/R?.match.{HA,NA,OG}
 
 	### experimental ###
 	echo -e "Record\tReads\tPatterns\tPairsAndWidows" >> $ppath/READ_COUNTS.txt
