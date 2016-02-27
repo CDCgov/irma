@@ -3,7 +3,7 @@ PROGRAM="Iterative Refinement Meta-Assembler (IRMA)"
 AUTHOR="Samuel S. Shepard"
 EMAIL="vfn4@cdc.gov"
 AFFIL="NCIRD/OID/CDC"
-DATE="7 JAN 2016"
+DATE="1 MAR 2016"
 VERSION="0.6.0"
 LICENSE="GPL version 3. This program comes with ABSOLUTELY NO WARRANTY. This is free software.
 You are welcome to redistribute it under certain conditions. See:  <http://www.gnu.org/licenses/>.
@@ -145,7 +145,7 @@ else
 	CONFIG=$(echo ${MODULE_CONFIG}|-f2 -d'-')
 	if [ -r "$mpath/config/${CONFIG}.sh" ];then
 		source $mpath/config/${CONFIG}.sh
-	else
+	elif [ "$MODULE" != "$CONFIG" ];then
 		echo "IRMA ERROR: Configuration '$MODULE_CONFIG' not found. Valid configs are:"
 		tmp=" "
 		for i in $mpath/config/*sh;do tmp="$tmp $(basename $i .sh)";done
