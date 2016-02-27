@@ -11,13 +11,13 @@ Components of this pipeline have non-commercial resistrictions. See: IRMA_RES/sc
 
 if [ $# -eq 4 ];then
 	PAIRED=1
-	MODULE=$1
+	MODULE_CONFIG=$1
 	LEFT=$2			# R1 / left FASTQ
 	RIGHT=$3		# R2 / right FASTQ
 	RUN=$4			# name of the run
 elif [ $# -eq 3 ];then
 	PAIRED=0
-	MODULE=$1
+	MODULE_CONFIG=$1
 	LEFT=$2			# single paired end FASTQ
 	RIGHT=""
 	RUN=$3			# name of the run
@@ -25,8 +25,8 @@ else
 	echo -e "$PROGRAM, v$VERSION ($DATE)"
 	echo -e "$AUTHOR ($AFFIL), $EMAIL\n"
 	echo -e "$LICENSE\n\nUSAGE:"
-	echo -e "(PAIRED-END):\t$(basename $0) <MODULE> <R1.fastq.gz/R1.fastq> <R2.fastq.gz/R2.fastq> <run_name>"
-	echo -e "(SINGLE-END):\t$(basename $0) <MODULE> <fastq/fastq.gz> <run_name>\n"
+	echo -e "(PAIRED-END):\t$(basename $0) <MODULE|MODULE-CONFIG> <R1.fastq.gz|R1.fastq> <R2.fastq.gz|R2.fastq> <sample_name>"
+	echo -e "(SINGLE-END):\t$(basename $0) <MODULE|MODULE-CONFIG> <fastq|fastq.gz> <sample_name>\n"
 	exit 1
 fi
 
@@ -47,7 +47,7 @@ function err_test() {
 
 function time_stamp() {
 	local t=$(date +"%Y-%m-%d %k:%M:%S")
-	echo -e "[$t]\tIRMA/$MODULE $1"
+	echo -e "[$t]\tIRMA/$MODULE_CONFIG $1"
 }
 ###########################
 
@@ -99,23 +99,27 @@ A2M=$Lspath/align2model_$OS
 RSCRIPT="$(which Rscript) --vanilla"
 
 # select cat for reading reads
-if [ ${LEFT: -3} == ".gz" ];then
-	CAT="zcat"
+if [ "${#LEFT}" -gt "2" ];then
+	if [ "${LEFT: -3}" == ".gz" ];then
+		CAT="zcat"
+	else
+		CAT="cat"
+	fi
 else
 	CAT="cat"
 fi
 
 # check for module
-MODULE2=$(echo $MODULE|cut -f1 -d'-')
-if [ ! -d $rpath/modules/$MODULE2 ];then
-	echo "IRMA ERROR: $MODULE2 not found."
+MODULE=$(echo ${MODULE_CONFIG}|cut -f1 -d'-')
+if [ ! -d "$rpath/modules/$MODULE" ];then
+	echo "IRMA ERROR: $MODULE not found."
 	exit 1
 else
-	mpath=$rpath/modules/$MODULE2	
+	mpath=$rpath/modules/$MODULE	
 fi
 
 # load reference dataset paths
-Lmpath=$(dirname $LABEL)/LABEL_RES/training_data/irma-$MODULE2
+Lmpath=$(dirname $LABEL)/LABEL_RES/training_data/irma-$MODULE
 if [ -n "$(shopt -s nullglob;echo $rpath/profiles/*.mod)" ];then
 	phmms=$rpath/profiles
 elif [ -r $Lmpath ];then
@@ -135,14 +139,19 @@ fi
 # init variables from config files
 [ -r $mpath/init.sh ] && source $mpath/init.sh
 
-if [ -r "$mpath/config/$MODULE.sh" ];then
-	source $mpath/config/$MODULE.sh
+if [ -r "$mpath/config/${MODULE_CONFIG}.sh" ];then
+	source $mpath/config/${MODULE_CONFIG}.sh
 else
-	echo "IRMA ERROR: Configuration '$MODULE' not found. Valid configs are:"
-	tmp=" "
-	for i in $mpath/config/*sh;do tmp="$tmp $(basename $i .sh)";done
-	echo $tmp
-	exit 0
+	CONFIG=$(echo ${MODULE_CONFIG}|-f2 -d'-')
+	if [ -r "$mpath/config/${CONFIG}.sh" ];then
+		source $mpath/config/${CONFIG}.sh
+	else
+		echo "IRMA ERROR: Configuration '$MODULE_CONFIG' not found. Valid configs are:"
+		tmp=" "
+		for i in $mpath/config/*sh;do tmp="$tmp $(basename $i .sh)";done
+		echo $tmp
+		exit 0
+	fi
 fi
 REF1_SET=$REF_SET
 
@@ -357,12 +366,12 @@ function doSORT() {
 
 			for groupFile in $matchp/${prefix}.match.*;do
 				local geneGroup=$(basename $groupFile|cut -f3 -d'.')
-				doLABEL $groupFile "$MODULE2-$geneGroup" "$MODULE2-$geneGroup" $sortp/${prefix} $LIMIT_LABEL &
+				doLABEL $groupFile "$MODULE-$geneGroup" "$MODULE-$geneGroup" $sortp/${prefix} $LIMIT_LABEL &
 			done
 			wait
 		else
 			# SORT using LABEL full
-			doLABEL $matchp/${prefix}.match $MODULE2 $MODULE2 $sortp/${prefix} $LIMIT_LABEL
+			doLABEL $matchp/${prefix}.match $MODULE $MODULE $sortp/${prefix} $LIMIT_LABEL
 		fi
 		cat $sortp/${prefix}/SORTED_*.tab > $sortp/${prefix}/SORT_result.txt 2> /dev/null
 	elif [ "$SORT_PROG" == "BLAT" ];then
@@ -1188,13 +1197,13 @@ if [ "$ASSEM_REF" -eq "1" ];then
 	mkdir $sortp/R0
 	# Sort out the references
 	if [ "$SORT_PROG" == "LABEL" ];then
-		doLABEL $REF_SET $MODULE2 $MODULE2 $sortp/R0 $LIMIT_LABEL
+		doLABEL $REF_SET $MODULE $MODULE $sortp/R0 $LIMIT_LABEL
 		cat $sortp/R0/SORTED_*.tab > $sortp/R0/SORT_result.txt 2> /dev/null
 	elif [ "$SORT_PROG" == "BLAT" ];then
 		if [ -r "$DEF_SET" ];then
-			doBLAT $DEF_SET $REF_SET R0 $MODULE2 $sortp/R0 $SORT_PROC $LIMIT_BLAT
-			cat $sortp/R0/R0-${MODULE2}_????.class > $sortp/R0/SORT_result.txt
-			rm $sortp/R0/R0-${MODULE2}_????.class
+			doBLAT $DEF_SET $REF_SET R0 $MODULE $sortp/R0 $SORT_PROC $LIMIT_BLAT
+			cat $sortp/R0/R0-${MODULE}_????.class > $sortp/R0/SORT_result.txt
+			rm $sortp/R0/R0-${MODULE}_????.class
 		fi
 	fi
 
@@ -1214,7 +1223,7 @@ if [ "$ASSEM_REF" -eq "1" ];then
 		cat $refp/R0-*.ref > $refp/R0.refs; rm $refp/R0-*.fa; REF_SET=$refp/R0.refs
 		time_stamp 'sorted user supplied reference set'
 	else
-		time_stamp "run aborted, sequences in $REF_SET not ${MODULE2}-like"
+		time_stamp "run aborted, sequences in $REF_SET not ${MODULE}-like"
 		moveProject; time_stamp 'finished!'; exit
 	fi
 fi

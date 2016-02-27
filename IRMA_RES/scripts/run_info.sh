@@ -40,8 +40,8 @@ last_git_commit_hash	LAST_COMMIT	$LAST_COMMIT
 sample	RUN	$RUN
 paired_end_reads	PAIRED	$PAIRED
 data	$INPUT_READ_DATA
-module_name	MODULE2	$MODULE2
-module_param_call	MODULE $MODULE
+module_name	MODULE	$MODULE
+module_param_call	MODULE_CONFIG $MODULE_CONFIG
 parameter_file_name	PARAM_FILE_NAME	$PARAM_FILE_NAME
 parameter_file_version	PARAM_FILE_VERSION	$PARAM_FILE_VERSION
 match_last_program	MATCH_PROG	$MATCH_PROG$MATCH_OPTS
