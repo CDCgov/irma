@@ -26,7 +26,10 @@ MIN_RC=15		# minimum read count to continue
 ## SORT STEP 
 SORT_PROG="BLAT"	# [LABEL,BLAT]
 SORT_PROC=80		# currently not used
-NONSEGMENTED=0		# segmented! [0,1]
+NONSEGMENTED=0
+# Pattern list to group gene segment lineages into gene for primary/secondary sorting.
+SORT_GROUPS="PB2,PB1,PA,HA,NP,NA,MP,NS"
+
 # LABEL
 LFASTM=1		# LABEL sorting fast-mode
 

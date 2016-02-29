@@ -44,35 +44,46 @@ foreach $target ( %counts ) {
 	}
 }
 
-if ( defined($patternList) ) {
-	@patterns = split(',',$patternList);
-} else {
-	@patterns = ('HA','NA','PA','PB1','PB2','NS','MP','NP');
-}
-
+# choose primary or secondary between groups
 open(OUT,'>',$ARGV[2].'.txt') or die("Cannot open $ARGV[0].txt\n");
-@sorted = sort { $counts{$a} <=> $counts{$b} } keys(%counts);
-%best = %bCount = ();
-foreach $gene ( @sorted ) {
+@genes = sort { $counts{$b} <=> $counts{$a} } keys(%counts);
+foreach $gene ( @genes ) {
 	print OUT $gene,"\t",$counts{$gene},"\t",$rCounts{$gene},"\n";
-	foreach $pat ( @patterns ) {
-		if ( $gene =~ /$pat/ && $counts{$gene} > $bCount{$pat} ) {
-			$best{$pat} = $gene;
-			$bCount{$pat} = $counts{$gene};
-		}
+	if  ( $counts{$gene} >= $minimumRPcount && $rCounts{$gene} >= $minimumRcount ) {
+		$valid{$gene} = 1;
+	} else {
+		$valid{$gene} = 0;
 	}
 }
 close(OUT);
 
-foreach $pat ( @patterns ) {
-	if ( $bCount{$pat} > 0 ) {
-		$valid{$best{$pat}} = 1;
+if ( defined($patternList) && length($patternList) > 0) {
+	@patterns = split(',',$patternList);
+	if ( scalar(@patterns) == 1 && $patterns[0] eq '__ALL__' ) {
+		for($i=1;$i<scalar(@genes);$i++) {
+			$valid{$genes[$i]} = 0;
+		}
+		@patterns = ();
+	}
+
+	%genesByPat = ();
+	foreach $pat ( @patterns ) {
+		foreach $gene ( @genes ) {
+			# can enforce FCFS uniqueness for each pat
+			if ( $gene =~ /$pat/ ) {
+				$genesByPat{$pat}{$gene} = $counts{$gene};
+			}
+		}
+		@geneList = sort { $genesByPat{$pat}{$b} <=> $genesByPat{$pat}{$a} } keys(%{$genesByPat{$pat}});
+		for($i=1;$i<scalar(@geneList);$i++) {
+			$valid{$geneList[$i]} = 0;
+		}
 	}
 }
-
+	
 %handles = ();
-foreach $gene ( @sorted ) {
-	if ( $valid{$gene} > 0 && $counts{$gene} >= $minimumRPcount && $rCounts{$gene} >= $minimumRcount ) {
+foreach $gene ( @genes ) {
+	if ( $valid{$gene} > 0 ) {
 		$file = $ARGV[2].'-'.$gene.'.fa';
 	} else {
 		$file = $ARGV[2].'-'.$gene.'.fa.2';
@@ -80,8 +91,7 @@ foreach $gene ( @sorted ) {
 	open($handles{$gene},'>',$file) or die("Cannot open $file for writing.\n");
 }
 
-open(IN,'<',$ARGV[1]) or die("Cannot open $ARGV[1] for reading.\n");
-$/ = '>';
+open(IN,'<',$ARGV[1]) or die("Cannot open $ARGV[1] for reading.\n"); $/ = '>';
 while( $record = <IN> ) {
 	chomp($record);
 	@lines = split(/\r\n|\n|\r/, $record);
@@ -98,3 +108,8 @@ while( $record = <IN> ) {
 	print $handle '>',$header,"\n",$sequence,"\n";
 }
 close(IN);
+
+foreach $gene ( keys(%handles) ) {
+	$fh = $handles{$gene};
+	close($fh);
+}

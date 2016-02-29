@@ -1,6 +1,6 @@
 # MODULE SPECIFIC
 NONSEGMENTED=1				# non-segmented virus
-SORT_GROUPS="EBOV"			# Pattern list for sorting
+SORT_GROUPS="__ALL__"			# Pattern list for sorting
 
 # STAGES
 MATCH_PROG="BLAT"
