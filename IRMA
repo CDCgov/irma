@@ -120,9 +120,9 @@ fi
 
 # load reference dataset paths
 Lmpath=$(dirname $LABEL)/LABEL_RES/training_data/irma-$MODULE
-if [ -n "$(shopt -s nullglob;echo $rpath/profiles/*.mod)" ];then
-	phmms=$rpath/profiles
-elif [ -r $Lmpath ];then
+if [ -n "$(shopt -s nullglob;echo $mpath/profiles/*.mod)" ];then
+	phmms=$mpath/profiles
+elif [ -r "$Lmpath" ];then
 	phmms=$Lmpath
 else
 	phmms="none"
