@@ -7,7 +7,7 @@ PARAM_FILE_DATE="2015-01-29"
 # PERFORMANCE
 MATCH_PROC=16				# grid maximum processes for the MATCH
 ALIGN_PROC=16				# grid maximum processes for the rough align
-ASSEMBLE_PROC=16			# grid maximum processes for assembly
+ASSEM_PROC=16			# grid maximum processes for assembly
 
 # CONSENSUS REFINEMENT & READ SELECTION
 QUAL_THRESHOLD=19			# average or median threshold for QUALITY reads

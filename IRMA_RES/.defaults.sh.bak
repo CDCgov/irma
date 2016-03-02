@@ -33,10 +33,11 @@ MIN_RP=15		# minimum read pattern count to continue
 MIN_RC=15		# minimum read count to continue
 
 ## SORT STEP 
-SORT_PROG="BLAT"	# [LABEL,BLAT]
-SORT_PROC=80		# currently not used
-SORT_GROUPS=""		# if blank, default is not to group any genes into primary & secondary
-NONSEGMENTED=0		# segmented! [0,1]
+SORT_PROG="BLAT"		# [LABEL,BLAT]
+SORT_PROC=80			# currently not used
+SORT_GROUPS=""			# if blank, default is not to group any genes into primary & secondary
+BAN_GROUPS="UNRECOGNIZABLE"	# patterns not allowed, useful for LABEL
+NONSEGMENTED=0			# segmented! [0,1]
 # LABEL
 LFASTM=1		# LABEL sorting fast-mode
 LIMIT_LABEL=1000	# limit on LABEL grid activation (self-adjusts)

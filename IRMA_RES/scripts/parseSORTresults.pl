@@ -4,10 +4,11 @@
 
 use Getopt::Long;
 GetOptions(	'pattern-list|P=s' => \$patternList, 'ignore-annotations|G' => \$ignoreAnnotations,
-		'min-read-count|C=i' => \$minimumRcount, 'min-read-patterns|D=i' => \$minimumRPcount );
+		'min-read-count|C=i' => \$minimumRcount, 'min-read-patterns|D=i' => \$minimumRPcount,
+		'ban-list|B=s' => \$banList );
 
 if ( scalar(@ARGV) != 3 ) {
-	$message = "Usage:\n\tperl $0 <SORT_results.tab> <match.FASTA> <PREFIX> [significance]";
+	$message = "Usage:\n\tperl $0 <SORT_results.tab> <match.FASTA> <PREFIX> [options]";
 	die($message."\n");
 }
 
@@ -56,6 +57,17 @@ foreach $gene ( @genes ) {
 	}
 }
 close(OUT);
+
+if ( defined($banList) && length($banList) > 0 ) {
+	@banPatterns = split(',',$banList);
+	foreach $banPat ( @banPatterns ) {
+		foreach $gene ( @genes ) {
+			if ( $gene =~ /$banPat/ ) {
+				$valid{$gene} = 0;
+			}
+		}
+	}
+}
 
 if ( defined($patternList) && length($patternList) > 0) {
 	@patterns = split(',',$patternList);

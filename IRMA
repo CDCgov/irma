@@ -285,12 +285,12 @@ EOL
 ###
 	$Lspath/interleavedSamples.pl -G $procs $queryDB $workdir/$prefix-$name > /dev/null 2>&1
 	if [ "$doGrid" -eq "1" ];then
-		qsub -t 1-$procs:1 -N ${prefix}-${name}-BLAT -sync y -wd $workdir -j y -o $script.o $script.sh > /dev/null 2>&1
-		rm $script.{o,sh}
+		qsub -t 1-$procs:1 -N ${prefix}-${name}-BLAT -sync y -wd $workdir -j y -o ${script}.o ${script}.sh > /dev/null 2>&1
+		rm ${script}.{o,sh}
 	else 
 		chmod 755 $script.sh
 		$PARALLEL --workdir $workdir -j $procs $script.sh {} ::: $(seq $procs) > /dev/null 2>&1
-		rm $script.sh
+		rm ${script}.sh
 	fi
 }
 
@@ -413,6 +413,7 @@ function doSORT() {
 	local options="-C $MIN_RC -D $MIN_RP"
 	[ "$SORT_PROG" == "BLAT" ] && options+=" -G"
 	[ "$SORT_GROUPS" != "" ] && options+=" -P $SORT_GROUPS"
+	[ "$BAN_GROUPS" != "" ] && options+=" -B $BAN_GROUPS"
 	$spath/parseSORTresults.pl $sortp/$prefix/SORT_result.txt $matchp/$prefix.match $sortp/$prefix $options
 
 	# CLEAN UP
@@ -464,11 +465,11 @@ EOL
 	$Lspath/interleavedSamples.pl $queryDB $workdir/$prefix-$name -G $procs > /dev/null
 	if [ "$doGrid" -eq "1" ];then
 		qsub -t 1-$procs:1 -N $prefix-$name-SAM -sync y -wd $workdir -j y -o $script.o $script.sh > /dev/null 2>&1
-		rm $script.{o,sh}
+		rm ${script}.{o,sh}
 	else
 		chmod 755 $script.sh
 		$PARALLEL --workdir $workdir -j $procs $script.sh {} ::: $(seq $procs) > /dev/null 2>&1
-		rm $script.sh
+		rm ${script}.sh
 	fi
 	rm $workdir/${prefix}-${name}_????.{fasta,a2m}
 }
@@ -582,13 +583,14 @@ function doRound() {
 
 	# add R0 for tracing history better
 	if [ "$ASSEM_REF" -eq "0" -a "$R" -eq "1" ];then
-		if test -n "$(shopt -s nullglob;echo $sortp/$prefix-*.fa)";then
-			name=$(basename $i .fa)
-                        gene=${name#*-}
-			$Lspath/selectSequences.pl -I $gene $REF1_SET > $refp/R0-${gene}.ref
-		fi
+		for i in $sortp/$prefix-*.fa;do
+			if test -n "$(shopt -s nullglob;echo $sortp/$prefix-*.fa)";then
+				name=$(basename $i .fa)
+				gene=${name#*-}
+				$Lspath/selectSequences.pl -I $gene $REF1_SET > $refp/R0-${gene}.ref
+			fi
+		done
 	fi
-	
 
 	### ALIGN stage ###
 	# given we have primary data in this around	
@@ -680,13 +682,14 @@ EOL
 
 	# ASSEMBLE on grid vs local
 	if [ "$doGrid" -eq "1" ];then
-		qsub -t 1-$ASSEMBLE_PROC:1 -N F${iter}-$gene -sync y -wd $assemp -j y -o $script.o $script.sh > /dev/null 2>&1
+		qsub -t 1-$procs:1 -N F${iter}-$gene -sync y -wd $assemp -j y -o ${script}.o ${script}.sh > /dev/null 2>&1
+		rm ${script}.{o,sh}
 	else
 		chmod 755 $script.sh
 		$PARALLEL --workdir $ppath -j $procs $script.sh {} ::: $(seq $procs)
+		rm ${script}.sh
 	fi
 	$spath/catSAMfiles.pl $assemp/F${iter}-${gene}-*.sam > $assemp/F${iter}-$gene.sam
-	rm $script.sh
 }
 
 
@@ -720,11 +723,12 @@ function doCALLS() {
 		local prefix2=$assemp/F${iter}-${gene}
 		local pstats=""
 	fi
+	local script="$assemp/${prefix}"
 
 #########################################
 # DO CALL STATS and MERGE if PAIRED END #
 #########################################
-cat > $assemp/${prefix}.sh <<EOL
+cat > ${script}.sh <<EOL
 #!/bin/bash
 LANG=$LANG
 shopt -u nocaseglob;shopt -u nocasematch
@@ -751,10 +755,12 @@ EOL
 
 	# GRID vs LOCAL execution of the CALL STATS step, inherits from ASSEMBLY step currently
 	if [ "$doGrid" -eq "1" ];then
-		qsub -t 1-$ASSEMBLE_PROC:1 -N $prefix -sync y -wd $assemp -j y -o $assemp/${prefix}.o $assemp/${prefix}.sh > /dev/null 2>&1
+		qsub -t 1-$procs:1 -N $prefix -sync y -wd $assemp -j y -o ${script}.o ${script}.sh > /dev/null 2>&1
+		rm ${script}.{o,sh}
 	else
-		chmod 755 $assemp/${prefix}.sh
-		$PARALLEL --workdir $ppath -j $procs $assemp/${prefix}.sh {} ::: $(seq $procs)
+		chmod 755 ${script}.sh
+		$PARALLEL --workdir $ppath -j $procs ${script}.sh {} ::: $(seq $procs)
+		rm ${script}.sh
 	fi
 
 	# GROUP
@@ -811,11 +817,11 @@ $spath/phase.pl $final \$VARS \$PATS -A $procs -I \$ID
 EOL
 #########################################
 	if [ "$doGrid" -eq "1" ];then
-		qsub -t 1-$procs:1 -N ${gene}-phasing -sync y -wd $ppath -j y -o $script.o $script.sh > /dev/null 2>&1
+		qsub -t 1-$procs:1 -N ${gene}-phasing -sync y -wd $ppath -j y -o ${script}.o ${script}.sh > /dev/null 2>&1
 		rm $script.{o,sh} ${final}-pats.sto ${final}-vars.sto
 	else 
 		chmod 755 $script.sh
-		$PARALLEL --workdir $ppath -j $procs $script.sh {} ::: $(seq $procs) > /dev/null 2>&1
+		$PARALLEL --workdir $ppath -j $procs ${script}.sh {} ::: $(seq $procs) > /dev/null 2>&1
 		rm ${script}.sh ${final}-pats.sto ${final}-vars.sto
 	fi
 
@@ -896,7 +902,7 @@ function REFINE_ASSEMBLY_CALL_VARIANTS() {
 	# CLEAN UP
 	rm $assemp/${gene}_????.fastq
 	rm $assemp/*-${gene}-????.*
-	rm $assemp/*-${gene}.sh
+#	rm $assemp/*-${gene}.sh
 	return $iter
 }
 
@@ -911,7 +917,7 @@ function ASSEMBLE_REPORT() {
 
 	# SCOPE
 	if [ "$size" -gt "$LIMIT_SSW" -a "$GRID_ON" -eq "1" ];then
-		procs=$ASSEMBLE_PROC
+		procs=$ASSEM_PROC
 		doGrid=1
 	else
 		doGrid=0
@@ -934,11 +940,11 @@ function ASSEMBLE_REPORT() {
 	doPHASING $gene $final
 
 	local n=$(wc -l < ${final}-variants.txt)
-	if [ $n -gt 2 ]; then
+	if [ "$n" -gt "2" ]; then
 		$PARALLEL $RSCRIPT $spath/sqmHeatmap.R ${final}-{}.sqm ${final}-{}.pdf 2 ::: EXPENRD JACCARD MUTUALD NJOINTP > /dev/null
 	fi
 
-	if [ $n -gt 1 ]; then
+	if [ "$n" -gt "1" ]; then
 		$RSCRIPT $spath/coverageDiagram.R $RUN $gene $final-coverage.txt $final-variants.txt $final-pairingStats.txt $final-coverageDiagram.pdf > /dev/null 2>&1
 	else
 		$RSCRIPT $spath/simpleCoverageDiagram.R $RUN $gene $final-coverage.txt $final-coverageDiagram.pdf > /dev/null 2>&1
@@ -1210,6 +1216,7 @@ if [ "$ASSEM_REF" -eq "1" ];then
 	local options="-C $MIN_RC -D $MIN_RP"
 	[ "$SORT_PROG" == "BLAT" ] && options+=" -G"
 	[ "$SORT_GROUPS" != "" ] && options+=" -P $SORT_GROUPS"
+	[ "$BAN_GROUPS" != "" ] && options+=" -B $BAN_GROUPS"
 	$spath/parseSORTresults.pl $sortp/R0/SORT_result.txt $REF_SET $refp/R0 $options
 	cd $sortp/R0; tar  -cf - SORT_result.txt |gzip -4 - > $sortp/R0.tar.gz
 	cd - > /dev/null; rm -rf $sortp/R0
