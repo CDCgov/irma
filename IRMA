@@ -1021,7 +1021,7 @@ function doPostProcessing() {
 	read raw pats <<<$(grep '>' $ppath/R0.fa|cut -f2 -d'%'|$spath/sumField.pl -S)
 	echo -e "1-initial\t${raw1}\tNA\tNA" >> $ppath/READ_COUNTS.txt
 	echo -e "2-failQC\t${raw3}\tNA\tNA" >> $ppath/READ_COUNTS.txt
-	echo -e "2-afterQC\t${raw}\t${pats}\tNA" >> $ppath/READ_COUNTS.txt
+	echo -e "2-passQC\t${raw}\t${pats}\tNA" >> $ppath/READ_COUNTS.txt
 	
 	read raw1 pats1 <<<$(grep '>' $matchp/*.chim|cut -f2 -d'%'|$spath/sumField.pl -S)
 	read raw2 pats2 <<<$(grep '>' $matchp/R${LAST_ROUND}.nomatch|cut -f2 -d'%'|$spath/sumField.pl -S)

@@ -20,7 +20,7 @@ par(mfrow=c(2,2),mar=c(3, 3, 3, 3))
 D=read.table(header=TRUE,sep="\t",file=countsFile)
 
 total=D$Reads[D$Record =='1-initial']
-#qual=D$Reads[D$Record =='2-afterQC']
+#qual=D$Reads[D$Record =='2-passQC']
 nonqual=D$Reads[D$Record =='2-failQC']
 assembled=D$Reads[D$Record =='3-match']
 therest=total-nonqual-assembled
@@ -52,7 +52,7 @@ legend("bottomright", grps, fill=cols)
 
 
 assembled=D$Patterns[D$Record =='3-match']
-total=D$Patterns[D$Record =='2-afterQC']
+total=D$Patterns[D$Record =='2-passQC']
 if ( sum(D$Record == '3-chimeric') > 0 ) {
 	chimeric=D$Patterns[D$Record =='3-chimeric']
 } else {
