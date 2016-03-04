@@ -17,7 +17,7 @@ sqm=read.table(sqmFile,header=FALSE,sep="\t")
 mat=as.matrix(sqm[,s:length(sqm)])
 rownames(mat)=sqm[,1]
 colnames(mat)=sqm[,1]
-pdf(pdfFile)
+pdf(pdfFile,width=8.5,height=8.5)
 title=paste("Variant site clusters,",basename(args[1]))
-heatmap(mat,symm=TRUE,revC=TRUE,main=title)
+heatmap(mat,symm=TRUE,revC=TRUE,main=title,margins=c(10,10))
 cat("Saved '",pdfFile,"'\n",sep="")
