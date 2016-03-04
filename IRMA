@@ -155,6 +155,15 @@ else
 fi
 REF1_SET=$REF_SET
 
+# process seed reference library
+if [ ! -s "$REF_SET" ];then
+	echo "IRMA ERROR! The REF_SET data was not found for: $REF_SET"
+	exit 0
+elif [ ! -r "$REF_SET" ];then
+	echo "IRMA ERROR! The REF_SET file was not readable: $REF_SET"
+	exit 0
+fi
+
 # build arrays
 declare -a MATCH_PROGS=($MATCH_PROG)
 declare -a SORT_PROGS=($SORT_PROG)
@@ -173,7 +182,7 @@ else
 fi
 
 # check if RUN already exists
-if [ ! -d $ppath ]; then
+if [ ! -d "$ppath" ]; then
 	mkdir -p $ppath
 else
 	echo "$(basename $0) ERROR: run '$RUN' exists, operations have been ABORTED!"
@@ -874,8 +883,8 @@ function REFINE_ASSEMBLY_CALL_VARIANTS() {
 		echo -e "$currentScore\t$theSAM" >> $log
 
 		theStats=$assemp/F${iter}-$gene-*.sto
-		if [ $lastScore -lt $currentScore ];then
-			if [ $iter -lt $MAX_ITER_ASSEM ];then
+		if [ "$lastScore" -lt "$currentScore" ];then
+			if [ "$iter" -lt "$MAX_ITER_ASSEM" ];then
 				# generate next reference
 				newRef="$assemp/F$(( $iter + 1 ))-$gene.ref"
 				$spath/combineSAMstats.pl $theRef $COMBINE_SAM_OPTS $theStats > $newRef
@@ -889,10 +898,11 @@ function REFINE_ASSEMBLY_CALL_VARIANTS() {
 	done
 
 	# CALL variants
-	if [ $iter -gt $MAX_ITER_ASSEM ];then
+	if [ "$iter" -gt "$MAX_ITER_ASSEM" ];then
+		((iter--))
 		doCALLS $MAX_ITER_ASSEM $gene $final $procs $doGrid
 	else
-		if [ $lastScore -gt $currentScore ];then
+		if [ "$lastScore" -gt "$currentScore" ];then
 			rm $theRef $theSAM $theBAM			
 			((iter--))
 		fi
@@ -902,7 +912,6 @@ function REFINE_ASSEMBLY_CALL_VARIANTS() {
 	# CLEAN UP
 	rm $assemp/${gene}_????.fastq
 	rm $assemp/*-${gene}-????.*
-#	rm $assemp/*-${gene}.sh
 	return $iter
 }
 
@@ -1199,6 +1208,7 @@ if [ ! -s $ppath/R0.fa ];then
 	exit
 fi
 
+setPrograms	# set the programs
 if [ "$ASSEM_REF" -eq "1" ];then
 	mkdir $sortp/R0
 	# Sort out the references
@@ -1213,9 +1223,8 @@ if [ "$ASSEM_REF" -eq "1" ];then
 		fi
 	fi
 
-	local options="-C $MIN_RC -D $MIN_RP"
+	options=""
 	[ "$SORT_PROG" == "BLAT" ] && options+=" -G"
-	[ "$SORT_GROUPS" != "" ] && options+=" -P $SORT_GROUPS"
 	[ "$BAN_GROUPS" != "" ] && options+=" -B $BAN_GROUPS"
 	$spath/parseSORTresults.pl $sortp/R0/SORT_result.txt $REF_SET $refp/R0 $options
 	cd $sortp/R0; tar  -cf - SORT_result.txt |gzip -4 - > $sortp/R0.tar.gz
