@@ -3,7 +3,7 @@ PROGRAM="Iterative Refinement Meta-Assembler (IRMA)"
 AUTHOR="Samuel S. Shepard"
 EMAIL="vfn4@cdc.gov"
 AFFIL="NCIRD/OID/CDC"
-DATE="1 MAR 2016"
+DATE="9 MAR 2016"
 VERSION="0.6.0"
 LICENSE="GPL version 3. This program comes with ABSOLUTELY NO WARRANTY. This is free software.
 You are welcome to redistribute it under certain conditions. See:  <http://www.gnu.org/licenses/>.
@@ -1109,16 +1109,16 @@ function doPostProcessing() {
 		done 
 	fi
 
-	if [ "$(grep -P '^4-' $ppath/READ_COUNTS.txt.tmp -c)" -gt "0" ];then
-		x=$(grep -P '^4-' $ppath/READ_COUNTS.txt.tmp|$spath/sumField.pl -F 2)
-		y=$(grep -P '^4-' $ppath/READ_COUNTS.txt.tmp|$spath/sumField.pl -F 3)
-		z=$(grep -P '^4-' $ppath/READ_COUNTS.txt.tmp|$spath/sumField.pl -F 4)
+	if [ "$(grep '^4-' $ppath/READ_COUNTS.txt.tmp -c)" -gt "0" ];then
+		x=$(grep '^4-' $ppath/READ_COUNTS.txt.tmp|$spath/sumField.pl -F 2)
+		y=$(grep '^4-' $ppath/READ_COUNTS.txt.tmp|$spath/sumField.pl -F 3)
+		z=$(grep '^4-' $ppath/READ_COUNTS.txt.tmp|$spath/sumField.pl -F 4)
 		echo -e "3-match\t$x\t$y\t$z" >> $ppath/READ_COUNTS.txt
 	fi
 
-	if [ "$(grep -P '^5-' $ppath/READ_COUNTS.txt.tmp -c)" -gt "0" ];then
-		x=$(grep -P '^5-' $ppath/READ_COUNTS.txt.tmp|$spath/sumField.pl -F 2)
-		y=$(grep -P '^5-' $ppath/READ_COUNTS.txt.tmp|$spath/sumField.pl -F 3)
+	if [ "$(grep '^5-' $ppath/READ_COUNTS.txt.tmp -c)" -gt "0" ];then
+		x=$(grep '^5-' $ppath/READ_COUNTS.txt.tmp|$spath/sumField.pl -F 2)
+		y=$(grep '^5-' $ppath/READ_COUNTS.txt.tmp|$spath/sumField.pl -F 3)
 		echo -e "3-altmatch\t$x\t$y\tNA" >> $ppath/READ_COUNTS.txt
 	fi
 
