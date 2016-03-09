@@ -7,7 +7,7 @@ DATE="9 MAR 2016"
 VERSION="0.6.0"
 LICENSE="GPL version 3. This program comes with ABSOLUTELY NO WARRANTY. This is free software.
 You are welcome to redistribute it under certain conditions. See:  <http://www.gnu.org/licenses/>.
-Components of this pipeline have non-commercial resistrictions. See: IRMA_RES/scripts/packaged-citations-licenses"
+Components of this pipeline have non-commercial restrictions. See: IRMA_RES/scripts/packaged-citations-licenses"
 
 if [ $# -eq 4 ];then
 	PAIRED=1
