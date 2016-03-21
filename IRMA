@@ -175,10 +175,11 @@ if [ "$MAX_ROUNDS" -eq "1" -a "$ASSEM_REF" -eq "1" ];then
 fi
 
 # define ppath
+TOKEN=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
 if [ "$ALLOW_TMP" -eq "1" -a "$GRID_ON" -eq "0" ];then
-	ppath=$TMP/$(whoami)/IRMAv$VERSION/$RUN
+	ppath=$TMP/$(whoami)/IRMAv$VERSION/${RUN}-${TOKEN}
 else
-	ppath=$rpath/ppath/$RUN
+	ppath=$rpath/ppath/${RUN}-${TOKEN}
 fi
 
 # check if RUN already exists
