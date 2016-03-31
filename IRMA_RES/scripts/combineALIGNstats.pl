@@ -219,7 +219,7 @@ if ( $notSkipExtension ) {
 			$total += $leaderCount;
 		}
 		
-		if ( $max < $threshold ) {
+		if ( $max < $threshold || $maxB !~ /[ACTGactg]/ ) {
 			last;
 		} else {
 			$leader .= $maxB;
@@ -240,7 +240,7 @@ if ( $notSkipExtension ) {
 			$total += $trailerCount;
 		}
 		
-		if ( $max < $threshold ) {
+		if ( $max < $threshold || $maxB !~ /[ACTGactg]/ ) {
 			last;
 		} else {
 			$trailer .= $maxB;
