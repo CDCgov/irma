@@ -8,7 +8,7 @@ PARAM_FILE_DATE="2016-01-28"
 INS_T=0.25				# threshold for insertion refinement
 DEL_T=0.60				# threshold for deletion refinement
 SKIP_E=0				# skip reference elongation
-MIN_LEN=75
+MIN_LEN=125
 GRID_ON=1
 
 # STAGES
