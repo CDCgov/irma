@@ -185,6 +185,10 @@ fi
 # check if RUN already exists
 if [ ! -d "$ppath" ]; then
 	mkdir -p $ppath
+	if [ "$?" -ne "0" ];then
+		echo "$(basename $0) ERROR: cannot create directory '$ppath', operations ABORTED!"
+		exit 1
+	fi
 else
 	echo "$(basename $0) ERROR: run '$RUN' exists, operations have been ABORTED!"
 	exit 1

@@ -22,7 +22,7 @@ USE_MEDIAN=1		# use the median quality or the average [1,0]
 QUAL_THRESHOLD=30	# minimum read statistic
 MIN_LEN=125		# minimum read length
 INCL_CHIM=0		# includes chimera or not [0,1]
-			# transposase adapter, cuts 5' of the adapter on the forward strand and 3' on the reverse strand
+			# transposase adapter, MASKS 5' of the adapter on the forward strand and 3' on the reverse strand
 			# applicable to NextTera pair-end reads 
 ADAPTER="AGATGTGTATAAGAGACAG"
 

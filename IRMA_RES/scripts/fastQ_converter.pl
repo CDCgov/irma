@@ -42,6 +42,7 @@ if ( defined($clipAdapter) ) {
 	$forwardAdapter = lc($clipAdapter);
 	$reverseAdapter = reverse($forwardAdapter);
 	$reverseAdapter =~ tr/atgc/tacg/;
+	$adapterMask = 'N' x length($forwardAdapter);
 	$clipAdapter = 1;
 } else {
 	$clipAdapter = 0;
@@ -124,11 +125,13 @@ while($hdr=<>) {
 
 	if ( $clipAdapter ) {
 		if ( $seq  =~ /$reverseAdapter/i ) {
-			$seq = substr($seq,0,$-[0]);
-			$quality = substr($quality,0,$-[0]);
+			$seq =~ s/$reverseAdapter/$adapterMask/i;
+			#$seq = substr($seq,0,$-[0]);
+			#$quality = substr($quality,0,$-[0]);
 		} elsif ( $seq =~ /$forwardAdapater/i ) {
-			$seq = substr($seq,$+[0]);	
-			$quality = substr($quality,$+[0]);	
+			$seq =~ s/$forwardAdapter/$adapterMask/i;
+			#$seq = substr($seq,$+[0]);	
+			#$quality = substr($quality,$+[0]);	
 		}
 	}
 

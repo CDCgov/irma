@@ -21,7 +21,7 @@ if ( scalar(@ARGV) < 1 ) {
 }
 
 if ( !defined($denom) ) {
-	$denom = 4
+	$denom = 2;
 } else {
 	if ( $denom < 2 ) {
 		$denom = 2;
@@ -223,6 +223,7 @@ if ( $notSkipExtension ) {
 			last;
 		} else {
 			$leader .= $maxB;
+			$threshold = max($minPadCount,int($max/$denom)+1);
 		}
 	}
 	$leader = reverse($leader);
@@ -243,6 +244,7 @@ if ( $notSkipExtension ) {
 			last;
 		} else {
 			$trailer .= $maxB;
+			$threshold = max($minPadCount,int($max/$denom)+1);
 		}
 	}
 	print $header,$leader,$seq,$trailer,"\n";
