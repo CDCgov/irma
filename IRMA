@@ -3,8 +3,8 @@ PROGRAM="Iterative Refinement Meta-Assembler (IRMA)"
 AUTHOR="Samuel S. Shepard"
 EMAIL="vfn4@cdc.gov"
 AFFIL="NCIRD/OID/CDC"
-DATE="9 MAR 2016"
-VERSION="0.6.0"
+DATE="1 APR 2016"
+VERSION="0.6.1"
 LICENSE="GPL version 3. This program comes with ABSOLUTELY NO WARRANTY. This is free software.
 You are welcome to redistribute it under certain conditions. See:  <http://www.gnu.org/licenses/>.
 Components of this pipeline have non-commercial restrictions. See: IRMA_RES/scripts/packaged-citations-licenses"
@@ -208,7 +208,7 @@ BLAT_OPTS="-oneOff=1 -minIdentity=80 -tileSize=10"
 
 # FASTQ converter/QC options
 FASTQ_CONV_OPTS="-Q -M -T $QUAL_THRESHOLD -L $MIN_LEN"
-[ "$PAIRED" -eq "1" -a "$ADAPTER" != "" ] && FASTQ_CONV_OPTS+=" -c $ADAPTER"
+[ "$PAIRED" -eq "1" -a "$ADAPTER" != "" ] && FASTQ_CONV_OPTS+=" -m $ADAPTER"
 
 
 #####################
