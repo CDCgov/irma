@@ -142,7 +142,7 @@ fi
 if [ -r "$mpath/config/${MODULE_CONFIG}.sh" ];then
 	source $mpath/config/${MODULE_CONFIG}.sh
 else
-	CONFIG=$(echo ${MODULE_CONFIG}|-f2 -d'-')
+	CONFIG=$(echo ${MODULE_CONFIG}|cut -f2 -d'-')
 	if [ -r "$mpath/config/${CONFIG}.sh" ];then
 		source $mpath/config/${CONFIG}.sh
 	elif [ "$MODULE" != "$CONFIG" ];then
