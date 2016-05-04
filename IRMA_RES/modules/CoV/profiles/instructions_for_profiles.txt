@@ -1,0 +1,16 @@
+Instructions for profiles
+
+1) If you are using "SAM" for the rough alignment step, you must create profile HMMs for each gene segment and/or genome lineage you are trying to assemble.
+
+2) You can use the packaged SAM modelfromalign program in the LABEL_RES/scripts folder to create an HMM profile for each gene segment and/or genome lienage. Example:
+- modelfromalign NAME_hmm -alignfile NAME.fasta
+
+3) As shown above, you must add the suffix "_hmm" to your modelfromalign profile run name.
+
+4) All profiles (ending in .mod) must be put in the profiles folder and the names should match the corresponding headers in the "reference/consensus.fasta" file. See that:
+- Suppose our target genome is: "Measles"
+- We would need a profile HMM in the profiles folder called: "Measles_hmm.mod"
+- Such a file can be created: modelfromalign Measles_hmm -alignfile MyMeaslesAlignment.fasta
+- In the "reference/consensus.fasta" file, you would need a record like:
+>Measles
+ATG...TGA
