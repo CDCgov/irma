@@ -17,7 +17,8 @@ GetOptions(	'read-quality|T=i'=> \$qualityThreshold,
 		'log-file|G=s' => \$logFile,
 		'log-id|g=s' => \$logID,
 		'keep-header|H' => \$keepHeader,
-		'mask-adapter|m=s' => \$maskAdapter
+		'mask-adapter|m=s' => \$maskAdapter,
+		'clip-adapter|c=s' => \$clipAdapter
 	);
 
 
@@ -34,8 +35,18 @@ if ( -t STDIN && scalar(@ARGV) != 1 ) {
 	$message .= "\t\t-A|--save-stats <STR>\t\t\tSave quality length file for analysis.\n";
 	$message .= "\t\t-K|--skip-remaining\t\t\tDo not output data FASTA/FASTQ data (assumes -A).\n";
 	$message .= "\t\t-H|--keep-header\t\t\tKeep header as usual.\n";
+	$message .= "\t\t-c|--clip-adapter <STR>\t\t\tClip adapter.\n";
 	$message .= "\t\t-m|--mask-adapter <STR>\t\t\tMask adapter.\n";
 	die($message."\n");
+}
+
+if ( defined($clipAdapter) ) {
+	$forwardAdapter = lc($clipAdapter);
+	$reverseAdapter = reverse($forwardAdapter);
+	$reverseAdapter =~ tr/atgc/tacg/;
+	$clipAdapter = 1;
+} else {
+	$clipAdapter = 0;
 }
 
 if ( defined($maskAdapter) ) {
@@ -47,7 +58,6 @@ if ( defined($maskAdapter) ) {
 } else {
 	$maskAdapter = 0;
 }
-
 
 if ( defined($keepHeader) ) {
 	$keepHeader = 1;
@@ -124,7 +134,19 @@ while($hdr=<>) {
 	$junk=<>; chomp($junk);
 	$quality=<>; chomp($quality);
 
-	if ( $maskAdapter ) {
+	if ( length($seq) < $minLength ) {
+		next;
+	}
+
+	if ( $clipAdapter ) {
+		if ( $seq  =~ /$reverseAdapter/i ) {
+			$seq = substr($seq,0,$-[0]);
+			$quality = substr($quality,0,$-[0]);
+		} elsif ( $seq =~ /$forwardAdapater/i ) {
+			$seq = substr($seq,$+[0]);	
+			$quality = substr($quality,$+[0]);
+		}
+	} elsif ( $maskAdapter ) {
 		if ( $seq  =~ /$reverseAdapter/i ) {
 			$seq =~ s/$reverseAdapter/$adapterMask/i;
 		} elsif ( $seq =~ /$forwardAdapater/i ) {
@@ -135,9 +157,6 @@ while($hdr=<>) {
 	@a = unpack("c* i*",$quality);
 	$q = 0; $n = scalar(@a);
 	$id++;
-	if ( length($seq) < $minLength ) {
-		next;
-	}
 
 	if ( $useMedian ) {
 		@sorted = sort(@a);

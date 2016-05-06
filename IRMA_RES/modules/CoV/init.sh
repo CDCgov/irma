@@ -1,8 +1,8 @@
 ### PERFORMANCE ###
 GRID_ON=0		# grid computation on [1,0] for on or off
-SINGLE_LOCAL_PROC=16	# local maximum processes
-DOUBLE_LOCAL_PROC=8	# local maximum processes (double this number)
-ALLOW_TMP=0		# if GRID_ON=0, try to use /tmp for working directory
+SINGLE_LOCAL_PROC=32	# local maximum processes
+DOUBLE_LOCAL_PROC=16	# local maximum processes (double this number)
+ALLOW_TMP=1		# if GRID_ON=0, try to use /tmp for working directory
 TMP=/tmp		# the scratch/tmpfs for working on the assemblies
 
 ### REFERENCE ###
@@ -18,7 +18,7 @@ QUAL_THRESHOLD=30	# minimum read statistic
 MIN_LEN=125		# minimum read length
 
 ## MATCH STEP
-MATCH_PROC=20		# grid maximum processes for the MATCH
+MATCH_PROC=64		# grid maximum processes for the MATCH
 MATCH_PROG="BLAT"	# match (all or any match) program [BLAT]
 MIN_RP=15		# minimum read pattern count to continue
 MIN_RC=15		# minimum read count to continue
@@ -26,18 +26,18 @@ MIN_RC=15		# minimum read count to continue
 ## SORT STEP
 SORT_GROUPS="__ALL__"
 SORT_PROG="BLAT"	# [LABEL,BLAT]
-SORT_PROC=80		# currently not used
+SORT_PROC=64		# currently not used
 NONSEGMENTED=0		# segmented! [0,1]
 # LABEL
 LFASTM=0		# LABEL sorting fast-mode
 
 ## ALIGN STEP ##
 ALIGN_PROG="BLAT"	# rough assembly / alignment to working reference [SAM,BLAT]
-ALIGN_PROC=20		# grid maximum processes for the rough align
+ALIGN_PROC=64		# grid maximum processes for the rough align
 
 ### FINISHING ASSEMBLY ###
 ASSEM_PROG="SSW"	# assembly program [SSW]
-ASSEM_PROC=20		# grid maximum processes for assembly
+ASSEM_PROC=64		# grid maximum processes for assembly
 INS_T=0.25		# minimum frquenncy threshold for insertion refinement
 DEL_T=0.60		# minimum frequency threshold for deletion refinement 
 MIN_AMBIG=0.25		# minimum called SNV frequency for mixed base in amended consensus folder

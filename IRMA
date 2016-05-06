@@ -208,7 +208,7 @@ BLAT_OPTS="-oneOff=1 -minIdentity=80 -tileSize=10"
 
 # FASTQ converter/QC options
 FASTQ_CONV_OPTS="-Q -M -T $QUAL_THRESHOLD -L $MIN_LEN"
-[ "$PAIRED" -eq "1" -a "$ADAPTER" != "" ] && FASTQ_CONV_OPTS+=" -m $ADAPTER"
+[ "$PAIRED" -eq "1" -a "$ADAPTER" != "" ] && FASTQ_CONV_OPTS+=" -c $ADAPTER"
 
 
 #####################
