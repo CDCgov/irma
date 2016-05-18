@@ -67,6 +67,27 @@ sub min($$) {
 sub avg($$) {
 	return (($_[0]+$_[1])/2);
 }
+
+sub toIndicesZero($) {
+	my $aln = $_[0];
+	my $coords = '';
+	my $first = '';
+	my $index = 0;
+	my $length = 0;
+
+	while( $aln =~ m/(\.+|[^.]+)/g ) {
+		($length,$first)= (length($1),substr($1,0,1));
+		if ( $first ne '.' ) {
+			$coords .= $index.',';
+			$index += $length;
+			$coords .= ($index-1).';';
+		} else {
+			$index += $length;
+		}
+	}
+	chop($coords);
+	return $coords;	
+}
 #############
 
 if ( defined($sigLevel) ) {
@@ -419,8 +440,7 @@ for($p=0;$p<$REF_LEN;$p++) {
 	}
 }
 print CONS "\n";
-close(CONS);
-close(COVG);
+close(CONS); close(COVG);
 
 foreach $p ( sort { $a <=> $b } keys(%varLine) ) {
 	foreach $base ( sort { $varLine{$p}{$a} cmp $varLine{$p}{$b} } keys(%{$varLine{$p}}) ) {
@@ -438,23 +458,116 @@ foreach $p ( sort { $a <=> $b } keys(%varLine) ) {
 close(VARS);
 close(ALL);
 
+%coordSupport = %coordList = ();
+foreach $aln ( keys(%alignments) ) {
+	$coordList{toIndicesZero($aln)} += $alignments{$aln};
+}
+
+foreach $listOfCoords ( keys(%coordList) ) {
+	@coords = split(';',$listOfCoords);
+	foreach $coord ( @coords ) {
+		($start,$stop) = split(',',$coord);
+		$coordSupport{$start}{$stop} += $coordList{$listOfCoords};
+	}
+}
+
+%coordStops = ();
+@coordStarts = sort { $a <=> $b } keys(%coordSupport);
+foreach $start ( @coordStarts ) {
+	$coordStops{$start} = [ sort { $b <=> $a } keys(%{$coordSupport{$start}}) ];
+}
+
+open(INSV,'>',$prefix.'-insertions.txt') or die("ERROR: cannot open $prefix-insertions.txt for writing.\n");
+	print INSV "Reference_Name\tUpstream_Position\t";
+	print INSV "Insert\tContext\tCalled\tCount\tTotal\tFrequency\t";
+	print INSV 'Average_Quality',"\t",'ConfidenceNotMacErr';
+	print INSV "\t",'PairedUB',"\t",'QualityUB',"\n";
+foreach $p ( sort {$a <=> $b } keys(%icTable) ) {
+	$pp = $p + 1;
+	$total=0;
+	foreach $start ( @coordStarts ) {
+		if ( $start <= $p ) {
+			foreach $stop ( @{$coordStops{$start}} ) {
+				if ( $pp <= $stop ) {
+					$total += $coordSupport{$start}{$stop};
+				} else {
+					last;
+				}
+			}
+		} else {
+			last;
+		}
+	}
+	
+	foreach $insert ( sort {$a cmp $b} keys(%{$icTable{$p}}) ) {
+		$count = $icTable{$p}{$insert};
+		if ( $count < $minCount ) { next; }
+
+		$called = "TRUE";
+		if ( $count > 0 ) {
+			$quality = $iqTable{$p}{$insert} / $count;
+		} else {
+			$quality = 0;
+		}
+
+		if ( $quality < $minQuality ) { $called = "FALSE"; }
+
+		if ( $total > 0 ) {
+			$freq = $count / $total;
+		} else {
+			$freq = 0;
+		}
+
+		if ( $freq < $minFreqIns || $total < $minTotal ) { $called = "FALSE"; }
+		$EE = 1/(10**($quality/10));
+		$confidence = calcProb($freq,$EE);
+		$pairedUB = UB($IE,$total);
+		$qualityUB = UB($EE,$total);
+
+		if ( $confidence < $minConf || $freq <= $pairedUB || $freq <= $qualityUB ) { $called = "FALSE"; }
+		$left = $right = '';
+		if ( $p < 5 ) {
+			$left = substr($consensusSeq,0,$p+1);
+		} else {
+			$left = substr($consensusSeq,$p-4,5);
+		}
+
+		if ( $p > ($REF_LEN-6) ) {
+			$right = substr($consensusSeq,$pp,$REF_LEN-$pp);
+		} else {
+			$right = substr($consensusSeq,$pp,5);
+		}
+
+		print INSV $REF_NAME,"\t",($p+1),"\t",uc($insert),"\t",lc($left),uc($insert),lc($right);
+		print INSV "\t",$called,"\t",$count,"\t",$total,"\t",$freq,"\t",$quality;
+		print INSV "\t",$confidence,"\t",$pairedUB,"\t",$qualityUB,"\t","\n";
+	}
+}
+close(INSV);
+
+
 open(DELV,'>',$prefix.'-deletions.txt') or die("ERROR: cannot open $prefix-deletions.txt for writing.\n");
 	print DELV "Reference_Name\tUpstream_Position\t";
 	print DELV "Length\tContext\tCalled\tCount\tTotal\tFrequency\tPairedUB\n";
 foreach $p ( sort { $a <=> $b } keys(%dcTable) ) {
-	foreach $inc ( keys(%{$dcTable{$p}}) ) {
-		$called = "TRUE";
+	foreach $inc ( sort { $a <=> $b } keys(%{$dcTable{$p}}) ) {
 		$count = $dcTable{$p}{$inc};
-
-		if ( $count < $minCount ) {
-			next;
-		}
-
-		# VALID if not able to hang: 0 < $p < ($N-1)
+		if ( $count < $minCount ) { next; }
 		$total=0; $pp=$p+$inc+1;
-		foreach $theSeq ( keys(%alignments) ) {
-			if ( substr($theSeq,$p,1) !~ /[.N]/ && substr($theSeq,$pp,1) !~ /[.N]/ ) {
-				$total += $alignments{$theSeq};
+		$called = "TRUE";
+
+		# get depth
+		foreach $start ( @coordStarts ) {
+			if ( $start <= $p ) {
+				foreach $stop ( @{$coordStops{$start}} ) {
+					if ( $pp <= $stop ) {
+						$total += $coordSupport{$start}{$stop};
+					} else {
+						last;
+					}
+				}
+			} else {
+				last;
 			}
 		}
 
@@ -488,72 +601,6 @@ foreach $p ( sort { $a <=> $b } keys(%dcTable) ) {
 	}
 }
 close(DELV);
-
-
-open(INSV,'>',$prefix.'-insertions.txt') or die("ERROR: cannot open $prefix-insertions.txt for writing.\n");
-	print INSV "Reference_Name\tUpstream_Position\t";
-	print INSV "Insert\tContext\tCalled\tCount\tTotal\tFrequency\t";
-	print INSV 'Average_Quality',"\t",'ConfidenceNotMacErr';
-	print INSV "\t",'PairedUB',"\t",'QualityUB',"\n";
-foreach $p ( sort { $a <=> $b } keys(%icTable) ) {
-	foreach $insert ( keys(%{$icTable{$p}}) ) {
-		$called = "TRUE";
-		$count = $icTable{$p}{$insert};
-		if ( $count > 0 ) {
-			$quality = $iqTable{$p}{$insert} / $count;
-		} else {
-			$quality = 0;
-		}
-
-		if ( $count < $minCount ) {
-			next;
-		}
-
-		if ( $quality < $minQuality ) { $called = "FALSE"; }
-
-		# VALID if not able to hang: 0 < $p < ($N-1)
-		$total=0; $pp=$p+1;
-		foreach $theSeq ( keys(%alignments) ) {
-			if ( substr($theSeq,$p,1) !~ /[.N]/ && substr($theSeq,$pp,1) !~ /[.N]/ ) {
-				$total += $alignments{$theSeq};
-			}
-		}
-
-		if ( $total > 0 ) {
-			$freq = $count / $total;
-		} else {
-			$freq = 0;
-		}
-
-		if ( $freq < $minFreqIns || $total < $minTotal ) { $called = "FALSE"; }
-
-		$EE = 1/(10**($quality/10));
-		$confidence = calcProb($freq,$EE);
-		$pairedUB = UB($IE,$total);
-		$qualityUB = UB($EE,$total);
-
-		if ( $confidence < $minConf || $freq <= $pairedUB || $freq <= $qualityUB ) { $called = "FALSE"; }
-
-		$left = $right = '';
-		if ( $p < 5 ) {
-			$left = substr($consensusSeq,0,$p+1);
-		} else {
-			$left = substr($consensusSeq,$p-4,5);
-		}
-
-		if ( $p > ($REF_LEN-6) ) {
-			$right = substr($consensusSeq,$pp,$REF_LEN-$pp);
-		} else {
-			$right = substr($consensusSeq,$pp,5);
-		}
-
-		print INSV $REF_NAME,"\t",($p+1),"\t",uc($insert),"\t",lc($left),uc($insert),lc($right);
-		print INSV "\t",$called,"\t",$count,"\t",$total,"\t",$freq,"\t",$quality;
-		print INSV "\t",$confidence,"\t",$pairedUB,"\t",$qualityUB,"\t","\n";
-	}
-}
-close(INSV);
-
 
 if ( scalar(keys(%variants)) > 1 ) {
 	$varFile = $prefix.'-vars.sto';
