@@ -3,8 +3,8 @@ PROGRAM="Iterative Refinement Meta-Assembler (IRMA)"
 AUTHOR="Samuel S. Shepard"
 EMAIL="vfn4@cdc.gov"
 AFFIL="NCIRD/OID/CDC"
-DATE="1 APR 2016"
-VERSION="0.6.1"
+DATE="19 MAY 2016"
+VERSION="0.6.2"
 LICENSE="GPL version 3. This program comes with ABSOLUTELY NO WARRANTY. This is free software.
 You are welcome to redistribute it under certain conditions. See:  <http://www.gnu.org/licenses/>.
 Components of this pipeline have non-commercial restrictions. See: IRMA_RES/scripts/packaged-citations-licenses"
@@ -162,6 +162,13 @@ if [ ! -s "$REF_SET" ];then
 elif [ ! -r "$REF_SET" ];then
 	echo "IRMA ERROR! The REF_SET file was not readable: $REF_SET"
 	exit 0
+fi
+
+if [ "$GRID_ON" -eq "1" ];then
+	if ! command -v $cmd >/dev/null 2>&1;then
+		echo "IRMA WARNING: configured with GRID_ON=1 but no 'qsub' command found. Switching to GRID_ON=0 for local computation."
+		GRID_ON=0
+	fi
 fi
 
 # build arrays
