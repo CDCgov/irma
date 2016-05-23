@@ -1023,7 +1023,7 @@ function doPostProcessing() {
 	cd - > /dev/null
 	if [ "$ALIGN_PROG" != "NONE" ];then
 		cd $alignp
-		tar --ignore-failed-read -cf - R*.sto|gzip -4 - > storedCounts.tar.gz &
+		tar -cf - R*.sto 2>/dev/null | gzip -4 - > storedCounts.tar.gz &
 		cd - > /dev/null
 	fi
 	wait
