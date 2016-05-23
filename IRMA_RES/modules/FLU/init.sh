@@ -29,6 +29,7 @@ SORT_PROC=80		# currently not used
 NONSEGMENTED=0
 # Pattern list to group gene segment lineages into gene for primary/secondary sorting.
 SORT_GROUPS="PB2,PB1,PA,HA,NP,NA,MP,NS"
+SEG_NUMBERS="B_PB1:1,B_PB2:2,A_PB2:1,A_PB1:2,PA:3,HA:4,NP:5,NA:6,M:7,NS:8"
 
 # LABEL
 LFASTM=1		# LABEL sorting fast-mode

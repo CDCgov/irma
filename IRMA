@@ -972,7 +972,11 @@ function ASSEMBLE_REPORT() {
 	fi
 
 	$RSCRIPT $spath/heuristicDiagram.R $MIN_AQ $MIN_F $MIN_TCC $MIN_CONF ${final}-allAlleles.txt ${final}-heuristics.pdf > /dev/null 2>&1
-	$spath/amendConsensus.pl -C $MIN_C -N $RUN -S -F $MIN_AMBIG ${final}.fasta ${final}-variants.txt -P $ppath
+
+	local options="-C $MIN_C -N $RUN -F $MIN_AMBIG -P $ppath"
+	[ "$SEG_NUMBERS" != "" ] && options+=" -S $SEG_NUMBERS"
+	$spath/amendConsensus.pl ${final}.fasta ${final}-variants.txt $options
+
 	if [ -r ${final}-insertions.txt -a -r ${final}-deletions.txt ];then
 		local options="-C $MIN_C -F $MIN_F -I $MIN_FI -D $MIN_FD -Q $MIN_AQ -T $MIN_TCC -M $MIN_CONF -S $SIG_LEVEL"
 		[ "$AUTO_F" -eq 1 ] && options+=" -A"
@@ -1019,7 +1023,7 @@ function doPostProcessing() {
 	cd - > /dev/null
 	if [ "$ALIGN_PROG" != "NONE" ];then
 		cd $alignp
-		tar -cf - R*.sto|gzip -4 - > $alignp/storedCounts.tar.gz &
+		tar --ignore-failed-read -cf - R*.sto|gzip -4 - > storedCounts.tar.gz &
 		cd - > /dev/null
 	fi
 	wait

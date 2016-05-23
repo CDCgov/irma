@@ -60,6 +60,7 @@ SSW_M=2			# smith-waterman match score
 SSW_X=5			# smith-waterman mismatch penalty
 SSW_O=10		# smith-waterman gap open penalty
 SSW_E=1			# smith-waterman gap extension penalty
+SEG_NUMBERS=""		# amended consensus suffix for segments (if applicable). list separated by commas and key-value separated by colon.
 
 ### VARIANT CALLING ###
 # HEURISTICS

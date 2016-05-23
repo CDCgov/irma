@@ -9,7 +9,7 @@ GetOptions(
 		'min-total-depth|T=i' => \$minTotal,
 		'freq|F=f' => \$minFreq,
 		'name|N=s' => \$name,
-		'seg|S' => \$convertSeg,
+		'seg|S=s' => \$convertSeg,
 		'prefix|P=s' => \$prefix,
 		'min-del-freq|D=f' => \$minFreqDel,
 		'min-ins-freq|I=f' => \$minFreqIns,
@@ -77,19 +77,6 @@ if ( !defined($minTotal) || $minTotal < 0 ) {
 	'ACGT' => 'N'
 );
 
-%segMap = 	(
-		'B_PB1' => 1,
-		'B_PB2' => 2,
-		'A_PB2' => 1,
-		'A_PB1' => 2,
-		'PA' => 3,
-		'HA' => 4,
-		'NP' => 5,
-		'NA' => 6,
-		'M' => 7,
-		'NS' => 8
-		);
-
 # PROCESS fasta data
 open(IN, '<', $ARGV[0]) or die("Cannot open $ARGV[0].\n");
 $/ = ">"; $i = 0; %count = (); $L = 0;
@@ -132,9 +119,11 @@ if ( defined($name) ) {
 
 # if fasta header has a protein name, convert to flu segment number
 if ( defined($convertSeg) ) {
-	foreach	$prot ( keys(%segMap) ) {
+	@pairs = split(',',$convertSeg);
+	foreach $pair ( @pairs ) {
+		($prot,$numbering) = split(':',$pair);
 		if ( $faHeader =~ /$prot/ ) {
-			$outHdr .= '_'.$segMap{$prot};
+			$outHdr .= '_'.$numbering;
 			last;
 		}
 	}
