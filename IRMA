@@ -1228,7 +1228,7 @@ setPrograms	# set the programs
 if [ "$NO_SORT_REFS" -eq "1" ];then
 	$spath/partitionByField.pl -H -X .ref $REF_SET $refp/R0-
         time_stamp 'using supplied reference set set as-is'
-if [ "$ASSEM_REF" -eq "1" ];then
+elif [ "$ASSEM_REF" -eq "1" ];then
 	mkdir $sortp/R0
 	# Sort out the references
 	if [ "$SORT_PROG" == "LABEL" ];then
