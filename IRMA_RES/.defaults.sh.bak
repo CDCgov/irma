@@ -13,7 +13,8 @@ MIN_FA=1		# no alternative reference [0..1]
 MIN_CA=20		# minimum count for alternative finished assembly
 SKIP_E=1		# skip reference elongation
 REF_SET=$DEF_SET	# Same as the "consensus.fasta" in the reference folder for the module.
-ASSEM_REF=0
+ASSEM_REF=0		# start with same reference set for the final assembly, sort if custom file
+NO_SORT_REFS=0		# do not sort refs for custom references
 
 ### READ GATHERING ###
 FASTA=0			# accept fasta format
