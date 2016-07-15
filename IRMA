@@ -304,15 +304,20 @@ $BLAT $refDB \$INPUT \$OUTPUT $BLAT_OPTS
 $spath/parseBlat.pl \$OUTPUT \$INPUT $options -P $prefix
 EOL
 ###
+	chmod 755 $script.sh
 	$Lspath/interleavedSamples.pl -G $procs $queryDB $workdir/$prefix-$name > /dev/null 2>&1
 	if [ "$doGrid" -eq "1" ];then
 		qsub -t 1-$procs:1 -N ${prefix}-${name}-BLAT -sync y -wd $workdir -j y -o ${script}.o ${script}.sh > /dev/null 2>&1
-		rm ${script}.{o,sh}
+		if [ "$?" -ne "0" ];then
+			time_stamp "qsub of '${prefix}-${name}-BLAT' failed. Switching to master node."
+			$PARALLEL --workdir $workdir -j $procs $script.sh {} ::: $(seq $procs) > /dev/null 2>&1
+		else
+			rm ${script}.o
+		fi
 	else 
-		chmod 755 $script.sh
 		$PARALLEL --workdir $workdir -j $procs $script.sh {} ::: $(seq $procs) > /dev/null 2>&1
-		rm ${script}.sh
 	fi
+	rm ${script}.sh
 }
 
 function doMATCH() {
@@ -483,16 +488,20 @@ $A2M \$RUN -modelfile \$MOD -db \$DB
 $spath/a2mToMatchStats.pl \$RUN.a2m \$RUN.sto $options
 EOL
 
+	chmod 755 $script.sh
 	$Lspath/interleavedSamples.pl $queryDB $workdir/$prefix-$name -G $procs > /dev/null
 	if [ "$doGrid" -eq "1" ];then
 		qsub -t 1-$procs:1 -N $prefix-$name-SAM -sync y -wd $workdir -j y -o $script.o $script.sh > /dev/null 2>&1
-		rm ${script}.{o,sh}
+		if [ "$?" -ne "0" ];then
+			time_stamp "qsub of '${prefix}-${name}-SAM' failed. Switching to master node."
+			$PARALLEL --workdir $workdir -j $procs $script.sh {} ::: $(seq $procs) > /dev/null 2>&1
+		else
+			rm ${script}.o
+		fi
 	else
-		chmod 755 $script.sh
 		$PARALLEL --workdir $workdir -j $procs $script.sh {} ::: $(seq $procs) > /dev/null 2>&1
-		rm ${script}.sh
 	fi
-	rm $workdir/${prefix}-${name}_????.{fasta,a2m}
+	rm $workdir/${prefix}-${name}_????.{fasta,a2m} ${script}.sh
 }
 
 function doALIGN() {
@@ -702,15 +711,20 @@ EOL
 ###
 
 	# ASSEMBLE on grid vs local
+	chmod 755 $script.sh
 	if [ "$doGrid" -eq "1" ];then
 		qsub -t 1-$procs:1 -N F${iter}-$gene -sync y -wd $assemp -j y -o ${script}.o ${script}.sh > /dev/null 2>&1
-		rm ${script}.{o,sh}
+		if [ "$?" -ne "0" ];then
+			time_stamp "qsub of 'F${iter}-$gene' failed. Switching to master node."
+			$PARALLEL --workdir $ppath -j $procs $script.sh {} ::: $(seq $procs)
+		else
+			rm ${script}.o
+		fi
 	else
-		chmod 755 $script.sh
 		$PARALLEL --workdir $ppath -j $procs $script.sh {} ::: $(seq $procs)
-		rm ${script}.sh
 	fi
 	$spath/catSAMfiles.pl $assemp/F${iter}-${gene}-*.sam > $assemp/F${iter}-$gene.sam
+	rm ${script}.sh
 }
 
 
@@ -775,14 +789,19 @@ EOL
 #########################################
 
 	# GRID vs LOCAL execution of the CALL STATS step, inherits from ASSEMBLY step currently
+	chmod 755 $script.sh
 	if [ "$doGrid" -eq "1" ];then
 		qsub -t 1-$procs:1 -N $prefix -sync y -wd $assemp -j y -o ${script}.o ${script}.sh > /dev/null 2>&1
-		rm ${script}.{o,sh}
+		if [ "$?" -ne "0" ];then
+			time_stamp "qsub of '${prefix}' failed. Switching to master node."
+			$PARALLEL --workdir $ppath -j $procs ${script}.sh {} ::: $(seq $procs)
+		else
+			rm ${script}.o
+		fi
 	else
-		chmod 755 ${script}.sh
 		$PARALLEL --workdir $ppath -j $procs ${script}.sh {} ::: $(seq $procs)
-		rm ${script}.sh
 	fi
+	rm ${script}.sh
 
 	# GROUP
 	$spath/catSAMfiles.pl ${prefix2}-*.sam > ${final}.sam
@@ -837,14 +856,20 @@ VARS=$final-vars.sto
 $spath/phase.pl $final \$VARS \$PATS -A $procs -I \$ID
 EOL
 #########################################
+
+	chmod 755 $script.sh
 	if [ "$doGrid" -eq "1" ];then
 		qsub -t 1-$procs:1 -N ${gene}-phasing -sync y -wd $ppath -j y -o ${script}.o ${script}.sh > /dev/null 2>&1
-		rm $script.{o,sh} ${final}-pats.sto ${final}-vars.sto
+		if [ "$?" -ne "0" ];then
+			time_stamp "qsub of '${gene}-phasing' failed. Switching to master node."
+			$PARALLEL --workdir $ppath -j $procs ${script}.sh {} ::: $(seq $procs) > /dev/null 2>&1
+		else
+			rm $script.o
+		fi
 	else 
-		chmod 755 $script.sh
 		$PARALLEL --workdir $ppath -j $procs ${script}.sh {} ::: $(seq $procs) > /dev/null 2>&1
-		rm ${script}.sh ${final}-pats.sto ${final}-vars.sto
 	fi
+	rm ${final}-pats.sto ${final}-vars.sto ${script}.sh
 
 	local i=""
 	for i in EXPENRD JACCARD MUTUALD NJOINTP;do
