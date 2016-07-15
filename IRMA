@@ -310,7 +310,7 @@ EOL
 		qsub -t 1-$procs:1 -N ${prefix}-${name}-BLAT -sync y -wd $workdir -j y -o ${script}.o ${script}.sh > /dev/null 2>&1
 		if [ "$?" -ne "0" ];then
 			time_stamp "qsub of '${prefix}-${name}-BLAT' failed. Switching to master node."
-			$PARALLEL --workdir $workdir -j $procs $script.sh {} ::: $(seq $procs) > /dev/null 2>&1
+			$PARALLEL --workdir $workdir -j $SINGLE_LOCAL_PROC $script.sh {} ::: $(seq $procs) > /dev/null 2>&1
 		else
 			rm ${script}.o
 		fi
@@ -494,7 +494,7 @@ EOL
 		qsub -t 1-$procs:1 -N $prefix-$name-SAM -sync y -wd $workdir -j y -o $script.o $script.sh > /dev/null 2>&1
 		if [ "$?" -ne "0" ];then
 			time_stamp "qsub of '${prefix}-${name}-SAM' failed. Switching to master node."
-			$PARALLEL --workdir $workdir -j $procs $script.sh {} ::: $(seq $procs) > /dev/null 2>&1
+			$PARALLEL --workdir $workdir -j $SINGLE_LOCAL_PROC $script.sh {} ::: $(seq $procs) > /dev/null 2>&1
 		else
 			rm ${script}.o
 		fi
@@ -716,7 +716,7 @@ EOL
 		qsub -t 1-$procs:1 -N F${iter}-$gene -sync y -wd $assemp -j y -o ${script}.o ${script}.sh > /dev/null 2>&1
 		if [ "$?" -ne "0" ];then
 			time_stamp "qsub of 'F${iter}-$gene' failed. Switching to master node."
-			$PARALLEL --workdir $ppath -j $procs $script.sh {} ::: $(seq $procs)
+			$PARALLEL --workdir $ppath -j $SINGLE_LOCAL_PROC $script.sh {} ::: $(seq $procs)
 		else
 			rm ${script}.o
 		fi
@@ -794,7 +794,7 @@ EOL
 		qsub -t 1-$procs:1 -N $prefix -sync y -wd $assemp -j y -o ${script}.o ${script}.sh > /dev/null 2>&1
 		if [ "$?" -ne "0" ];then
 			time_stamp "qsub of '${prefix}' failed. Switching to master node."
-			$PARALLEL --workdir $ppath -j $procs ${script}.sh {} ::: $(seq $procs)
+			$PARALLEL --workdir $ppath -j $SINGLE_LOCAL_PROC ${script}.sh {} ::: $(seq $procs)
 		else
 			rm ${script}.o
 		fi
@@ -862,7 +862,7 @@ EOL
 		qsub -t 1-$procs:1 -N ${gene}-phasing -sync y -wd $ppath -j y -o ${script}.o ${script}.sh > /dev/null 2>&1
 		if [ "$?" -ne "0" ];then
 			time_stamp "qsub of '${gene}-phasing' failed. Switching to master node."
-			$PARALLEL --workdir $ppath -j $procs ${script}.sh {} ::: $(seq $procs) > /dev/null 2>&1
+			$PARALLEL --workdir $ppath -j $SINGLE_LOCAL_PROC ${script}.sh {} ::: $(seq $procs) > /dev/null 2>&1
 		else
 			rm $script.o
 		fi
