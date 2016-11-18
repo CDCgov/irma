@@ -3,8 +3,8 @@ PROGRAM="Iterative Refinement Meta-Assembler (IRMA)"
 AUTHOR="Samuel S. Shepard"
 EMAIL="vfn4@cdc.gov"
 AFFIL="NCIRD/OID/CDC"
-DATE="04 NOV 2016"
-VERSION="0.6.4"
+DATE="18 NOV 2016"
+VERSION="0.6.5"
 LICENSE="GPL version 3. This program comes with ABSOLUTELY NO WARRANTY. This is free software.
 You are welcome to redistribute it under certain conditions. See:  <http://www.gnu.org/licenses/>.
 Components of this pipeline have non-commercial restrictions. See: IRMA_RES/scripts/packaged-citations-licenses"
@@ -287,7 +287,7 @@ function doBLAT() {
 	[ "$SKIP_E" -eq "1" ] && options+=" -S"
 
 ###
-cat >$script.sh  <<EOL
+cat >${script}.sh  <<EOL
 #!/bin/bash
 LANG=$LANG
 shopt -u nocaseglob;shopt -u nocasematch
@@ -304,18 +304,18 @@ $BLAT $refDB \$INPUT \$OUTPUT $BLAT_OPTS
 $spath/parseBlat.pl \$OUTPUT \$INPUT $options -P $prefix
 EOL
 ###
-	chmod 755 $script.sh
+	chmod 755 ${script}.sh
 	$Lspath/interleavedSamples.pl -G $procs $queryDB $workdir/$prefix-$name > /dev/null 2>&1
 	if [ "$doGrid" -eq "1" ];then
 		qsub -t 1-$procs:1 -N ${prefix}-${name}-BLAT -sync y -wd $workdir -j y -o ${script}.o ${script}.sh > /dev/null 2>&1
 		if [ "$?" -ne "0" ];then
 			time_stamp "qsub of '${prefix}-${name}-BLAT' failed. Switching to master node."
-			$PARALLEL --workdir $workdir -j $SINGLE_LOCAL_PROC $script.sh {} ::: $(seq $procs) > /dev/null 2>&1
+			$PARALLEL --workdir $workdir -j $SINGLE_LOCAL_PROC ${script}.sh {} ::: $(seq $procs) > /dev/null 2>&1
 		else
 			rm ${script}.o
 		fi
 	else 
-		$PARALLEL --workdir $workdir -j $procs $script.sh {} ::: $(seq $procs) > /dev/null 2>&1
+		$PARALLEL --workdir $workdir -j $procs ${script}.sh {} ::: $(seq $procs) > /dev/null 2>&1
 	fi
 	rm ${script}.sh
 }
@@ -456,7 +456,7 @@ function doSAM() {
 	local limit=$6
 	local doGrid=0
 	local mod=$phmms/${name}_hmm.mod
-	local script=$workdir/$prefix-$name-SAM.sh
+	local script=$workdir/$prefix-$name-SAM
 	local n=$(grep '>' $queryDB -c)
 
 	if [ "$n" -gt "$limit" -a "$GRID_ON" -eq "1" ];then
@@ -470,7 +470,7 @@ function doSAM() {
 	local options=""
 	[ "$SKIP_E" -eq "1" ] && options+="-S"
 			
-cat >$script.sh  <<EOL
+cat >${script}.sh  <<EOL
 #!/bin/bash
 LANG=$LANG
 shopt -u nocaseglob;shopt -u nocasematch
@@ -488,18 +488,18 @@ $A2M \$RUN -modelfile \$MOD -db \$DB
 $spath/a2mToMatchStats.pl \$RUN.a2m \$RUN.sto $options
 EOL
 
-	chmod 755 $script.sh
+	chmod 755 ${script}.sh
 	$Lspath/interleavedSamples.pl $queryDB $workdir/$prefix-$name -G $procs > /dev/null
 	if [ "$doGrid" -eq "1" ];then
-		qsub -t 1-$procs:1 -N $prefix-$name-SAM -sync y -wd $workdir -j y -o $script.o $script.sh > /dev/null 2>&1
+		qsub -t 1-$procs:1 -N $prefix-$name-SAM -sync y -wd $workdir -j y -o ${script}.o ${script}.sh > /dev/null 2>&1
 		if [ "$?" -ne "0" ];then
 			time_stamp "qsub of '${prefix}-${name}-SAM' failed. Switching to master node."
-			$PARALLEL --workdir $workdir -j $SINGLE_LOCAL_PROC $script.sh {} ::: $(seq $procs) > /dev/null 2>&1
+			$PARALLEL --workdir $workdir -j $SINGLE_LOCAL_PROC ${script}.sh {} ::: $(seq $procs) > /dev/null 2>&1
 		else
 			rm ${script}.o
 		fi
 	else
-		$PARALLEL --workdir $workdir -j $procs $script.sh {} ::: $(seq $procs) > /dev/null 2>&1
+		$PARALLEL --workdir $workdir -j $procs ${script}.sh {} ::: $(seq $procs) > /dev/null 2>&1
 	fi
 	rm $workdir/${prefix}-${name}_????.{fasta,a2m} ${script}.sh
 }
@@ -690,7 +690,7 @@ function ASSEM_RUN_SSW() {
 	[ "$ASSEM_REF" -eq "1" ] && options+=" -G"
 
 ###
-cat > $script.sh  <<EOL
+cat > ${script}.sh  <<EOL
 #!/bin/bash
 LANG=$LANG
 shopt -u nocaseglob;shopt -u nocasematch
@@ -711,17 +711,17 @@ EOL
 ###
 
 	# ASSEMBLE on grid vs local
-	chmod 755 $script.sh
+	chmod 755 ${script}.sh
 	if [ "$doGrid" -eq "1" ];then
 		qsub -t 1-$procs:1 -N F${iter}-$gene -sync y -wd $assemp -j y -o ${script}.o ${script}.sh > /dev/null 2>&1
 		if [ "$?" -ne "0" ];then
 			time_stamp "qsub of 'F${iter}-$gene' failed. Switching to master node."
-			$PARALLEL --workdir $ppath -j $SINGLE_LOCAL_PROC $script.sh {} ::: $(seq $procs)
+			$PARALLEL --workdir $ppath -j $SINGLE_LOCAL_PROC ${script}.sh {} ::: $(seq $procs)
 		else
 			rm ${script}.o
 		fi
 	else
-		$PARALLEL --workdir $ppath -j $procs $script.sh {} ::: $(seq $procs)
+		$PARALLEL --workdir $ppath -j $procs ${script}.sh {} ::: $(seq $procs)
 	fi
 	$spath/catSAMfiles.pl $assemp/F${iter}-${gene}-*.sam > $assemp/F${iter}-$gene.sam
 	rm ${script}.sh
@@ -789,7 +789,7 @@ EOL
 #########################################
 
 	# GRID vs LOCAL execution of the CALL STATS step, inherits from ASSEMBLY step currently
-	chmod 755 $script.sh
+	chmod 755 ${script}.sh
 	if [ "$doGrid" -eq "1" ];then
 		qsub -t 1-$procs:1 -N $prefix -sync y -wd $assemp -j y -o ${script}.o ${script}.sh > /dev/null 2>&1
 		if [ "$?" -ne "0" ];then
@@ -857,14 +857,14 @@ $spath/phase.pl $final \$VARS \$PATS -A $procs -I \$ID
 EOL
 #########################################
 
-	chmod 755 $script.sh
+	chmod 755 ${script}.sh
 	if [ "$doGrid" -eq "1" ];then
 		qsub -t 1-$procs:1 -N ${gene}-phasing -sync y -wd $ppath -j y -o ${script}.o ${script}.sh > /dev/null 2>&1
 		if [ "$?" -ne "0" ];then
 			time_stamp "qsub of '${gene}-phasing' failed. Switching to master node."
 			$PARALLEL --workdir $ppath -j $SINGLE_LOCAL_PROC ${script}.sh {} ::: $(seq $procs) > /dev/null 2>&1
 		else
-			rm $script.o
+			rm ${script}.o
 		fi
 	else 
 		$PARALLEL --workdir $ppath -j $procs ${script}.sh {} ::: $(seq $procs) > /dev/null 2>&1

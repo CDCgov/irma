@@ -15,7 +15,8 @@ GetOptions(	'no-gap-allele|G' => \$noGap,
 		'conf-not-mac-err|M=f' => \$minConf,
 		'sig-level|S=f' => \$sigLevel,
 		'paired-error|E=s' => \$pairedStats,
-		'auto-min-freq|A' => \$autoFreq
+		'auto-min-freq|A' => \$autoFreq,
+		'call-table|B=s' => \$callTable
 	);
 
 if ( scalar(@ARGV) < 3 ) {
@@ -29,6 +30,7 @@ if ( scalar(@ARGV) < 3 ) {
 	$message .= "\t\t-M|--conf-not-mac-err <FLT>\t\tConfidence not machine error allowable minimum. Default = 0.5\n";
 	$message .= "\t\t-S|--sig-level <FLT>\t\t\tSignificance test (90, 95, 99, 99.9) variant is not machine error.\n";
 	$message .= "\t\t-E|--paired-error <FILE>\t\tFile with paired error estimates.\n";
+	$message .= "\t\t-B|--call-table <FILE>\t\t\tCall table specified in file, format:<POS>[TAB]<ALLELE>\n";
 	$message .= "\t\t-A|--auto-min-freq\t\t\tAutomatically find minimum frequency heuristic.\n";
 	die($message."\n");
 }
@@ -196,6 +198,22 @@ if ( !defined($minTotal) || $minTotal < 0 ) {
 	$minTotal = 2;
 }
 
+%variants = (); $doCallTable = 0;
+if ( defined($callTable) ) {
+	$/ = "\n";
+	open(CALLTBL,'<',$callTable) or die("Cannot open $callTable for reading.\n");
+	while($line=<CALLTBL>) {
+		chomp($line);
+		($p,$base) = split("\t",$line);
+		$variants{($p-1)}{uc($base)} = 0;
+	}
+	close(CALLTBL);
+
+	if ( scalar(keys(%variants)) > 0 ) {
+		$doCallTable = 1;
+	}
+}
+
 $REisBase = qr/[ATCG]/;
 $REgetMolID = qr/^(.+?)[_ ]([12]):.+/;
 
@@ -269,10 +287,10 @@ for($i=2;$i<scalar(@ARGV);$i++) {
 	}
 }
 
-%variants = (); $prefix = $ARGV[1];
+$prefix = $ARGV[1];
 open(COVG,'>',$prefix.'-coverage.txt') or die("Cannot open $prefix-coverage.txt for writing.\n");
 open(CONS,'>',$prefix.'.fasta') or die("Cannot open $prefix.fasta for writing.\n");
-if ( $printAllAlleles ) {
+if ( $printAllAlleles || $doCallTable ) {
 	open(ALLA,'>',$prefix.'-allAlleles.txt') or die("ERROR: cannot open $prefix-allAlleles.txt for writing.\n");
 	print ALLA 'Reference_Name',"\t",'Position',"\t";
 	print ALLA 'Allele',"\t",'Count',"\t",'Total',"\t",'Frequency',"\t";
@@ -290,7 +308,7 @@ print VARS "\t",'ConfidenceNotMacErr',"\t",'PairedUB',"\t",'QualityUB',"\n";
 print COVG "Reference_Name\tPosition\tCoverage Depth\tConsensus\tDeletions\tAmbiguous\n";
 print CONS '>',$REF_NAME,"\n";
 
-$hFreq = 0;
+$hFreq = 0; @alphabet = split('','ACGT-');
 
 #TO-DO consider refactoring
 %totals = (); $consensusSeq = '';
@@ -332,108 +350,141 @@ for($p=0;$p<$REF_LEN;$p++) {
 	print CONS $consensus;
 	$consensusSeq .= $consensus;
 
-	if ( $total != 0 ) { 
-		$conFreq = $conCount / $total;
-	} else {
-		$conFreq = 0;
-	}
+	if ( $total != 0 ) { $conFreq = $conCount / $total; } else { $conFreq = 0; }
+	if ( $conCount != 0 ) { $conQuality = ($qTable[$p]{$consensus} - $conCount*33)/$conCount; } else { $conQuality = $minQuality; }
 
-	if ( $conCount != 0 ) {
-		$conQuality = ($qTable[$p]{$consensus} - $conCount*33)/$conCount;
-	} else {
-		$conQuality = $minQuality;
-	}
+	if ( $doCallTable ) {
+		if ( !defined($variants{$p}) ) { next; }
+		foreach $base ( @alphabet ) {
+			if ( defined($cTable[$p]{$base}) ) {
+				$count = $cTable[$p]{$base};
+				$freq = $count / $total;
 
-	foreach $base ( @bases ) {
-		# majority allele
-		if ( $base eq $consensus ) {
-			if ( $printAllAlleles ) {
-				# Please revisit
-				if ( $base eq 'N' ) {
-					$ee = 1/(10**($conQuality/10));
-					$confidence = calcProb($conFreq,$ee);
-					$quality = $conQuality;
-					$pairedUB = UB($PE,$conCount);
-					$qualityUB = UB($ee,$conCount);
-					$total = $conCount;
-				} elsif ( $base eq '-' ) {
-					$quality = 'NA';
-					$confidence = 'NA';
+				if ( $base eq '-' ) {
+					$qualityUB = $quality = $confidence = 'NA';
 					$pairedUB = UB($DE,$total);
-					$qualityUB = 0;
-					$ee = 0;
 				} else {
-					$ee = 1/(10**($conQuality/10));
-					$confidence = calcProb($conFreq,$ee);
-					$quality = $conQuality;
+					$quality = ($qTable[$p]{$base} - $count*33)/$count;
+					$ee = 1/(10**($quality/10));
+					$confidence = calcProb($freq,$ee);
 					$pairedUB = UB($PE,$total);
 					$qualityUB = UB($ee,$total);
 				}
-				print ALLA $REF_NAME,"\t",($p+1),"\t",$base,"\t",$conCount,"\t",$total,"\t",$conFreq,"\t",$quality;
-				print ALLA "\t",$confidence,"\t",$pairedUB,"\t",$qualityUB,"\t",'Consensus',"\n";
-			}
-		} else {
-			$count = $cTable[$p]{$base};
-			if ( $count == 0 || $base eq 'N' ) { 
-				next;
-			}
-			$freq = $count / $total;
-			if ( $base ne '-'  && $base ne 'N' ) {
-				$quality = ($qTable[$p]{$base} - $count*33)/$count;
 			} else {
-				$quality = $minQuality;
+				$freq = $count = 0;
+				$qualityUB = $quality = $confidence = 'NA';
+				if ( $total == 0 ) {
+					$pairedUB = 'NA';
+				} elsif ( $base eq '-' ) {
+					$pairedUB = UB($DE,$total);
+				} else {
+					$pairedUB = UB($PE,$total);
+				}
 			}
 
-			# minor allele
-			if ( $base ne 'N' ) {	
-				# valid variant
-				if ( !($noGap && $base eq '-') && $freq >= $minFreq && $count >= $minCount && $quality >= $minQuality  && $total >= $minTotal ) {
-					if ( $base eq '-' ) {
-						$confidence = 'NA';
+			if ( $base eq $consensus ) { $baseType = 'Consensus'; } else { $baseType = 'Minority'; }
+			print ALLA $REF_NAME,"\t",($p+1),"\t",$base,"\t",$count,"\t",$total,"\t",$freq,"\t",$quality;
+			print ALLA "\t",$confidence,"\t",$pairedUB,"\t",$qualityUB,"\t",$baseType,"\n";
+
+			if ( defined($variants{$p}{$base}) ) {
+				$variants{$p}{$base} = $freq;
+				$varLine{$p}{$base} = $REF_NAME."\t".($p+1)."\t".$total."\t";
+				$varLine{$p}{$base} .= $consensus."\t".$base."\t".$conCount."\t".$count."\t";
+				$varLine{$p}{$base} .= $conFreq."\t".$freq."\t".$conQuality."\t".$quality."\t";
+				$varLine{$p}{$base} .= $confidence."\t".$pairedUB."\t".$qualityUB."\n";
+			}
+		}
+	} else {
+		foreach $base ( @bases ) {
+			# majority allele
+			if ( $base eq $consensus ) {
+				if ( $printAllAlleles ) {
+					# Please revisit
+					if ( $base eq 'N' ) {
+						$ee = 1/(10**($conQuality/10));
+						$confidence = calcProb($conFreq,$ee);
+						$quality = $conQuality;
+						$pairedUB = UB($PE,$conCount);
+						$qualityUB = UB($ee,$conCount);
+						$total = $conCount;
+					} elsif ( $base eq '-' ) {
 						$quality = 'NA';
+						$confidence = 'NA';
 						$pairedUB = UB($DE,$total);
 						$qualityUB = 0;
 						$ee = 0;
 					} else {
-						$ee = 1/(10**($quality/10));
-						$confidence = calcProb($freq,$ee);
+						$ee = 1/(10**($conQuality/10));
+						$confidence = calcProb($conFreq,$ee);
+						$quality = $conQuality;
 						$pairedUB = UB($PE,$total);
 						$qualityUB = UB($ee,$total);
 					}
+					print ALLA $REF_NAME,"\t",($p+1),"\t",$base,"\t",$conCount,"\t",$total,"\t",$conFreq,"\t",$quality;
+					print ALLA "\t",$confidence,"\t",$pairedUB,"\t",$qualityUB,"\t",'Consensus',"\n";
+				}
+			} else {
+				$count = $cTable[$p]{$base};
+				if ( $count == 0 || $base eq 'N' ) { 
+					next;
+				}
+				$freq = $count / $total;
+				if ( $base ne '-'  && $base ne 'N' ) {
+					$quality = ($qTable[$p]{$base} - $count*33)/$count;
+				} else {
+					$quality = $minQuality;
+				}
 
-					if ( $freq <= $ee && $freq > $hFreq ) { $hFreq = $freq; }
-					if ( $printAllAlleles ) {
+				# minor allele
+				if ( $base ne 'N' ) {	
+					# valid variant
+					if ( !($noGap && $base eq '-') && $freq >= $minFreq && $count >= $minCount && $quality >= $minQuality  && $total >= $minTotal ) {
+						if ( $base eq '-' ) {
+							$confidence = 'NA';
+							$quality = 'NA';
+							$pairedUB = UB($DE,$total);
+							$qualityUB = 0;
+							$ee = 0;
+						} else {
+							$ee = 1/(10**($quality/10));
+							$confidence = calcProb($freq,$ee);
+							$pairedUB = UB($PE,$total);
+							$qualityUB = UB($ee,$total);
+						}
+
+						if ( $freq <= $ee && $freq > $hFreq ) { $hFreq = $freq; }
+						if ( $printAllAlleles ) {
+							print ALLA $REF_NAME,"\t",($p+1),"\t",$base,"\t",$count,"\t",$total,"\t",$freq,"\t",$quality;
+							print ALLA "\t",$confidence,"\t",$pairedUB,"\t",$qualityUB,"\t",'Minority',"\n";
+						}
+
+						if ( $confidence < $minConf || $freq <= $pairedUB || $freq <= $qualityUB ) {
+							next;
+						}
+
+						$variants{$p}{$base} = $freq;
+						$varLine{$p}{$base} = $REF_NAME."\t".($p+1)."\t".$total."\t";
+						$varLine{$p}{$base} .= $consensus."\t".$base."\t".$conCount."\t".$count."\t";
+						$varLine{$p}{$base} .= $conFreq."\t".$freq."\t".$conQuality."\t".$quality."\t";
+						$varLine{$p}{$base} .= $confidence."\t".$pairedUB."\t".$qualityUB."\n";
+					# any variant
+					} elsif ( $printAllAlleles ) {
+						if ( $base eq '-' ) {
+							$quality = 'NA';
+							$confidence = 'NA';
+							$pairedUB = UB($DE,$total);
+							$qualityUB = 0;
+							$ee = 0;
+						} else {
+							$ee = 1/(10**($quality/10));
+							$confidence = calcProb($freq,$ee);
+							$pairedUB = UB($PE,$total);
+							$qualityUB = UB($ee,$total);
+						}
+						if ( $freq <= $ee && $freq > $hFreq ) { $hFreq = $freq; }
 						print ALLA $REF_NAME,"\t",($p+1),"\t",$base,"\t",$count,"\t",$total,"\t",$freq,"\t",$quality;
 						print ALLA "\t",$confidence,"\t",$pairedUB,"\t",$qualityUB,"\t",'Minority',"\n";
 					}
-
-					if ( $confidence < $minConf || $freq <= $pairedUB || $freq <= $qualityUB ) {
-						next;
-					}
-
-					$variants{$p}{$base} = $freq;
-
-					$varLine{$p}{$base} = $REF_NAME."\t".($p+1)."\t".$total."\t";
-					$varLine{$p}{$base} .= $consensus."\t".$base."\t".$conCount."\t".$count."\t";
-					$varLine{$p}{$base} .= $conFreq."\t".$freq."\t".$conQuality."\t".$quality."\t";
-					$varLine{$p}{$base} .= $confidence."\t".$pairedUB."\t".$qualityUB."\n";
-				# any variant
-				} elsif ( $printAllAlleles ) {
-					if ( $base eq '-' ) {
-						$quality = 'NA';
-						$confidence = 'NA';
-						$pairedUB = UB($DE,$total);
-						$qualityUB = 0;
-						$ee = 0;
-					} else {
-						$ee = 1/(10**($quality/10));
-						$confidence = calcProb($freq,$ee);
-						$pairedUB = UB($PE,$total);
-						$qualityUB = UB($ee,$total);
-					}
-					if ( $freq <= $ee && $freq > $hFreq ) { $hFreq = $freq; }
-					print ALLA $REF_NAME,"\t",($p+1),"\t",$base,"\t",$count,"\t",$total,"\t",$freq,"\t",$quality;
-					print ALLA "\t",$confidence,"\t",$pairedUB,"\t",$qualityUB,"\t",'Minority',"\n";
 				}
 			}
 		}
@@ -444,19 +495,23 @@ close(CONS); close(COVG);
 
 foreach $p ( sort { $a <=> $b } keys(%varLine) ) {
 	foreach $base ( sort { $varLine{$p}{$a} cmp $varLine{$p}{$b} } keys(%{$varLine{$p}}) ) {
-		if ( $autoFreq ) { 
-			if ( $variants{$p}{$base} > $hFreq ) {
-				print VARS $varLine{$p}{$base};
-			} else {
-				delete($variants{$p}{$base});	
-			}
-		} else {
+		if ( $doCallTable ) {
 			print VARS $varLine{$p}{$base};
+		} else {
+			if ( $autoFreq ) { 
+				if ( $variants{$p}{$base} > $hFreq ) {
+					print VARS $varLine{$p}{$base};
+				} else {
+					delete($variants{$p}{$base});	
+				}
+			} else {
+				print VARS $varLine{$p}{$base};
+			}
 		}
 	}
 }
 close(VARS);
-close(ALL);
+close(ALLA);
 
 %coordSupport = %coordList = ();
 foreach $aln ( keys(%alignments) ) {

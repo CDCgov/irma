@@ -16,7 +16,6 @@ open(IN,'<',$ARGV[0]) or die("Cannot open $ARGV[0]\n");
 $/ = "\n";
 @lines = <IN>; chomp(@lines);
 close(IN);
-open(OUT,'>',$ARGV[0]) or die("Cannot open $ARGV[1] for writing.\n");
 
 @h = @a = ();
 @M = (); $N = scalar(@lines);
@@ -28,7 +27,7 @@ for($i = 0; $i < $N;$i++ ) {
 	}
 }
 
-
+open(OUT,'>',$ARGV[0]) or die("Cannot open $ARGV[1] for writing.\n");
 for($i=0;$i<$N;$i++) {
 	print OUT $h[$i];
 	if ( defined($hasAnnot) ) {
