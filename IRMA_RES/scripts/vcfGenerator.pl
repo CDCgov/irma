@@ -184,7 +184,8 @@ open(IN,'<',$ARGV[1]) or die("Cannot open $ARGV[1] for reading.\n");
 $header = <IN>;
 while($line=<IN>) {
 	chomp($line);
-	@fields = split("\t",$line);	
+	@fields = split("\t",$line);
+	#Reference_Name Position Allele Count Total Frequency Average_Quality ConfidenceNotMacErr PairedUB QualityUB Allele_Type	
 	($Reference_Name,$Position,$Allele,$Count,$Total,$Frequency,$Average_Quality,$ConfidenceNotMacErr,$PairedUB,$QualityUB,$Allele_Type) = @fields;
 	
 	if ( defined($autoFreq) ) {
@@ -195,7 +196,7 @@ while($line=<IN>) {
 		}
 	}
 
-	if ( $Allele_Type eq 'Majority' ) {
+	if ( $Allele_Type eq 'Consensus' || $Allele_Type eq 'Majority' || $Allele_Type eq 'Plurality' ) {
 		$majorityTable{$Position} = [@fields];
 	} else {
 		if ( $Allele ne '-' ) {
@@ -222,7 +223,7 @@ $header = <IN>;
 while($line=<IN>) {
 	chomp($line);
 	@fields = split("\t",$line);	
-
+	# Reference_Name Upstream_Position Insert Context Called Count Total Frequency Average_Quality ConfidenceNotMacErr PairedUB QualityUB
 	($Reference_Name,$Upstream_Position,$Insert,$Context,$Called,$Count,$Total,$Frequency,$Average_Quality,$ConfidenceNotMacErr,$PairedUB,$QualityUB) = @fields;
 	$insertionTable{$Upstream_Position}{$Insert} = [@fields];
 }
@@ -234,7 +235,7 @@ $header = <IN>;
 while($line=<IN>) {
 	chomp($line);
 	@fields = split("\t",$line);	
-
+	# Reference_Name Upstream_Position Length Context Called Count Total Frequency PairedUB
 	($Reference_Name,$Upstream_Position,$Length,$Context,$Called,$Count,$Total,$Frequency,$PairedUB) = @fields;
 	$deletionTable{$Upstream_Position}{$Length} = [@fields];
 }
