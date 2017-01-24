@@ -104,7 +104,7 @@ if ( $takeEverything ) {
 			$max = $fields[$f];
 		}
 	}
-	print $min,$newline;
+	print $max,$newline;
 } elsif ( $takeMinimum ) {
 	while($line=<>) {
 		chomp($line);
