@@ -281,7 +281,7 @@ function doBLAT() {
 			options="-C"
 		fi
 	elif [ "$SORT_PROG" == "LABEL" -a "$LFASTM" -eq "1" ];then 
-		[ -z "$GENE_GROUP" ] && options="T" || options="-G $GENE_GROUP"
+		[ -z "$GENE_GROUP" ] && options="-T" || options="-G $GENE_GROUP"
 	fi
 	[ "$INCL_CHIM" -eq "1" ] && options+=" -I"
 	[ "$SKIP_E" -eq "1" ] && options+=" -S"
