@@ -33,6 +33,7 @@ SEG_NUMBERS="B_PB1:1,B_PB2:2,A_PB2:1,A_PB1:2,PA:3,HA:4,NP:5,NA:6,M:7,NS:8"
 
 # LABEL
 LFASTM=1		# LABEL sorting fast-mode
+GENE_GROUP="HA,NA:OG"	# using the gene group
 
 ## ALIGN STEP ##
 ALIGN_PROG="SAM"	# rough assembly / alignment to working reference [SAM,BLAT]

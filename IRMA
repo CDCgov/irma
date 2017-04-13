@@ -3,8 +3,8 @@ PROGRAM="Iterative Refinement Meta-Assembler (IRMA)"
 AUTHOR="Samuel S. Shepard"
 EMAIL="vfn4@cdc.gov"
 AFFIL="NCIRD/OID/CDC"
-DATE="02 DEC 2016"
-VERSION="0.6.5"
+DATE="12 APR 2017"
+VERSION="0.6.6"
 LICENSE="GPL version 3. This program comes with ABSOLUTELY NO WARRANTY. This is free software.
 You are welcome to redistribute it under certain conditions. See:  <http://www.gnu.org/licenses/>.
 Components of this pipeline have non-commercial restrictions. See: IRMA_RES/scripts/packaged-citations-licenses"
@@ -281,7 +281,7 @@ function doBLAT() {
 			options="-C"
 		fi
 	elif [ "$SORT_PROG" == "LABEL" -a "$LFASTM" -eq "1" ];then 
-		options="-T"
+		[ -z "$GENE_GROUP" ] && options="T" || options="-G $GENE_GROUP"
 	fi
 	[ "$INCL_CHIM" -eq "1" ] && options+=" -I"
 	[ "$SKIP_E" -eq "1" ] && options+=" -S"
@@ -350,12 +350,13 @@ function doMATCH() {
 	wait
 
 	# LABEL fast mode consoldiation
-	if [ $LFASTM -eq "1" -a "$SORT_PROG" == "LABEL" ];then
-		cat $matchp/${prefix}-${name}_????.match.HA > $matchp/${prefix}.match.HA 2> /dev/null &
-		cat $matchp/${prefix}-${name}_????.match.NA > $matchp/${prefix}.match.NA 2> /dev/null &
-		cat $matchp/${prefix}-${name}_????.match.OG > $matchp/${prefix}.match.OG 2> /dev/null &
+	if [ "$LFASTM" -eq "1" -a "$SORT_PROG" == "LABEL" -a ! -z "$GENE_GROUP" ];then
+		for i in $(echo $GENE_GROUP|tr ',:' ' ');do
+			if test -n "$(shopt -s nullglob;echo $matchp/${prefix}-${name}_????.match.$i)";then
+				cat $matchp/${prefix}-${name}_????.match.$i > $matchp/${prefix}.match.$i && rm $matchp/${prefix}-${name}_????.match.$i &
+			fi
+		done
 		wait
-		rm $matchp/${prefix}-${name}_????.match.{HA,NA,OG}
 	fi
 
 	# CLEAN UP	
@@ -389,12 +390,13 @@ function doSORT() {
 		mkdir $sortp/${prefix}
 		if [ "$LFASTM" -eq "1" ];then
 			groupFile=""
-
-			for groupFile in $matchp/${prefix}.match.*;do
-				local geneGroup=$(basename $groupFile|cut -f3 -d'.')
-				doLABEL $groupFile "$MODULE-$geneGroup" "$MODULE-$geneGroup" $sortp/${prefix} $LIMIT_LABEL &
-			done
-			wait
+			if test -n "$(shopt -s nullglob;echo $matchp/${prefix}.match.*)";then
+				for groupFile in $matchp/${prefix}.match.*;do
+					local geneGroup=$(basename $groupFile|cut -f3 -d'.')
+					doLABEL $groupFile "$MODULE-$geneGroup" "$MODULE-$geneGroup" $sortp/${prefix} $LIMIT_LABEL &
+				done
+				wait
+			fi
 		else
 			# SORT using LABEL full
 			doLABEL $matchp/${prefix}.match $MODULE $MODULE $sortp/${prefix} $LIMIT_LABEL
@@ -623,14 +625,12 @@ function doRound() {
 	fi
 
 	### ALIGN stage ###
-	# given we have primary data in this around	
+	# given we have primary data in this round	
 	if test -n "$(shopt -s nullglob;echo $sortp/$prefix-*.fa)";then
 		doALIGN $prefix
 	else
 		time_stamp "$prefix aborted, found fewer than $MIN_RP RPs or $MIN_RC reads for all template"
-		if [ $R -gt 1 ];then
-			doPostProcessing
-		else
+		if [ $R -eq 1 ];then
 			mkdir $ppath/low_abundance
 			mkdir $ppath/other_data
 			for i in $sortp/*2;do
@@ -656,6 +656,8 @@ function doRound() {
 			fi
 			rm $ppath/R*.{fa,xfl}
 			rm -rf $alignp $matchp $refp $sortp $assemp
+		else
+			doPostProcessing
 		fi
 	
 		moveProject
@@ -668,6 +670,11 @@ function doRound() {
 		REF_SET=$refp/${prefix}.refs
 		QUERY_SET=$matchp/$prefix.nomatch
 		time_stamp "$prefix references created"
+	fi
+
+	# if we have MERGE_SECONDARY set and it is after the first round, load the alt match data back in for the next round
+	if [ "${MERGE_SECONDARY:-0}" -eq "1" -a "$R" -eq "1" ];then
+		test -n "$(shopt -s nullglob;echo $sortp/R1-*.fa.2)" && cat $sortp/R1-*.fa.2 >> $QUERY_SET && rm $sortp/R1-*.fa.2
 	fi
 }
 
@@ -1055,7 +1062,11 @@ function doPostProcessing() {
 	time_stamp 'saved unmatched read patterns'
 
 	# CLEAN UP
-	[ "$LFASTM" -eq "1" -a "$SORT_PROG" == "LABEL" ] && rm $matchp/R?.match.{HA,NA,OG}
+	if [ "$LFASTM" -eq "1" -a "$SORT_PROG" == "LABEL" ];then 
+		if test -n "$(shopt -s nullglob;echo $matchp/R?.match.*)";then
+			rm $matchp/R?.match.*
+		fi
+	fi
 
 	### experimental ###
 	echo -e "Record\tReads\tPatterns\tPairsAndWidows" >> $ppath/READ_COUNTS.txt

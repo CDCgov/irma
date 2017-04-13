@@ -12,29 +12,19 @@ if ( scalar(@ARGV) != 3 ) {
 	die($message."\n");
 }
 
-if ( !defined($minimumRcount) || $minimumRcount < 1 ) {
-	$minimumRcount = 1;
-}
+if ( !defined($minimumRcount)  || $minimumRcount < 1 )  { $minimumRcount  = 1; }
+if ( !defined($minimumRPcount) || $minimumRPcount < 1 ) { $minimumRPcount = 1; }
 
-if ( !defined($minimumRPcount) || $minimumRPcount < 1 ) {
-	$minimumRPcount = 1;
-}
-
-%counts = ();
-$/ = "\n";
+%counts = (); $/ = "\n";
 open(IN,'<',$ARGV[0]) or die("Cannot open $ARGV[0] for reading.\n");
 while($line=<IN>) {
 	chomp($line);
-	($ID,$target,$sig_threshold) = split("\t",$line);
-	if ( $ignoreAnnotations && $target =~ /^([^{]+){[^}]*}$/ ) {
-		$target = $1;
-	}
+	($ID,$target,$score) = split("\t",$line);
+	if ( $ignoreAnnotations && $target =~ /^([^{]+){[^}]*}$/ ) { $target = $1; }
 
 	$counts{$target}++;
-	$IDs{$ID} = $target;
-	if ( $ID =~ /C\d+%(\d+)%/ ) {
-		$rCounts{$target} += $1;
-	}
+	$IDs{$ID}{$target} = $score;
+	if ( $ID =~ /C\d+%(\d+)%/ ) { $rCounts{$target} += $1; }
 }
 close(IN);
 
@@ -50,6 +40,7 @@ open(OUT,'>',$ARGV[2].'.txt') or die("Cannot open $ARGV[0].txt\n");
 @genes = sort { $counts{$b} <=> $counts{$a} } keys(%counts);
 foreach $gene ( @genes ) {
 	print OUT $gene,"\t",$counts{$gene},"\t",$rCounts{$gene},"\n";
+	# By default, anything with the valid minimum is okay
 	if  ( $counts{$gene} >= $minimumRPcount && $rCounts{$gene} >= $minimumRcount ) {
 		$valid{$gene} = 1;
 	} else {
@@ -58,6 +49,7 @@ foreach $gene ( @genes ) {
 }
 close(OUT);
 
+# We remove genes that are explicitly banned
 if ( defined($banList) && length($banList) > 0 ) {
 	@banPatterns = split(',',$banList);
 	foreach $banPat ( @banPatterns ) {
@@ -69,34 +61,41 @@ if ( defined($banList) && length($banList) > 0 ) {
 	}
 }
 
+# If we have a pattern list we must divide into groups
 if ( defined($patternList) && length($patternList) > 0) {
 	@patterns = split(',',$patternList);
+
+	# If ALL genes are in a group, get the best (2nd best & on are invalid)
 	if ( scalar(@patterns) == 1 && $patterns[0] eq '__ALL__' ) {
 		for($i=1;$i<scalar(@genes);$i++) {
 			$valid{$genes[$i]} = 0;
 		}
 		@patterns = ();
-	}
-
-	%genesByPat = ();
-	foreach $pat ( @patterns ) {
-		foreach $gene ( @genes ) {
-			# can enforce FCFS uniqueness for each pat
-			if ( $gene =~ /$pat/ ) {
-				$genesByPat{$pat}{$gene} = $counts{$gene};
+	} else {
+		# Divide into group maximums
+		%genesByPat = ();
+		foreach $pat ( @patterns ) {
+			foreach $gene ( @genes ) {
+				# Can enforce FCFS uniqueness for each pattern
+				if ( $gene =~ /$pat/ ) {
+					$genesByPat{$pat}{$gene} = $counts{$gene};
+				}
 			}
-		}
-		@geneList = sort { $genesByPat{$pat}{$b} <=> $genesByPat{$pat}{$a} } keys(%{$genesByPat{$pat}});
-		for($i=1;$i<scalar(@geneList);$i++) {
-			$valid{$geneList[$i]} = 0;
+			@geneList = sort { $genesByPat{$pat}{$b} <=> $genesByPat{$pat}{$a} } keys(%{$genesByPat{$pat}});
+			for($i=1;$i<scalar(@geneList);$i++) {
+				$valid{$geneList[$i]} = 0;
+			}
 		}
 	}
 }
-	
+
+# Set up handles for primary and secondary data	
 %handles = ();
 foreach $gene ( @genes ) {
+	# primary
 	if ( $valid{$gene} > 0 ) {
 		$file = $ARGV[2].'-'.$gene.'.fa';
+	# secondary
 	} else {
 		$file = $ARGV[2].'-'.$gene.'.fa.2';
 	}
@@ -111,13 +110,24 @@ while( $record = <IN> ) {
 	$sequence = lc(join('',@lines));
 
 	$length = length($sequence);
-	if ( $length == 0 ) {
-		next;	
+	if ( $length == 0 ) { next; }
+
+	%secondary = (); $primaryWritten = 0;
+	foreach $gene ( keys(%{$IDs{$header}}) ) {
+		if ( $valid{$gene} > 0 ) {
+			$primaryWritten = 1;
+			$handle = $handles{$gene};
+			print $handle '>',$header,"\n",$sequence,"\n";
+		} else {
+			$secondary{$gene} = $IDs{$header}{$gene};
+		}
 	}
 
-	$gene = $IDs{$header};
-	$handle = $handles{$gene};
-	print $handle '>',$header,"\n",$sequence,"\n";
+	if ( $primaryWritten == 0 ) {
+		@genes = sort { $secondary{$b} <=> $secondary{$a} } keys(%secondary);
+		$handle = $handles{$genes[0]};
+		print $handle '>',$header,"\n",$sequence,"\n";
+	}
 }
 close(IN);
 

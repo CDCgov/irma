@@ -26,6 +26,7 @@ INCL_CHIM=0		# includes chimera or not [0,1]
 			# transposase adapter, clips 5' of the adapter on the forward strand and 3' on the reverse strand
 			# applicable to NextTera pair-end reads 
 ADAPTER="AGATGTGTATAAGAGACAG"
+MERGE_SECONDARY=0	# Merge secondary data after the first round to the unmatched pool. Useful if co-infections are not expected.
 
 ## MATCH STEP
 MATCH_PROC=20		# grid maximum processes for the MATCH
@@ -41,6 +42,7 @@ BAN_GROUPS="UNRECOGNIZABLE"	# patterns not allowed, useful for LABEL
 NONSEGMENTED=0			# segmented! [0,1]
 # LABEL
 LFASTM=1		# LABEL sorting fast-mode
+GENE_GROUP="HA,NA:OG"	# item1,item2,item3:otherwise
 LIMIT_LABEL=1000	# limit on LABEL grid activation (self-adjusts)
 
 ## ALIGN STEP ##

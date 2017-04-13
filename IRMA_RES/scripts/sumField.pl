@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 # Sam Shepard - 5.2015
-# sums up a field column
+# Accumulator for delimited data.
 
 use Getopt::Long;
 GetOptions(

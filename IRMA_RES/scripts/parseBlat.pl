@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
-# Sam Shepard - 3.18.2014
+# Sam Shepard - 2017-04-12
 
 use File::Basename;
 use Getopt::Long;
@@ -16,7 +16,7 @@ GetOptions(	'separate-ha-na-og|T' => \$triplet,
 if ( scalar(@ARGV) != 2 ) {
 	$message = "Usage:\n\tperl $0 <blat.txt> <blat.fasta>\n";
 	$message .= "\t\t-T|--separate-ha-na-og\t\tSeparates the data into three groups for influenza.\n";
-	$message .= "\t\t-C|--clasify\t\t\tUse BLAT scores to sort/classify the sequences (best match).\n";
+	$message .= "\t\t-C|--classify\t\t\tUse BLAT scores to sort/classify the sequences (best match).\n";
 	$message .= "\t\t-G|--groups <STR>\t\tGroup by pattern in string for classifications.\n";
 	$message .= "\t\t-I|--include-chimera\t\tInclude chimeric data in match data instead of skipping it.\n";
 	$message .= "\t\t-A|--align-to-ref\t\tAlign data to ref using BLAT matches.\n";
@@ -25,12 +25,44 @@ if ( scalar(@ARGV) != 2 ) {
 	die($message."\n");
 }
 
+$elongateReference = defined($skipExtension) ? 0 : 1;
 
-if ( defined($skipExtension) ) {
-	$elongateReference = 0;
-} else {
-	$elongateReference = 1;
+if ( $triplet || defined($classificationGroups) ) {
+	$GroupFN = sub { if ( $_[0] =~ /([HN]A)/ ) { return $1; } else { return 'OG'; } };
+	if ( defined($classificationGroups) ) {
+		$triplet = 1;
+		@list = split(':',$classificationGroups);
+		if ( scalar(@list) == 2 ) {
+			$other = $list[$#list];
+		} elsif ( scalar(@list) == 1 ) {
+			$other = 'X';
+		} else {
+			die("Expected only one semi-colon per gene_group list. You entered: $classificationGroups\n");
+		}
+		@geneGroups = split(',',$list[0]);
+
+		$GroupFN = sub {
+			my $fnGene = $_[0];
+			my $fnPat = '';
+			my @fnPats = @geneGroups;
+			my $fnOtherwise = $other;
+			foreach $fnPat ( @fnPats ) {
+				if ( $fnGene =~ /$fnPat/ ) { return $fnPat; }
+			}
+			
+			return $fnOtherwise;
+		};
+	}
 }
+
+
+# Reverse complement
+sub rc($) {
+	my $sequence = reverse( $_[0] );
+	$sequence =~ tr/gcatrykmbvdhuGCATRYKMBVDHU/cgtayrmkvbhdaCGTAYRMKVBHDA/;
+	return $sequence;
+}
+
 
 sub alignedBLAT($$$) {
 	my @v = split("\t",$_[0]);
@@ -118,7 +150,6 @@ sub alignedBLAT($$$) {
 		}
 	}
 
-#	if ( $h =~ /MP/ ) {print STDERR '>',$v[9],"\n",$seq,"\n"; }
 	return ($leader,$seq,$trailer);
 }
 
@@ -177,28 +208,22 @@ sub recordStats($$@) {
 $/ = "\n";
 open(IN,'<',$ARGV[0]) or die("Cannot open $ARGV[0] for reading.\n");
 for(1..5) { $junk=<IN>; }
-$prevID = 'ID'; $prevStr = 'strand'; 
-%stats = ();
+%stats = %maxScore = %supergroups = ();
 while($line=<IN>) {
 	chomp($line);
 	@v = split("\t",$line);
 	($match,$mismatch,$strand,$query,$target) = ($v[0],$v[1],$v[8],$v[9],$v[13]);
 	$score = $match - $mismatch;
-	if ( $score > $maxGene{$query}[1] ) {
-		$maxGene{$query}[1] = $score;
-	       	$maxGene{$query}[0] = $target;
-		$maxGene{$query}[2] = $line;
+	if ( $score >= $maxScore{$query} && $score > 0 ) {
+	       	$maxGene{$query}{$target}[0] = $strand;
+		$maxGene{$query}{$target}[1] = $line;
+		$maxGene{$query}{$target}[2] = $score;
+		$maxScore{$query} = $score;
 		if ( $triplet ) {
-			if ( $target =~ /_HA/ ) {
-				$class = 'HA';
-			} elsif ( $target =~ /_NA/ ) {
-				$class = 'NA';
-			} else {
-				$class = 'OG';
-			}
-
-			$C{$query} = $class;
-		}
+			$supergroup = $GroupFN->($target); 
+			$maxGene{$query}{$target}[3] = $supergroup;
+			$supergroups{$supergroup} = 1;
+		 }
 	}
 	$total{$query}++;
 	$stats{$query}{$target}{$strand}++;
@@ -206,77 +231,91 @@ while($line=<IN>) {
 close(IN);
 
 foreach $q ( keys(%stats) ) {
-	#print $q;
+	@targets = keys(%{$maxGene{$q}});
+	foreach $t ( @targets ) {
+		if ( $maxGene{$q}{$t}[2] < $maxScore{$q} ) {
+			delete($maxGene{$q}{$t});
+		}
+	}
+
 	if ( $total{$q} > 1 ) {
 		@queryGenes = keys(%{$stats{$q}});
 		if ( scalar(@queryGenes) == 1 ) {
 			@geneStrands = keys(%{$stats{$q}{$queryGenes[0]}});
 			if ( scalar(@geneStrands) == 1 ) {
-				#print "\t",'multihit';
-				$Q{$q} = 'm';
-				$S{$q} = $geneStrands[0];
+				$Q{$q} = 'm'; # multihit
 			} else {
-				$Q{$q} = 'c';
-				#print "\t",'chimeric';
+				$Q{$q} = 'c'; # chimera
 			}
 		} else {
-			$gene = $maxGene{$q}[0];
-			@geneStrands = keys(%{$stats{$q}{$gene}});
-			if( scalar(@geneStrands) == 1 ) {
-				if ( $stats{$q}{$gene}{$geneStrands[0]} == 1 ) {
-					#print "\t",'ambiguous regular';
-					$Q{$q} = 'ar';
-				} else {
-					#print "\t",'ambiguous multihit';
-					$Q{$q} = 'am';
+			# there be ties
+			@maxGenes = keys(%{$maxGene{$q}});
+			if ( scalar(@maxGenes) > 1 ) {
+				%tmStrands = ();
+				foreach $gene ( @maxGenes ) {
+					@geneStrands = keys(%{$stats{$q}{$gene}});
+					if( scalar(@geneStrands) == 1 ) {
+						if ( $Q{$q} ne 'ac' ) {
+							$tmStrands{$geneStrands[0]} = 1;
+							$Q{$q} = 'tm'; # tied multiples
+						}
+					} else {
+						# ambiguous chimeric is enough for one of the genes to doom it
+						$Q{$q} = 'ac';  # ambiguous chimera
+					}
 				}
-				$S{$q} = $geneStrands[0];
+
+				if ( scalar(keys(%tmStrands)) > 1 ) {
+					$Q{$q} = 'xc';	# Reversible complements
+				}
+
 			} else {
-				#print "\t",'ambiguous chimeric';
-				$Q{$q} = 'ac';
+				$gene = $maxGenes[0];
+				@geneStrands = keys(%{$stats{$q}{$gene}});
+				if( scalar(@geneStrands) == 1 ) {
+					if ( $stats{$q}{$gene}{$geneStrands[0]} == 1 ) {
+						$Q{$q} = 'ar'; # ambiguous regular
+					} else {
+						$Q{$q} = 'am'; # ambiguous multihit
+					}
+				} else {
+					$Q{$q} = 'ac'; # ambiguous chimera
+				}
 			}
 		}
 	} else {
-		#print "\t",'regular';
-		$Q{$q} = 'r';
-		$gene = $maxGene{$q}[0];
-		@geneStrands = keys(%{$stats{$q}{$gene}});
-		$S{$q} = $geneStrands[0];
+		$Q{$q} = 'r'; # regular
 	}
-	#print "\n";
 }
 
 $/ = ">";
 $name = basename($ARGV[0],'.blat');
 $path = dirname($ARGV[0]);
 
+
 open(CHIM,'>',$path.'/'.$name.'.chim') or die("Cannot open $path/$name.chim for writing.\n");
 open(MATCH,'>',$path.'/'.$name.'.match') or die("Cannot open $path/$name.match for writing.\n");
 open(NOMATCH,'>',$path.'/'.$name.'.nomatch') or die("Cannot open $path/$name.nomatch for writing.\n");
 
+%supergroupHandles = ();
 if ( $classify ) { 
 	open(CLASS,'>',"$path/$name.class") or die("Cannot write $path/$name.class.\n");
 } elsif ( $triplet ) {
-	open(HA,'>',$path.'/'.$name.'.match.HA') or die("Cannot open $path/$name.match.HA for writing.\n");
-	open(OG,'>',$path.'/'.$name.'.match.OG') or die("Cannot open $path/$name.match.OG for writing.\n");
-	open(NA,'>',$path.'/'.$name.'.match.NA') or die("Cannot open $path/$name.match.NA for writing.\n");
+	foreach $sg ( keys(%supergroups) ) {
+		open($supergroupHandle{$sg},'>',"$path/$name.match.$sg") or die("Cannot open $path/$name.match.$sg for writing.\n");
+	}
 }
 
+$sortOutChim = defined($includeChimera) ? 0 : 1;
 if ( $alignSequences ) { 
 	%alignStats = ();
-}
-
-if ( defined($includeChimera) ) {
-	$sortOutChim = 0;
-} else {
-	$sortOutChim = 1;
 }
 
 open(IN,'<',$ARGV[1]) or die("Cannot open $ARGV[1] for reading.\n");
 while( $record = <IN> ) {
 	chomp($record);
 	@lines = split(/\r\n|\n|\r/, $record);
-	$header = shift(@lines);
+	$q = $header = shift(@lines);
 	$sequence = lc(join('',@lines));
 
 	$length = length($sequence);
@@ -284,48 +323,31 @@ while( $record = <IN> ) {
 		next;	
 	}
 
+	%written = ();
 	if ( defined($Q{$header})) {
-		if ( $sortOutChim && $Q{$header} =~ /c/o ) {
+		# chimera
+		if ( $sortOutChim && index($Q{$header},'c') != -1 ) {
 			print CHIM '>',$header,"\n",$sequence,"\n";
+
 		} else {
-			if ( $S{$header} eq '+' ) {
-				print MATCH '>',$header,"\n",$sequence,"\n";
-				if ( defined($alignSequences) ) {
-					recordStats(\%alignStats,$maxGene{$header}[0], alignedBLAT($maxGene{$header}[2],$sequence,$maxGene{$header}[0]) );
+			foreach $gene ( keys(%{$maxGene{$q}}) ) {
+				($strand,$matchLine,$score,$sg) = (@{$maxGene{$q}{$gene}});
+				if ( defined($alignSequences) ) { recordStats(\%alignStats,$gene, alignedBLAT($matchLine,$sequence,$gene) ); }
+				$seq2 = $strand eq '+' ? $sequence : rc($sequence);
+				$tag = $strand eq '+' ? '' : '{c}';
+
+				if ( $classify ) { print CLASS $header,$tag,"\t",$gene,"\t",$score,"\n"; }
+				# write MATCH
+				if ( !defined($written{$strand}) ) { 
+					print MATCH '>',$header,$tag,"\n",$seq2,"\n";
+					$written{$strand} = 1;
 				}
 
-				if ( $classify ) {
-					print CLASS $header,"\t",$maxGene{$header}[0],"\t",$maxGene{$header}[1],"\n";
-				}
-				if ( $triplet ) {
-					if ( $C{$header} eq 'HA' ) {
-						print HA '>',$header,"\n",$sequence,"\n";
-					} elsif ( $C{$header} eq 'NA' ) {
-						print NA '>',$header,"\n",$sequence,"\n";
-					} else {
-						print OG '>',$header,"\n",$sequence,"\n";
-					}
-				}
-			} else {
-				$sequence = reverse( $sequence );
-				$sequence =~ tr/gcatrykmbvdhuGCATRYKMBVDHU/cgtayrmkvbhdaCGTAYRMKVBHDA/;
-
-				print MATCH '>',$header,"{c}\n",$sequence,"\n";
-				if ( defined($alignSequences) ) {
-					recordStats(\%alignStats, $maxGene{$header}[0],alignedBLAT($maxGene{$header}[2],$sequence,$maxGene{$header}[0]));
-				}
- 
-				if ( $classify ) {
-					print CLASS $header,"{c}","\t",$maxGene{$header}[0],"\t",$maxGene{$header}[1],"\n";
-				}
-				if ( $triplet ) {
-					if ( $C{$header} eq 'HA' ) {
-						print HA '>',$header,"{c}\n",$sequence,"\n";
-					} elsif ( $C{$header} eq 'NA' ) {
-						print NA '>',$header,"{c}\n",$sequence,"\n";
-					} else {
-						print OG '>',$header,"{c}\n",$sequence,"\n";
-					}
+				# write SUPERGROUP
+				if ( $triplet && !defined($written{$strand.$sg}) ) {
+					$handle = $supergroupHandle{$sg};
+					print $handle '>',$header,$tag,"\n",$seq2,"\n";
+					$written{$strand.$sg} = 1;
 				}
 			}
 		}
@@ -333,22 +355,20 @@ while( $record = <IN> ) {
 		print NOMATCH '>',$header,"\n",$sequence,"\n";
 	}
 }
-close(IN);
-close(NOMATCH);
-close(MATCH);
+close(IN); 
+close(NOMATCH); 
+close(MATCH); 
 close(CHIM);
+
 if ( $classify ) { 
 	close(CLASS);
 } elsif ( $triplet ) {
-	close(HA); close(NA); close(OG);
+	foreach $sg ( keys(%supergroups) ) {
+		close($supergroupHandle{$sg});
+	}
 }
 
-if ( !defined($prefix) ) {
-	$prefix = '';
-} else {
-	$prefix = $prefix . '-';
-}
-
+$prefix = !defined($prefix) ? '' : $prefix.'-';
 if ( $name =~ /_(\d{4,})$/ ) {
 	$suffix = '_'.$1;
 } else {
@@ -363,4 +383,3 @@ if ( defined($alignSequences) ) {
 		store(\@count, $filename);
 	}
 } 
-
