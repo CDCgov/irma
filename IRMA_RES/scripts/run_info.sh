@@ -78,4 +78,5 @@ minimum_variant_count	MIN_C	$MIN_C
 minimum_variant_average_quality	MIN_AQ	$MIN_AQ
 minimum_variant_depth	MIN_TCC	$MIN_TCC
 minimum_confidence_not_sequencer_error	MIN_CONF	$MIN_CONF
+merge_secondary_data	MERGE_SECONDARY	$MERGE_SECONDARY
 EOF

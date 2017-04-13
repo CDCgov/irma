@@ -36,6 +36,7 @@ USE_MEDIAN=$USE_MEDIAN		# use the median quality or the average [1,0]
 QUAL_THRESHOLD=$QUAL_THRESHOLD	# minimum read statistic
 MIN_LEN=$MIN_LEN		# minimum read length
 INCL_CHIM=$INCL_CHIM		# includes chimera or not [0,1]
+MERGE_SECONDARY=$MERGE_SECONDARY	# merge secondary data after the first round, good if no co-infections
 
 ## MATCH STEP
 MATCH_PROC=$MATCH_PROC		# grid maximum processes for the MATCH
@@ -49,6 +50,7 @@ SORT_PROC=$SORT_PROC		# currently not used
 NONSEGMENTED=$NONSEGMENTED		# segmented! [0,1]
 # LABEL
 LFASTM=$LFASTM		# LABEL sorting fast-mode
+GENE_GROUP="$GENE_GROUP"
 
 ## ALIGN STEP ##
 ALIGN_PROG="${ALIGN_PROGS[@]}"	# rough assembly / alignment to working reference [SAM,BLAT]
