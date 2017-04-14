@@ -226,7 +226,7 @@ BLAT_OPTS="-oneOff=1 -minIdentity=80 -tileSize=10"
 # FASTQ converter/QC options
 FASTQ_CONV_OPTS="-Q -M -T $QUAL_THRESHOLD -L $MIN_LEN"
 [ "$PAIRED" -eq "1" -a "$ADAPTER" != "" ] && FASTQ_CONV_OPTS+=" -c $ADAPTER"
-
+export IRMA_QUEUE
 
 #####################
 ### Main Functions ###
@@ -317,7 +317,7 @@ EOL
 	chmod 755 ${script}.sh
 	$Lspath/interleavedSamples.pl -G $procs $queryDB $workdir/$prefix-$name > /dev/null 2>&1
 	if [ "$doGrid" -eq "1" ];then
-		qsub $QUEUE -t 1-$procs:1 -N ${prefix}-${name}-BLAT -sync y -wd $workdir -j y -o ${script}.o ${script}.sh > /dev/null 2>&1
+		qsub $IRMA_QUEUE -t 1-$procs:1 -N ${prefix}-${name}-BLAT -sync y -wd $workdir -j y -o ${script}.o ${script}.sh > /dev/null 2>&1
 		if [ "$?" -ne "0" ];then
 			time_stamp "qsub of '${prefix}-${name}-BLAT' failed. Switching to master node."
 			$PARALLEL --workdir $workdir -j $SINGLE_LOCAL_PROC ${script}.sh {} ::: $(seq $procs) > /dev/null 2>&1
@@ -503,7 +503,7 @@ EOL
 	chmod 755 ${script}.sh
 	$Lspath/interleavedSamples.pl $queryDB $workdir/$prefix-$name -G $procs > /dev/null
 	if [ "$doGrid" -eq "1" ];then
-		qsub $QUEUE -t 1-$procs:1 -N $prefix-$name-SAM -sync y -wd $workdir -j y -o ${script}.o ${script}.sh > /dev/null 2>&1
+		qsub $IRMA_QUEUE -t 1-$procs:1 -N $prefix-$name-SAM -sync y -wd $workdir -j y -o ${script}.o ${script}.sh > /dev/null 2>&1
 		if [ "$?" -ne "0" ];then
 			time_stamp "qsub of '${prefix}-${name}-SAM' failed. Switching to master node."
 			$PARALLEL --workdir $workdir -j $SINGLE_LOCAL_PROC ${script}.sh {} ::: $(seq $procs) > /dev/null 2>&1
@@ -730,7 +730,7 @@ EOL
 	# ASSEMBLE on grid vs local
 	chmod 755 ${script}.sh
 	if [ "$doGrid" -eq "1" ];then
-		qsub $QUEUE -t 1-$procs:1 -N F${iter}-$gene -sync y -wd $assemp -j y -o ${script}.o ${script}.sh > /dev/null 2>&1
+		qsub $IRMA_QUEUE -t 1-$procs:1 -N F${iter}-$gene -sync y -wd $assemp -j y -o ${script}.o ${script}.sh > /dev/null 2>&1
 		if [ "$?" -ne "0" ];then
 			time_stamp "qsub of 'F${iter}-$gene' failed. Switching to master node."
 			$PARALLEL --workdir $ppath -j $SINGLE_LOCAL_PROC ${script}.sh {} ::: $(seq $procs)
@@ -808,7 +808,7 @@ EOL
 	# GRID vs LOCAL execution of the CALL STATS step, inherits from ASSEMBLY step currently
 	chmod 755 ${script}.sh
 	if [ "$doGrid" -eq "1" ];then
-		qsub $QUEUE -t 1-$procs:1 -N $prefix -sync y -wd $assemp -j y -o ${script}.o ${script}.sh > /dev/null 2>&1
+		qsub $IRMA_QUEUE -t 1-$procs:1 -N $prefix -sync y -wd $assemp -j y -o ${script}.o ${script}.sh > /dev/null 2>&1
 		if [ "$?" -ne "0" ];then
 			time_stamp "qsub of '${prefix}' failed. Switching to master node."
 			$PARALLEL --workdir $ppath -j $SINGLE_LOCAL_PROC ${script}.sh {} ::: $(seq $procs)
@@ -876,7 +876,7 @@ EOL
 
 	chmod 755 ${script}.sh
 	if [ "$doGrid" -eq "1" ];then
-		qsub $QUEUE -t 1-$procs:1 -N ${gene}-phasing -sync y -wd $ppath -j y -o ${script}.o ${script}.sh > /dev/null 2>&1
+		qsub $IRMA_QUEUE -t 1-$procs:1 -N ${gene}-phasing -sync y -wd $ppath -j y -o ${script}.o ${script}.sh > /dev/null 2>&1
 		if [ "$?" -ne "0" ];then
 			time_stamp "qsub of '${gene}-phasing' failed. Switching to master node."
 			$PARALLEL --workdir $ppath -j $SINGLE_LOCAL_PROC ${script}.sh {} ::: $(seq $procs) > /dev/null 2>&1
