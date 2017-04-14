@@ -16,6 +16,7 @@ MAX_ROUNDS=2		# round of read gathering
 USE_MEDIAN=1		# use the median quality or the average [1,0]
 QUAL_THRESHOLD=30	# minimum read statistic
 MIN_LEN=125		# minimum read length
+MERGE_SECONDARY=1
 
 ## MATCH STEP
 MATCH_PROC=64		# grid maximum processes for the MATCH
