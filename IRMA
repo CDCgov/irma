@@ -3,8 +3,8 @@ PROGRAM="Iterative Refinement Meta-Assembler (IRMA)"
 AUTHOR="Samuel S. Shepard"
 EMAIL="vfn4@cdc.gov"
 AFFIL="NCIRD/OID/CDC"
-DATE="12 APR 2017"
-VERSION="0.6.6"
+DATE="13 APR 2017"
+VERSION="0.6.7"
 LICENSE="GPL version 3. This program comes with ABSOLUTELY NO WARRANTY. This is free software.
 You are welcome to redistribute it under certain conditions. See:  <http://www.gnu.org/licenses/>.
 Components of this pipeline have non-commercial restrictions. See: IRMA_RES/scripts/packaged-citations-licenses"
@@ -89,7 +89,6 @@ fi
 
 check_prgm Rscript
 check_prgm perl
-check_prgm gzip
 
 PARALLEL="$spath/parallel --will-cite"
 SAMTOOLS=$spath/samtools_$OS
@@ -154,6 +153,17 @@ else
 	fi
 fi
 REF1_SET=$REF_SET
+
+# selection of zip utility
+if command -v $spath/pigz_$OS >/dev/null 2>&1;then
+	ZIP="$spath/pigz_$OS -p $DOUBLE_LOCAL_PROC"
+elif command -v pigz >/dev/null 2>&1;then
+	ZIP="pigz -p $DOUBLE_LOCAL_PROC"
+elif command -v gzip >/dev/null 2>&1;then
+	ZIP="gzip"
+else
+	check_prgm gzip
+fi
 
 # process seed reference library
 if [ ! -s "$REF_SET" ];then
@@ -307,7 +317,7 @@ EOL
 	chmod 755 ${script}.sh
 	$Lspath/interleavedSamples.pl -G $procs $queryDB $workdir/$prefix-$name > /dev/null 2>&1
 	if [ "$doGrid" -eq "1" ];then
-		qsub -t 1-$procs:1 -N ${prefix}-${name}-BLAT -sync y -wd $workdir -j y -o ${script}.o ${script}.sh > /dev/null 2>&1
+		qsub $QUEUE -t 1-$procs:1 -N ${prefix}-${name}-BLAT -sync y -wd $workdir -j y -o ${script}.o ${script}.sh > /dev/null 2>&1
 		if [ "$?" -ne "0" ];then
 			time_stamp "qsub of '${prefix}-${name}-BLAT' failed. Switching to master node."
 			$PARALLEL --workdir $workdir -j $SINGLE_LOCAL_PROC ${script}.sh {} ::: $(seq $procs) > /dev/null 2>&1
@@ -362,7 +372,7 @@ function doMATCH() {
 	# CLEAN UP	
 	rm $matchp/${prefix}-${name}_????.{match,nomatch,chim,fasta}
 	cd $matchp
-	tar  -czf $matchp/${prefix}.tar.gz ${prefix}-${name}_????.$match_ext 2> /dev/null
+	tar  -cf ${prefix}-${name}_????.$match_ext|$ZIP -4 - > $matchp/${prefix}.tar.gz 2> /dev/null
 	cd - > /dev/null
 	rm $matchp/${prefix}-${name}_????.$match_ext
 	time_stamp "$prefix consolidated & cleaned"
@@ -445,7 +455,7 @@ function doSORT() {
 	$spath/parseSORTresults.pl $sortp/$prefix/SORT_result.txt $matchp/$prefix.match $sortp/$prefix $options
 
 	# CLEAN UP
-	cd $sortp/$prefix; tar  -cf - SORT_result.txt |gzip -4 - > $sortp/$prefix.tar.gz
+	cd $sortp/$prefix; tar  -cf - SORT_result.txt |$ZIP -4 - > $sortp/$prefix.tar.gz
 	cd - > /dev/null; rm -rf $sortp/$prefix
 }
 
@@ -493,7 +503,7 @@ EOL
 	chmod 755 ${script}.sh
 	$Lspath/interleavedSamples.pl $queryDB $workdir/$prefix-$name -G $procs > /dev/null
 	if [ "$doGrid" -eq "1" ];then
-		qsub -t 1-$procs:1 -N $prefix-$name-SAM -sync y -wd $workdir -j y -o ${script}.o ${script}.sh > /dev/null 2>&1
+		qsub $QUEUE -t 1-$procs:1 -N $prefix-$name-SAM -sync y -wd $workdir -j y -o ${script}.o ${script}.sh > /dev/null 2>&1
 		if [ "$?" -ne "0" ];then
 			time_stamp "qsub of '${prefix}-${name}-SAM' failed. Switching to master node."
 			$PARALLEL --workdir $workdir -j $SINGLE_LOCAL_PROC ${script}.sh {} ::: $(seq $procs) > /dev/null 2>&1
@@ -720,7 +730,7 @@ EOL
 	# ASSEMBLE on grid vs local
 	chmod 755 ${script}.sh
 	if [ "$doGrid" -eq "1" ];then
-		qsub -t 1-$procs:1 -N F${iter}-$gene -sync y -wd $assemp -j y -o ${script}.o ${script}.sh > /dev/null 2>&1
+		qsub $QUEUE -t 1-$procs:1 -N F${iter}-$gene -sync y -wd $assemp -j y -o ${script}.o ${script}.sh > /dev/null 2>&1
 		if [ "$?" -ne "0" ];then
 			time_stamp "qsub of 'F${iter}-$gene' failed. Switching to master node."
 			$PARALLEL --workdir $ppath -j $SINGLE_LOCAL_PROC ${script}.sh {} ::: $(seq $procs)
@@ -798,7 +808,7 @@ EOL
 	# GRID vs LOCAL execution of the CALL STATS step, inherits from ASSEMBLY step currently
 	chmod 755 ${script}.sh
 	if [ "$doGrid" -eq "1" ];then
-		qsub -t 1-$procs:1 -N $prefix -sync y -wd $assemp -j y -o ${script}.o ${script}.sh > /dev/null 2>&1
+		qsub $QUEUE -t 1-$procs:1 -N $prefix -sync y -wd $assemp -j y -o ${script}.o ${script}.sh > /dev/null 2>&1
 		if [ "$?" -ne "0" ];then
 			time_stamp "qsub of '${prefix}' failed. Switching to master node."
 			$PARALLEL --workdir $ppath -j $SINGLE_LOCAL_PROC ${script}.sh {} ::: $(seq $procs)
@@ -866,7 +876,7 @@ EOL
 
 	chmod 755 ${script}.sh
 	if [ "$doGrid" -eq "1" ];then
-		qsub -t 1-$procs:1 -N ${gene}-phasing -sync y -wd $ppath -j y -o ${script}.o ${script}.sh > /dev/null 2>&1
+		qsub $QUEUE -t 1-$procs:1 -N ${gene}-phasing -sync y -wd $ppath -j y -o ${script}.o ${script}.sh > /dev/null 2>&1
 		if [ "$?" -ne "0" ];then
 			time_stamp "qsub of '${gene}-phasing' failed. Switching to master node."
 			$PARALLEL --workdir $ppath -j $SINGLE_LOCAL_PROC ${script}.sh {} ::: $(seq $procs) > /dev/null 2>&1
@@ -1051,11 +1061,11 @@ function doPostProcessing() {
 	# SAVE unmatched read patterns
 	cd $matchp
 	local LAST_ROUND=$(($R<=MAX_ROUNDS?$R:$MAX_ROUNDS))
-	tar -cf - R${LAST_ROUND}.nomatch|gzip -4 - > $ppath/unmatched_read_patterns.tar.gz &
+	tar -cf - R${LAST_ROUND}.nomatch|$ZIP -4 - > $ppath/unmatched_read_patterns.tar.gz &
 	cd - > /dev/null
 	if [ "$ALIGN_PROG" != "NONE" ];then
 		cd $alignp
-		tar -cf - R*.sto 2>/dev/null | gzip -4 - > storedCounts.tar.gz &
+		tar -cf - R*.sto 2>/dev/null |$ZIP -4 - > storedCounts.tar.gz &
 		cd - > /dev/null
 	fi
 	wait
@@ -1122,7 +1132,7 @@ function doPostProcessing() {
 	done
 
 	cd $assemp
-	tar -cf - *.fastq|gzip -4 - > $assemp/reads.tar.gz
+	tar -cf - *.fastq|$ZIP -4 - > $assemp/reads.tar.gz
 	cd - > /dev/null
 	grep '>' $assemp/*.fa -Hc >> $ppath/NR_COUNTS_log.txt
 	rm $assemp/*.fastq $assemp/*.fa
@@ -1283,7 +1293,7 @@ elif [ "$ASSEM_REF" -eq "1" ];then
 	[ "$SORT_PROG" == "BLAT" ] && options+=" -G"
 	[ "$BAN_GROUPS" != "" ] && options+=" -B $BAN_GROUPS"
 	$spath/parseSORTresults.pl $sortp/R0/SORT_result.txt $REF_SET $refp/R0 $options
-	cd $sortp/R0; tar  -cf - SORT_result.txt |gzip -4 - > $sortp/R0.tar.gz
+	cd $sortp/R0; tar  -cf - SORT_result.txt |$ZIP -4 - > $sortp/R0.tar.gz
 	cd - > /dev/null; rm -rf $sortp/R0
 
 	if test -n "$(shopt -s nullglob;echo $refp/R0-*.fa)";then
