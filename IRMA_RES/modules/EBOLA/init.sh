@@ -39,6 +39,7 @@ INCL_CHIM=0				# whether or not to get rid of chimera
 MIN_RP=15				# minimum read pattern count to continue
 MIN_RC=15				# minimum read count to continue
 MIN_AMBIG=0.25				# min SNV freq for ambig nts in final amended consensus
+MERGE_SECONDARY=1
 
 # ASSEMBLY
 MAX_ITER_SSW=5				# max num of SSW iterations to perform, 3 should be sufficient w/4 to prove
