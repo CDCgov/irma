@@ -3,8 +3,8 @@ PROGRAM="Iterative Refinement Meta-Assembler (IRMA)"
 AUTHOR="Samuel S. Shepard"
 EMAIL="vfn4@cdc.gov"
 AFFIL="NCIRD/OID/CDC"
-DATE="13 APR 2017"
-VERSION="0.6.7"
+DATE="27 APR 2017"
+VERSION="0.6.8"
 LICENSE="GPL version 3. This program comes with ABSOLUTELY NO WARRANTY. This is free software.
 You are welcome to redistribute it under certain conditions. See:  <http://www.gnu.org/licenses/>.
 Components of this pipeline have non-commercial restrictions. See: IRMA_RES/scripts/packaged-citations-licenses"
@@ -197,7 +197,6 @@ if [ "$ALLOW_TMP" -eq "1" -a "$GRID_ON" -eq "0" ];then
 	ppath=$TMP/$(whoami)/IRMAv$VERSION/${RUN}-${TOKEN}
 else
 	ppath=$rpath/ppath/${RUN}-${TOKEN}
-
 fi
 
 # check if RUN already exists
@@ -1254,6 +1253,21 @@ function setPrograms() {
 
 ### START ####
 time_stamp "started run '$RUN'"
+
+# optionally check for disk space
+if [ "${ALLOW_DISK_CHECK:-1}" -eq "1" ];then
+	MSG="$($spath/disk_check.pl $ppath $LEFT $RIGHT)"
+	STATUS=$?
+	if [ "$STATUS" -eq "0" ];then 
+		time_stamp "$MSG"
+	else 
+		[ "$STATUS" -eq "3" ] && time_stamp "$MSG, operations ABORTED!" || time_stamp "disk check failed, operations ABORTED!"
+		moveProject
+		time_stamp 'finished!'
+		exit 1
+	fi
+fi
+
 if [ "$PAIRED" -eq "1" ];then
 	$spath/xflate.pl -C -Q -L INTER $ppath/R0.xfl \
 		<($CAT < $LEFT|$PARALLEL --pipe -L4 -j$DOUBLE_LOCAL_PROC $spath/fastQ_converter.pl $FASTQ_CONV_OPTS -G $ppath/LEFT.log -g {#}) \

@@ -8,6 +8,7 @@ DOUBLE_LOCAL_PROC=8	# local maximum processes (double this number)
 ALLOW_TMP=1		# if GRID_ON=0, try to use /tmp for working directory
 TMP=/tmp		# the scratch/tmpfs for working on the assemblies
 IRMA_QUEUE=""	# queue for qsub, e.g.: QUEUE="-q all.q"  Leave unset normally.
+ALLOW_DISK_CHECK=1	# check for disk free space before running, relies on Perl & unix df
 
 ### REFERENCE ###
 MIN_FA=1		# no alternative reference [0..1]

@@ -22,14 +22,25 @@ if ( -e $ppath ) {
 	# convert bytes to Mebibytes
 	$file_m = $total_size / 1024 / 1024;
 	# based on empirical data
-	$estimated_m = $file_m * 5 + 10;
+	$estimated_m = $file_m * 15 + 5;
 
 	# if the available resource are not enough for what is estimated, complain
 	if ( $available_m <= $estimated_m ) {
-		print sprintf("Need ~%.2fM to execute, but only %.2fM available on disk\n",$estimated_m,$available_m);
+		print sprintf("needed ~%.2fM to execute, but only %.2fM available on disk\n",$estimated_m,$available_m);
 		exit 3;
 	} else {
-		print sprintf("Found %.2fM available on disk for an estimated project size of %.2fM\n",$available_m,$estimated_m);
+		$units = 'M';
+		if ( $available_m > 2048 ) { 
+			$available_m /= 1024; $units = 'G';
+			if ( $available_m > 2048 ) {
+				$available_m /= 1024; $units = 'T';
+				if ( $available_m > 2048 ) {
+					$available_m /= 1024; $units = 'P';
+				}
+			}
+		}
+		
+		print sprintf("found %.1f%s free space, only needed ~%.1fM\n",$available_m,$units,$estimated_m);
 		exit 0;
 	}
 } else {
