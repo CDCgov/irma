@@ -10,7 +10,8 @@ if ( -e $ppath ) {
 	open(DF, "df -k $ppath|") or die("Cannot run df.\n");
 	@lines = <DF>; chomp(@lines); close(DF);
 	$available_k = ( split(/\s+/,$lines[$#lines] ) )[3] ;
-	$available_m = $available_k / 1024;
+	# K to M
+	$available = $available_k / 1024;		
 	$total_size = 0;
 	foreach $f ( @ARGV ) {
 		if ( -e $f ) {
@@ -25,22 +26,22 @@ if ( -e $ppath ) {
 	$estimated_m = $file_m * 15 + 5;
 
 	# if the available resource are not enough for what is estimated, complain
-	if ( $available_m <= $estimated_m ) {
-		print sprintf("needed ~%.2fM to execute, but only %.2fM available on disk\n",$estimated_m,$available_m);
+	if ( $available <= $estimated_m ) {
+		print sprintf("needed ~%.2fM to execute, but only %.2fM available on disk\n",$estimated_m,$available);
 		exit 3;
 	} else {
 		$units = 'M';
-		if ( $available_m > 2048 ) { 
-			$available_m /= 1024; $units = 'G';
-			if ( $available_m > 2048 ) {
-				$available_m /= 1024; $units = 'T';
-				if ( $available_m > 2048 ) {
-					$available_m /= 1024; $units = 'P';
+		if ( $available > 2048 ) { 
+			$available /= 1024; $units = 'G';
+			if ( $available > 2048 ) {
+				$available /= 1024; $units = 'T';
+				if ( $available > 2048 ) {
+					$available /= 1024; $units = 'P';
 				}
 			}
 		}
 		
-		print sprintf("found %.1f%s free space, only needed ~%.1fM\n",$available_m,$units,$estimated_m);
+		print sprintf("found %.1f%s free space, only needed ~%.1fM\n",$available,$units,$estimated_m);
 		exit 0;
 	}
 } else {
