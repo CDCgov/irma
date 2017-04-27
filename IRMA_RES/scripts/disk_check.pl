@@ -15,15 +15,23 @@ if ( -e $ppath ) {
 	foreach $f ( @ARGV ) {
 		if ( -e $f ) {
 			$total_size += ( stat($f) )[7];
+		} else {
+			die("$0: bad file input $f\n");
 		}
 	}
+	# convert bytes to Mebibytes
 	$file_m = $total_size / 1024 / 1024;
+	# based on empirical data
 	$estimated_m = $file_m * 5 + 10;
 
-	if ( $available_m < $estimated_m ) {
-		print STDERR "WARNING! Need around $estimated_m to complete the project but only have $available_m available on disk.\n";
+	# if the available resource are not enough for what is estimated, complain
+	if ( $available_m <= $estimated_m ) {
+		print sprintf("Need ~%.2fM to execute, but only %.2fM available on disk\n",$estimated_m,$available_m);
+		exit 3;
+	} else {
+		print sprintf("Found %.2fM available on disk for an estimated project size of %.2fM\n",$available_m,$estimated_m);
+		exit 0;
 	}
-	print $total_size,"\t",$available_k,"\n"; exit 0;
 } else {
-	print "-1"; exit 1;
+	die("$0: bad path input $ppath\n");
 }
