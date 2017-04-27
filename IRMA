@@ -197,14 +197,21 @@ if [ "$ALLOW_TMP" -eq "1" -a "$GRID_ON" -eq "0" ];then
 	ppath=$TMP/$(whoami)/IRMAv$VERSION/${RUN}-${TOKEN}
 else
 	ppath=$rpath/ppath/${RUN}-${TOKEN}
+
 fi
 
 # check if RUN already exists
 if [ ! -d "$ppath" ]; then
 	mkdir -p $ppath
 	if [ "$?" -ne "0" ];then
-		echo "$(basename $0) ERROR: cannot create directory '$ppath', operations ABORTED!"
-		exit 1
+		if [ "$ALLOW_TMP" -eq "1" -a "$GRID_ON" -eq "0" ];then
+			echo "$(basename $0) WARNING: cannot create directory '$ppath', trying: $rpath/ppath/${RUN}-${TOKEN}"
+			ppath=$rpath/ppath/${RUN}-${TOKEN}
+			mkdir -p $ppath
+			[ "$?" -ne "0" ] && echo "$(basename $0) ERROR: cannot create directory '$ppath', operations ABORTED!" && exit 1
+		else
+			echo "$(basename $0) ERROR: cannot create directory '$ppath', operations ABORTED!" && exit 1
+		fi
 	fi
 else
 	echo "$(basename $0) ERROR: run '$RUN' exists, operations have been ABORTED!"
