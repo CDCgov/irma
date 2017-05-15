@@ -110,8 +110,8 @@ if ( !$skipHeader) {
 	if ( defined($showOriginal) ) {
 		chomp($header);
 		@H = split($delim,$header);
-		$H[$field] = $H[$field].$delim.$H[$field].'_mapped';
-		print $prefix,join($delim,@fields),"\n";
+		$H[$field] = $H[$field].'_original'.$delim.$H[$field].'_revised';
+		print $prefix,join($delim,@H),"\n";
 	} else {
 		print $header;
 	}
