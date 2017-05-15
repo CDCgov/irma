@@ -5,7 +5,7 @@ use File::Basename;
 use Getopt::Long;
 GetOptions(	'word|W=s'=> \$word, 'suffix|S=s' => \$suffix, 'ID-only|I' => \$idOnly, 'infix|X=s' => \$infix,
 		'dir-field|F=i' =>  \$field, 'ignore-dir|G' => \$ignoreIDfield, "no-header|H" => \$noHeader,
-		'no-key-header|K' => \$noKeyHeader
+		'no-key-header|K' => \$noKeyHeader, 'timestamp|T' => \$timeStamp
  );
 
 if ( scalar(@ARGV) != 1 ) {
@@ -18,7 +18,16 @@ if ( scalar(@ARGV) != 1 ) {
 	$message .= "\t\t-X|--infix <STR>\tInfix is the intermediate path. Default is 'tables/'\n";
 	$message .= "\t\t-F|--dir-field <INT>\tField containing dirname.\n"; 
 	$message .= "\t\t-G|--ignore-dir\t\tDo not print out dirname into collated data.\n";
+	$message .= "\t\t-T|--timestamp\t\tAdd timestamp to the output as the last column.\n";
 	die($message."\n");
+}
+
+if ( $timeStamp ) {
+	($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst)=localtime(time);
+    	$now = sprintf ( "\t%04d-%02d-%02d %02d:%02d:%02d",$year+1900,$mon+1,$mday,$hour,$min,$sec);
+	$nowH = "\ttimestamp";
+} else {
+	$now = $nowH = "";
 }
 
 if ( !defined($word) ) {
@@ -100,13 +109,13 @@ while($line=<IN>) {
 		$basename = basename($file);
 
 		if ( $firstData ) {
-			print "$hdrs\t",$header,"\n";
+			print "$hdrs\t",$header,$nowH,"\n";
 			$firstData = 0;
 		}
 
 		while($line2=<DAT>) {
 			chomp($line2);
-			print $line,"\t",$line2,"\n";
+			print $line,"\t",$line2,$now,"\n";
 		}
 
 		close(DAT);
