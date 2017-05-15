@@ -6,17 +6,19 @@ GetOptions(	'no-header|H' => \$skipHeader,
 		'table-delim|D=s' => \$delim,
 		'ref-name|N=s' => \$name,
 		'prefix|P=s' => \$prefix,
-		'inserts-to-ref|I' => \$insertsToRef
+		'inserts-to-ref|I' => \$insertsToRef,
+		'show-original-position|O' => \$showOriginal
 	);
 
 if ( scalar(@ARGV) != 2 ) {
 	$message = "Usage:\n\tperl $0 <pairwiseAlignment> <table> [options]\n";
-	$message .= "\t\t--table-field|-F <INT>\tField number in table (1-base) containing positional information. DEFAULT = 1\n";
-	$message .= "\t\t--table-delim|-D <CHA>\tField delimiter for table. DEFAULT = <TAB>\n";
-	$message .= "\t\t--ref-name|-N <STR>\tName of the reference sequence. DEFAULT = first record\n";
-	$message .= "\t\t--prefix|-P <STR>\tPrefix to table.\n";
-	$message .= "\t\t--inserts-to-ref|-I\tInserts relative to reference.\n";
-
+	$message .= "\t\t-H|--no-header\t\t\tDo not print input table header line. (first line)\n";
+	$message .= "\t\t-F|--table-field <INT>\t\tField number in table (1-base) containing positional information. DEFAULT = 1\n";
+	$message .= "\t\t-D|--table-delim <CHA>\t\tField delimiter for table. DEFAULT = <TAB>\n";
+	$message .= "\t\t-N|--ref-name <STR>\t\tName of the reference sequence. DEFAULT = first record\n";
+	$message .= "\t\t-P|--prefix <STR>\t\tPrefix to table.\n";
+	$message .= "\t\t-I|--inserts-to-ref\t\tInserts relative to reference.\n";
+	$message .= "\t\t-O|--show-original-position\tShow original position column.\n";
 	die($message."\n");
 }
 
@@ -105,7 +107,14 @@ open(IN,'<',$ARGV[1]) or die("ERROR: Cannot open $ARGV[1] for reading.\n");
 $/ = "\n";
 $header = <IN>;
 if ( !$skipHeader) {
-	print $header;
+	if ( defined($showOriginal) ) {
+		chomp($header);
+		@H = split($delim,$header);
+		$H[$field] = $H[$field].$delim.$H[$field].'_mapped';
+		print $prefix,join($delim,@fields),"\n";
+	} else {
+		print $header;
+	}
 }
 @data = <IN>; 
 chomp(@data);
@@ -130,6 +139,6 @@ foreach $line (@data) {
 		next;		
 	}
 
-	$fields[$field] = $rCoord;
+	$fields[$field] = defined($showOriginal) ? $aCoord.$delim.$rCoord : $rCoord;
 	print $prefix,join($delim,@fields),"\n";
 }
