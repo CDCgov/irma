@@ -5,7 +5,7 @@ use File::Basename;
 use Getopt::Long;
 GetOptions(	'word|W=s'=> \$word, 'suffix|S=s' => \$suffix, 'ID-only|I' => \$idOnly, 'infix|X=s' => \$infix,
 		'dir-field|F=i' =>  \$field, 'ignore-dir|G' => \$ignoreIDfield, "no-header|H" => \$noHeader,
-		'no-key-header|K' => \$noKeyHeader, 'timestamp|T' => \$timeStamp
+		'no-key-header|K' => \$noKeyHeader, 'timestamp|T' => \$timeStamp, 'exact-file-path|E' => \$exactFilePath
  );
 
 if ( scalar(@ARGV) != 1 ) {
@@ -19,6 +19,7 @@ if ( scalar(@ARGV) != 1 ) {
 	$message .= "\t\t-F|--dir-field <INT>\tField containing dirname.\n"; 
 	$message .= "\t\t-G|--ignore-dir\t\tDo not print out dirname into collated data.\n";
 	$message .= "\t\t-T|--timestamp\t\tAdd timestamp to the output as the last column.\n";
+	$message .= "\t\t-E|--exact-file-path\tExact file path is contained, nullifies infix & suffix.\n";
 	die($message."\n");
 }
 
@@ -82,11 +83,14 @@ if ( $noHeader ) {
 while($line=<IN>) {
 	chomp($line);
 	@fields = split("\t",$line);
-	$id = $fields[$sampleDirField-1];
-	@files=glob("$id/$infix/*$word*$suffix");
-	if ( defined($idOnly) ) {
-		$line = $fields[0];
-	} 
+	if ( defined($idOnly) ) { $line = $fields[0]; } 
+
+	if ( $exactFilePath ) {
+		@files = ($fields[$sampleDirField-1]);
+	} else {
+		$id = $fields[$sampleDirField-1];
+		@files=glob("$id/$infix/*$word*$suffix");
+	}
 
 	if ( $ignoreIDfield ) {
 		$line = ''; $first = 1;
