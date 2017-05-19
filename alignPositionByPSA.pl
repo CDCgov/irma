@@ -7,7 +7,9 @@ GetOptions(	'no-header|H' => \$skipHeader,
 		'ref-name|N=s' => \$name,
 		'prefix|P=s' => \$prefix,
 		'inserts-to-ref|I' => \$insertsToRef,
-		'show-original-position|O' => \$showOriginal
+		'show-original-position|O' => \$showOriginal,
+		'skip-comments|S' => \$skipComments,
+		'reprint-comments|R' => \$reprintComments
 	);
 
 if ( scalar(@ARGV) != 2 ) {
@@ -19,7 +21,16 @@ if ( scalar(@ARGV) != 2 ) {
 	$message .= "\t\t-P|--prefix <STR>\t\tPrefix to table.\n";
 	$message .= "\t\t-I|--inserts-to-ref\t\tInserts relative to reference.\n";
 	$message .= "\t\t-O|--show-original-position\tShow original position column.\n";
+	$message .= "\t\t-S|--skip-comments\t\tSkip lines beginning with #.\n";
+	$message .= "\t\t-R|--reprint-comments\t\tSimply reprint lines beginning with #.\n";
 	die($message."\n");
+}
+
+
+if ( defined($skipComments) || defined($reprintComments) ) {
+	$checkComments = 1;
+} else {
+	$checkComments = 0;
 }
 
 if ( !defined($delim) ) {
@@ -105,15 +116,23 @@ for($i=0;$i<$refLength;$i++) {
 
 open(IN,'<',$ARGV[1]) or die("ERROR: Cannot open $ARGV[1] for reading.\n");
 $/ = "\n";
+
+
 $header = <IN>;
-if ( !$skipHeader) {
-	if ( defined($showOriginal) ) {
-		chomp($header);
-		@H = split($delim,$header);
-		$H[$field] = $H[$field].'_original'.$delim.$H[$field].'_revised';
-		print $prefix,join($delim,@H),"\n";
-	} else {
+if ( $checkComments && substr($header,0,1) eq '#' ) {
+	if ( $reprintComments ) {
 		print $header;
+	}
+} else {
+	if ( !$skipHeader) {
+		if ( defined($showOriginal) ) {
+			chomp($header);
+			@H = split($delim,$header);
+			$H[$field] = $H[$field].'_original'.$delim.$H[$field].'_revised';
+			print $prefix,join($delim,@H),"\n";
+		} else {
+			print $header;
+		}
 	}
 }
 @data = <IN>; 
@@ -128,6 +147,12 @@ if ( $insertsToRef ) {
 
 $aCoord = $rCoord = 0;
 foreach $line (@data) {
+	if ( $checkComments && substr($line,0,1) eq '#' ) {
+		if ( $reprintComments ) {
+			print $line,"\n";
+		}
+		next;
+	}	
 	@fields = split($delim,$line);
 	$aCoord = $fields[$field];
 
