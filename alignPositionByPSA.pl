@@ -157,12 +157,13 @@ foreach $line (@data) {
 	$aCoord = $fields[$field];
 
 	if ( !defined($refByAlt{$aCoord}) ) {
-		print STDERR $aCoord,"\n";
+		print STDERR $aCoord," not found\n";
+		next;
+	} else {
+		$rCoord = $refByAlt{$aCoord};
 	}
-	$rCoord = $refByAlt{$aCoord};
-	if ( $removeInserts && $rCoord =~ /\./) {
-		next;		
-	}
+
+	if ( $removeInserts && $rCoord =~ /\./) { next; }
 
 	$fields[$field] = defined($showOriginal) ? $aCoord.$delim.$rCoord : $rCoord;
 	print $prefix,join($delim,@fields),"\n";
