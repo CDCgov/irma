@@ -5,7 +5,8 @@ use File::Basename;
 use Getopt::Long;
 GetOptions(	'word|W=s'=> \$word, 'suffix|S=s' => \$suffix, 'ID-only|I' => \$idOnly, 'infix|X=s' => \$infix,
 		'dir-field|F=i' =>  \$field, 'ignore-dir|G' => \$ignoreIDfield, "no-header|H" => \$noHeader,
-		'no-key-header|K' => \$noKeyHeader, 'timestamp|T' => \$timeStamp, 'exact-file-path|E' => \$exactFilePath
+		'no-key-header|K' => \$noKeyHeader, 'timestamp|T' => \$timeStamp, 'exact-file-path|E' => \$exactFilePath,
+		'name|N=s' => \$nameField
  );
 
 if ( scalar(@ARGV) != 1 ) {
@@ -20,6 +21,7 @@ if ( scalar(@ARGV) != 1 ) {
 	$message .= "\t\t-G|--ignore-dir\t\tDo not print out dirname into collated data.\n";
 	$message .= "\t\t-T|--timestamp\t\tAdd timestamp to the output as the last column.\n";
 	$message .= "\t\t-E|--exact-file-path\tExact file path is contained, nullifies infix & suffix.\n";
+	$message .= "\t\t-N|--name <STR>\t\tAdd a fixed name field between the key and table.\n";
 	die($message."\n");
 }
 
@@ -43,6 +45,13 @@ if ( defined($field) && $field > 0 ) {
 	$sampleDirField = $field;
 } else {
 	$sampleDirField = 1;
+}
+
+if ( $nameField ) {
+	$nameHdr = "\tName";
+	$nameVal = "\t$nameField";	
+} else {
+	$nameHdr = $nameVal = '';
 }
 
 open(IN,'<',$ARGV[0]) or die("Cannot open $ARGV[0].\n");
@@ -113,13 +122,13 @@ while($line=<IN>) {
 		$basename = basename($file);
 
 		if ( $firstData ) {
-			print "$hdrs\t",$header,$nowH,"\n";
+			print $hdrs,$nameHdr,"\t",$header,$nowH,"\n";
 			$firstData = 0;
 		}
 
 		while($line2=<DAT>) {
 			chomp($line2);
-			print $line,"\t",$line2,$now,"\n";
+			print $line,$nameVal,"\t",$line2,$now,"\n";
 		}
 
 		close(DAT);
