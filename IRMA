@@ -3,8 +3,8 @@ PROGRAM="Iterative Refinement Meta-Assembler (IRMA)"
 AUTHOR="Samuel S. Shepard"
 EMAIL="vfn4@cdc.gov"
 AFFIL="NCIRD/OID/CDC"
-DATE="27 APR 2017"
-VERSION="0.6.8"
+DATE="07 JUN 2017"
+VERSION="0.7.0"
 LICENSE="GPL version 3. This program comes with ABSOLUTELY NO WARRANTY. This is free software.
 You are welcome to redistribute it under certain conditions. See:  <http://www.gnu.org/licenses/>.
 Components of this pipeline have non-commercial restrictions. See: IRMA_RES/scripts/packaged-citations-licenses"
@@ -834,6 +834,9 @@ EOL
 	[ "$AUTO_F" -eq 1 ] && options+=" -A"
 	[ "$PAIRED" -eq "1" ] && $spath/getPairingStats.pl ${prefix2}-*.sto > $final-pairingStats.txt
 	$spath/call.pl -P -G $options $pstats $ref $final $assemp/V${iter}-${gene}-*.sto
+	echo -e "\n\n"
+	echo "$spath/call.pl -P -G $options $pstats $ref $final $assemp/V${iter}-${gene}-*.sto"
+	echo -e "\n\n"
 }
 
 
@@ -900,7 +903,6 @@ EOL
 		$spath/completeMatrix.pl $final-${i}.sqm
 		rm ${final}-*-${i}.sqm
 	done
-	$PARALLEL --workdir $ppath $RSCRIPT $spath/sqmHeatmap.R ${final}-{}.sqm ${final}-{}.pdf 2 ::: EXPENRD JACCARD MUTUALD NJOINTP > /dev/null
 }
 
 function REFINE_ASSEMBLY_CALL_VARIANTS() {
@@ -1009,12 +1011,12 @@ function ASSEMBLE_REPORT() {
 	doPHASING $gene $final
 
 	local n=$(wc -l < ${final}-variants.txt)
-	if [ "$n" -gt "2" ]; then
-		$PARALLEL $RSCRIPT $spath/sqmHeatmap.R ${final}-{}.sqm ${final}-{}.pdf 2 ::: EXPENRD JACCARD MUTUALD NJOINTP > /dev/null
-	fi
-
 	if [ "$n" -gt "1" ]; then
+		$spath/addPhaseField.pl ${final}-variants.txt <($spath/phases.R ${final}-EXPENRD.sqm $PHASE_DISTANCE)
 		$RSCRIPT $spath/coverageDiagram.R $RUN $gene $final-coverage.txt $final-variants.txt $final-pairingStats.txt $final-coverageDiagram.pdf > /dev/null 2>&1
+		if [ "$n" -gt "2" ]; then
+			$PARALLEL $RSCRIPT $spath/sqmHeatmap.R ${final}-{}.sqm ${final}-{}.pdf 2 ::: EXPENRD JACCARD MUTUALD NJOINTP > /dev/null
+		fi
 	else
 		$RSCRIPT $spath/simpleCoverageDiagram.R $RUN $gene $final-coverage.txt $final-coverageDiagram.pdf > /dev/null 2>&1
 	fi
