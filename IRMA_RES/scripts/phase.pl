@@ -170,7 +170,7 @@ sub dist($$) {
 		foreach $pat ( keys(%readPats) ) {
 			$p1 = substr($pat,$s1,1);
 			$p2 = substr($pat,$s2,1);
-			if ( $p1 eq '.' || $p2 eq '.' ) { print next; }
+			if ( $p1 eq '.' || $p2 eq '.' ) { next; }
 			
 			$X = $readPats{$pat};
 			$total += $X;
@@ -201,7 +201,11 @@ sub dist($$) {
 		$mx1 = max($Eb1,$Fb1); $mx2 = max($Eb2,$Fb2);
 		$mutd = 1 - $Fb1b2**2/($mx1*$mx2);
 		$jacc = 1 - $Fb1b2/($mx1+$mx2-$Fb1b2);
-		$expd = 1 - (($Fb1b2*$mnA)/($mx1*$mx2));
+		if ( $total <= 20 || $mutd == 0 || $jacc == 0 ) { 
+			$expd = 1 - (($Fb1b2*$mnA)/($mx1*$mx2));
+		} else {
+			$expd = $jacc;
+		}
 		$njop = 1 - 2*$Fb1b2;
 		return ($mutd,$jacc,$expd,$njop);
 
