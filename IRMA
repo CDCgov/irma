@@ -834,9 +834,6 @@ EOL
 	[ "$AUTO_F" -eq 1 ] && options+=" -A"
 	[ "$PAIRED" -eq "1" ] && $spath/getPairingStats.pl ${prefix2}-*.sto > $final-pairingStats.txt
 	$spath/call.pl -P -G $options $pstats $ref $final $assemp/V${iter}-${gene}-*.sto
-	echo -e "\n\n"
-	echo "$spath/call.pl -P -G $options $pstats $ref $final $assemp/V${iter}-${gene}-*.sto"
-	echo -e "\n\n"
 }
 
 
@@ -1011,8 +1008,8 @@ function ASSEMBLE_REPORT() {
 	doPHASING $gene $final
 
 	local n=$(wc -l < ${final}-variants.txt)
+	$spath/addPhaseField.pl ${final}-variants.txt <($spath/phases.R ${final}-EXPENRD.sqm $PHASE_DISTANCE)
 	if [ "$n" -gt "1" ]; then
-		$spath/addPhaseField.pl ${final}-variants.txt <($spath/phases.R ${final}-EXPENRD.sqm $PHASE_DISTANCE)
 		$RSCRIPT $spath/coverageDiagram.R $RUN $gene $final-coverage.txt $final-variants.txt $final-pairingStats.txt $final-coverageDiagram.pdf > /dev/null 2>&1
 		if [ "$n" -gt "2" ]; then
 			$PARALLEL $RSCRIPT $spath/sqmHeatmap.R ${final}-{}.sqm ${final}-{}.pdf 2 ::: EXPENRD JACCARD MUTUALD NJOINTP > /dev/null
