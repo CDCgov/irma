@@ -876,7 +876,7 @@ fi
 PATS=$final-pats.sto
 VARS=$final-vars.sto
 
-$spath/phase.pl $final \$VARS \$PATS -A $procs -I \$ID
+$spath/phase.pl $final \$VARS \$PATS -S $procs -I \$ID
 EOL
 #########################################
 
