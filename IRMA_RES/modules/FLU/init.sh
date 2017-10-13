@@ -44,7 +44,7 @@ ASSEM_PROG="SSW"	# assembly program [SSW]
 ASSEM_PROC=20		# grid maximum processes for assembly
 INS_T=0.25		# minimum frquenncy threshold for insertion refinement
 DEL_T=0.60		# minimum frequency threshold for deletion refinement 
-MIN_AMBIG=0.25		# minimum called SNV frequency for mixed base in amended consensus folder
+MIN_AMBIG=0.20		# minimum called SNV frequency for mixed base in amended consensus folder
 
 
 ### VARIANT CALLING ###
