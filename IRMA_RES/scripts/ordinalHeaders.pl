@@ -5,7 +5,8 @@ use Getopt::Long;
 GetOptions(	'keep-annotation|A'=> \$keepAnnot, 
 		'annot-with-header|H' => \$headerAnnot,
 		'name-annotation-format|N=s' => \$nameAnnotation,
-		'only-name-format|O=s' => \$onlyName
+		'only-name-format|O=s' => \$onlyName,
+		'pipe-format|P' => \$pipeFormat
 	);
 open( IN, '<', $ARGV[0] ) or die("$0 ERROR: Cannot open $ARGV[0].\n");
 
@@ -32,6 +33,8 @@ while($record = <IN> ) {
 		$ordinal = $nameAnnotation.'{'.$ordinal.'}';
 	} elsif ( $onlyName ) {
 		$ordinal = $onlyName;
+	} elsif ( $pipeFormat ) {
+		$ordinal .= '|'.$oldHeader;
 	}
 
 	if ( length($sequence) == 0 ) {
