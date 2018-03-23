@@ -659,7 +659,7 @@ close(DELV);
 
 $variantCount = 0;
 foreach my $variantPosition ( keys(%variants) ) {
-	$variantCount += scalar(%{$variants{$variantPosition});
+	$variantCount += scalar(%{$variants{$variantPosition}});
 }
 if ( $variantCount > 1 ) {
 	$varFile = $prefix.'-vars.sto';
