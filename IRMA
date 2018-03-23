@@ -3,8 +3,8 @@ PROGRAM="Iterative Refinement Meta-Assembler (IRMA)"
 AUTHOR="Samuel S. Shepard"
 EMAIL="vfn4@cdc.gov"
 AFFIL="NCIRD/OID/CDC"
-DATE="12 FEB 2018"
-VERSION="0.7.1"
+DATE="23 MAR 2018"
+VERSION="0.7.2"
 LICENSE="GPL version 3. This program comes with ABSOLUTELY NO WARRANTY. This is free software.
 You are welcome to redistribute it under certain conditions. See:  <http://www.gnu.org/licenses/>.
 Components of this pipeline have non-commercial restrictions. See: IRMA_RES/scripts/packaged-citations-licenses"
@@ -379,7 +379,7 @@ function doMATCH() {
 	# CLEAN UP	
 	rm $matchp/${prefix}-${name}_????.{match,nomatch,chim,fasta}
 	cd $matchp
-	tar  -cf ${prefix}-${name}_????.$match_ext|$ZIP -4 - > $matchp/${prefix}.tar.gz 2> /dev/null
+	tar -cf - ${prefix}-${name}_????.$match_ext|$ZIP -4 - > $matchp/${prefix}.tar.gz 2> /dev/null
 	cd - > /dev/null
 	rm $matchp/${prefix}-${name}_????.$match_ext
 	time_stamp "$prefix consolidated & cleaned"
@@ -541,7 +541,7 @@ function doALIGN() {
 			j=$(($R - 1))
 			if [ "$R" -gt 1 ];then
 				for i in $(seq $j);do
-					rm $alignp/R${i}-$name*.sto
+					rm $alignp/R${i}-$name*.sto 2>/dev/null
 					doBLAT $refp/R${j}-$name.ref $sortp/R${i}-${name}.fa R$i $name $alignp $ALIGN_PROC $LIMIT_BLAT &
 				done
 			fi

@@ -657,7 +657,11 @@ foreach $p ( sort { $a <=> $b } keys(%dcTable) ) {
 }
 close(DELV);
 
-if ( scalar(keys(%variants)) > 1 ) {
+$variantCount = 0;
+foreach my $variantPosition ( keys(%variants) ) {
+	$variantCount += scalar(%{$variants{$variantPosition});
+}
+if ( $variantCount > 1 ) {
 	$varFile = $prefix.'-vars.sto';
 	$patFile = $prefix.'-pats.sto';
 	store(\%variants,$varFile);

@@ -27,7 +27,7 @@ if ( scalar(@variants) < 3 ) {
 		$i++;
 	}
 	close(PHAZ);
-	if ( $i == 0 ) { die("No variant phases detected.\n"); }
+	if ( $i == 0 ) { die("No variant phases detected for file: $ARGV[0]\n"); }
 
 	@phaseRank = sort { $phaseCount{$b} <=> $phaseCount{$a} || $a <=> $b } keys(%phaseCount);
 	foreach $i ( 0 .. $#phaseRank ) { $rankByPhase{$phaseRank[$i]} = ($i+1); }	
