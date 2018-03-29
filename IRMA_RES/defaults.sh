@@ -1,6 +1,6 @@
 ### PERFORMANCE ###
 GRID_ON=0		# grid computation on [1,0] for on or off
-GRID_PATH=""		# grid path, defaults to the IRMA_RES path
+GRID_PATH=""		# grid path, defaults to the IRMA_RES path if left empty string, do not include quotes for tilde prefix
 LIMIT_BLAT=60000	# threshold before grid
 LIMIT_SSW=80000		# threshold before grid
 LIMIT_SAM=500		# threshold before grid

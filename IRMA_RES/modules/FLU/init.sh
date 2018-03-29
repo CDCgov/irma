@@ -1,5 +1,6 @@
 ### PERFORMANCE ###
 GRID_ON=0		# grid computation on [1,0] for on or off
+GRID_PATH=""		# grid path, defaults to the IRMA_RES path if left empty string, do not include quotes for tilde prefix
 SINGLE_LOCAL_PROC=16	# local maximum processes
 DOUBLE_LOCAL_PROC=8	# local maximum processes (double this number)
 ALLOW_TMP=1		# if GRID_ON=0, try to use /tmp for working directory
