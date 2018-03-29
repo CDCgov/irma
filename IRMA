@@ -197,7 +197,7 @@ TOKEN=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
 if [ "$ALLOW_TMP" -eq "1" -a "$GRID_ON" -eq "0" ];then
 	ppath=$TMP/$(whoami)/IRMAv$VERSION/${RUN}-${TOKEN}
 else
-	if [ "${GRID_PATH:-0}" -ne "0" -a "${GRID_ON:-0}" -eq "1" ];then
+	if [ "${GRID_PATH:-0}" != "0" -a "${GRID_ON:-0}" -eq "1" ];then
 		ppath=$GRID_PATH/$(whoami)/IRMAv$VERSION/${RUN}-${TOKEN}
 	else
 		ppath=$rpath/ppath/${RUN}-${TOKEN}
