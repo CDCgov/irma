@@ -55,6 +55,7 @@ profiles	phmms	$phmms
 do_not_merge_read_pairs	NO_MERGE	$NO_MERGE
 starting_reference	REF_SET	$REF1_SET
 grid_acceleration_on	GRID_ON	$GRID_ON
+grid_optional_path	GRID_PATH	${GRID_PATH:-0}
 working_directory	ppath	$ppath
 alternative_frequency	MIN_FA	$MIN_FA
 alternative_count	MIN_CA	$MIN_CA

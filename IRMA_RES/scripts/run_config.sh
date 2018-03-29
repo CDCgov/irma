@@ -14,6 +14,7 @@ PARAM_FILE_DATE=$PARAM_FILE_DATE
 
 ### PERFORMANCE ###
 GRID_ON=$GRID_ON	# grid computation on [1,0] for on or off
+GRID_PATH="${GRID_PATH}"	# optional grid path for working directory, leave "" for no option
 LIMIT_BLAT=$LIMIT_BLAT	# threshold before grid
 LIMIT_SSW=$LIMIT_SSW		# threshold before grid
 LIMIT_SAM=$LIMIT_SAM		# threshold before grid
