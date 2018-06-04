@@ -64,6 +64,7 @@ ASSEM_PROG="$ASSEM_PROG"	# assembly program [SSW]
 ASSEM_PROC=$ASSEM_PROC		# grid maximum processes for assembly
 INS_T=$INS_T		# minimum frquenncy threshold for insertion refinement
 DEL_T=$DEL_T		# minimum frequency threshold for deletion refinement 
+SILENCE_EXCESSIVE_INDELS=${SILENCE_EXCESSIVE_INDELS:-0}	# silences reads with excessive indels (having 4 indels with at least one greater than 9)
 MIN_AMBIG=$MIN_AMBIG		# minimum called SNV frequency for mixed base in amended consensus folder
 SSW_M=$SSW_M			# smith-waterman match score
 SSW_X=$SSW_X			# smith-waterman mismatch penalty

@@ -4,7 +4,7 @@
 
 use Storable;
 use Getopt::Long;
-GetOptions(	'ignore-annotation|G' => \$ignoreAnnotation );
+GetOptions(	'ignore-annotation|G' => \$ignoreAnnotation, 'silence-excessive-indel|S' => \$silenceBadIndels );
 if ( scalar(@ARGV) != 3 ) {
 	die("Usage:\t$0 <REF> <SAM> <OUT>\n");
 }
@@ -29,6 +29,8 @@ if ( $ignoreAnnotation && $REF_NAME =~ /^([^{]+){[^}]*}/  ) {
 	$REF_NAME = $1;
 }
 
+$silenceBadIndels = defined($silenceBadIndels) ? 1 : 0;
+
 open(SAM,'<',$ARGV[1]) or die("Cannot open SAM $ARGV[1] for reading.\n");
 $/ = "\n"; @table = ();
 while($line=<SAM>) {
@@ -38,7 +40,14 @@ while($line=<SAM>) {
 	}
 
 	($qname,$flag,$rname,$pos,$mapq,$cigar,$mrnm,$mpos,$isize,$seq,$qual) = split("\t",$line);
-	if ( $cigar eq '*' ) { next; }
+	if ( $cigar eq '*' ) { next; } 
+		
+	if ( $silenceBadIndels && $cigar =~ /\d\d+[DI]\d+M+/ ) {
+		if ( $cigar =~ /^\d+M(\d+[DI]\d+M){4,}+$/ ) {
+			$cigar =~ s/(\d+)D/$1N/g; $cigar =~ s/(\d+)I/$1S/g;
+		}
+	}
+
 	if ( $ignoreAnnotation && $rname =~ /^([^{]+){[^}]*}/  ) { $rname = $1; }
 
 	if ( $REF_NAME eq $rname ) {

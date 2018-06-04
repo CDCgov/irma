@@ -20,7 +20,7 @@ sub condenseCigar($) {
 	my $cig = $_[0];
 	my $cigar = '';
 	my $state = '';
-	while( $cig =~ /([M]+|[D]+|[I]+|[H]+|[N]+)/g ) {
+	while( $cig =~ /([M]+|[D]+|[I]+|[H]+|[N]+|[S]+)/g ) {
 		$state = $1;
 		$cigar .= length($state);
 		$cigar .= substr($state,0,1);
