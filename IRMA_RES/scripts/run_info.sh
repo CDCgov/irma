@@ -70,7 +70,7 @@ minimum_read_patterns	MIN_RP	$MIN_RP
 minimum_reads	MIN_RC	$MIN_RC
 minimum_insertion_edit_threshold	INS_T	$INS_T
 minimum_deletion_edit_threshold	DEL_T	$DEL_T
-silence_excessive_indels_for_editing	SILENCE_EXCESSIVE_INDELS ${SILENCE_EXCESSIVE_INDELS:-0}
+silence_complex_indels_for_editing	SILENCE_COMPLEX_INDELS ${SILENCE_COMPLEX_INDELS:-0}
 minimum_frequency_for_mixed_consensus_call	MIN_AMBIG	$MIN_AMBIG
 auto_adjust_minimum_variant_frequency	AUTO_F	$AUTO_F
 minimum_deletion_variant_frequency	MIN_FD	$MIN_FD

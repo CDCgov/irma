@@ -3,7 +3,7 @@ PROGRAM="Iterative Refinement Meta-Assembler (IRMA)"
 AUTHOR="Samuel S. Shepard"
 EMAIL="vfn4@cdc.gov"
 AFFIL="NCIRD/OID/CDC"
-DATE="04 JUN 2018"
+DATE="05 JUN 2018"
 VERSION="0.8.1"
 LICENSE="GPL version 3. This program comes with ABSOLUTELY NO WARRANTY. This is free software.
 You are welcome to redistribute it under certain conditions. See:  <http://www.gnu.org/licenses/>.
@@ -716,7 +716,7 @@ function ASSEM_RUN_SSW() {
 
 	local options=""
 	[ "$ASSEM_REF" -eq "1" ] && options+=" -G"
-	[ "${SILENCE_EXCESSIVE_INDELS:-0}" -eq "1" ] && options+=" -S"
+	[ "${SILENCE_COMPLEX_INDELS:-0}" -eq "1" ] && options+=" -S"
 
 ###
 cat > ${script}.sh  <<EOL

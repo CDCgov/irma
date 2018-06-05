@@ -4,7 +4,7 @@
 
 use Storable;
 use Getopt::Long;
-GetOptions(	'ignore-annotation|G' => \$ignoreAnnotation, 'silence-excessive-indel|S' => \$silenceBadIndels );
+GetOptions(	'ignore-annotation|G' => \$ignoreAnnotation, 'silence-complex-indel|S' => \$silenceBadIndels );
 if ( scalar(@ARGV) != 3 ) {
 	die("Usage:\t$0 <REF> <SAM> <OUT>\n");
 }
