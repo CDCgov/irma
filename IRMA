@@ -3,8 +3,8 @@ PROGRAM="Iterative Refinement Meta-Assembler (IRMA)"
 AUTHOR="Samuel S. Shepard"
 EMAIL="vfn4@cdc.gov"
 AFFIL="NCIRD/OID/CDC"
-DATE="05 JUN 2018"
-VERSION="0.8.1"
+DATE="19 JUN 2018"
+VERSION="0.8.2"
 LICENSE="GPL version 3. This program comes with ABSOLUTELY NO WARRANTY. This is free software.
 You are welcome to redistribute it under certain conditions. See:  <http://www.gnu.org/licenses/>.
 Components of this pipeline have non-commercial restrictions. See: IRMA_RES/scripts/packaged-citations-licenses"
@@ -193,7 +193,7 @@ if [ "$MAX_ROUNDS" -eq "1" -a "$ASSEM_REF" -eq "1" ];then
 fi
 
 # define ppath
-TOKEN=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
+TOKEN=$(perl -e '@chars = ("A".."Z","0".."9","a".."z");print $chars[int(rand(scalar(@chars)))] for 1..32;')
 if [ "$ALLOW_TMP" -eq "1" -a "$GRID_ON" -eq "0" ];then
 	ppath=$TMP/$(whoami)/IRMAv$VERSION/${RUN}-${TOKEN}
 else
