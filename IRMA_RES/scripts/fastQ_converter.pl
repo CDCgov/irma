@@ -18,7 +18,8 @@ GetOptions(	'read-quality|T=i'=> \$qualityThreshold,
 		'log-id|g=s' => \$logID,
 		'keep-header|H' => \$keepHeader,
 		'mask-adapter|m=s' => \$maskAdapter,
-		'clip-adapter|c=s' => \$clipAdapter
+		'clip-adapter|c=s' => \$clipAdapter,
+		'fuzzy-adapter|Z' => \$fuzzyAdapter
 	);
 
 
@@ -37,22 +38,23 @@ if ( -t STDIN && scalar(@ARGV) != 1 ) {
 	$message .= "\t\t-H|--keep-header\t\t\tKeep header as usual.\n";
 	$message .= "\t\t-c|--clip-adapter <STR>\t\t\tClip adapter.\n";
 	$message .= "\t\t-m|--mask-adapter <STR>\t\t\tMask adapter.\n";
+	$message .= "\t\t-Z|--fuzzy-adapter\t\t\tAllow one mismatch.\n";
 	die($message."\n");
 }
 
 if ( defined($clipAdapter) ) {
-	$forwardAdapter = lc($clipAdapter);
+	$forwardAdapter = $clipAdapter;
 	$reverseAdapter = reverse($forwardAdapter);
-	$reverseAdapter =~ tr/atgc/tacg/;
+	$reverseAdapter =~ tr/ATGC/TACG/;
 	$clipAdapter = 1;
 } else {
 	$clipAdapter = 0;
 }
 
 if ( defined($maskAdapter) ) {
-	$forwardAdapter = lc($maskAdapter);
+	$forwardAdapter = $maskAdapter;
 	$reverseAdapter = reverse($forwardAdapter);
-	$reverseAdapter =~ tr/atgc/tacg/;
+	$reverseAdapter =~ tr/ATGC/TACG/;
 	$adapterMask = 'N' x length($forwardAdapter);
 	$maskAdapter = 1;
 } else {
@@ -82,6 +84,23 @@ if ( !defined($fileID) ) {
 		$fileID = $fileID.'|';
 	}
 }
+
+@fuzzyAdaptersFWD = (); @fuzzyAdaptersREV = ();
+if ( defined($fuzzyAdapter) && ($maskAdapter || $clipAdapter) ) {
+	$L = length($forwardAdapter);
+	if ( $L > 0 ) {
+		$N = '[ATCGN]'; $L--;
+		for $i (0 .. $L) {
+			$tmp = $forwardAdapter;
+			substr($tmp,$i,1,$N);
+			push(@fuzzyAdaptersFWD, $tmp);
+			$tmp = $reverseAdapter;
+			substr($tmp,$i,1,$N);
+			push(@fuzzyAdaptersREV, $tmp);
+		}
+	}
+	$fuzzyAdapter = 1;
+} else { $fuzzyAdapter = 0; }
 
 if ( $saveFile ) {
 	open(QUA,'>',$saveFile) or die("Cannot open $saveFile.\n");
@@ -142,15 +161,49 @@ while($hdr=<>) {
 		if ( $seq  =~ /$reverseAdapter/i ) {
 			$seq = substr($seq,0,$-[0]);
 			$quality = substr($quality,0,$-[0]);
-		} elsif ( $seq =~ /$forwardAdapater/i ) {
+		} elsif ( $seq =~ /$forwardAdapter/i ) {
 			$seq = substr($seq,$+[0]);	
 			$quality = substr($quality,$+[0]);
+		} elsif ( $fuzzyAdapter ) {
+			foreach $tmp ( @fuzzyAdaptersREV ) {
+				if ( $seq =~ /$tmp/i ) {
+					$seq = substr($seq,0,$-[0]);
+					$quality = substr($quality,0,$-[0]);
+					@fuzzyAdaptersFWD = ();
+					last;
+				}
+			}
+
+			foreach $tmp ( @fuzzyAdaptersFWD ) {
+				if ( $seq =~ /$tmp/i ) {
+					$seq = substr($seq,$+[0]);	
+					$quality = substr($quality,$+[0]);
+					last;
+				}
+			}
 		}
 	} elsif ( $maskAdapter ) {
 		if ( $seq  =~ /$reverseAdapter/i ) {
 			$seq =~ s/$reverseAdapter/$adapterMask/i;
-		} elsif ( $seq =~ /$forwardAdapater/i ) {
+		} elsif ( $seq =~ /$forwardAdapter/i ) {
 			$seq =~ s/$forwardAdapter/$adapterMask/i;
+		} elsif ( $fuzzyAdapter ) {
+			foreach $tmp ( @fuzzyAdaptersREV ) {
+				if ( $seq =~ /$tmp/i ) {
+					$seq = substr($seq,0,$-[0]);
+					$quality = substr($quality,0,$-[0]);
+					@fuzzyAdaptersFWD = ();
+					last;
+				}
+			}
+
+			foreach $tmp ( @fuzzyAdaptersFWD ) {
+				if ( $seq =~ /$tmp/i ) {
+					$seq = substr($seq,$+[0]);	
+					$quality = substr($quality,$+[0]);
+					last;
+				}
+			}
 		}
 	}
 

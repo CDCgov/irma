@@ -37,6 +37,9 @@ USE_MEDIAN=$USE_MEDIAN		# use the median quality or the average [1,0]
 QUAL_THRESHOLD=$QUAL_THRESHOLD	# minimum read statistic
 MIN_LEN=$MIN_LEN		# minimum read length
 INCL_CHIM=$INCL_CHIM		# includes chimera or not [0,1]
+			# transposase adapter, clips 5' of the adapter on the forward strand and 3' on the reverse strand
+			# applicable to nexttera pair-end reads 
+ADAPTER="$ADAPTER"
 MERGE_SECONDARY=$MERGE_SECONDARY	# merge secondary data after the first round, good if no co-infections
 
 ## MATCH STEP

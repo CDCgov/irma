@@ -63,6 +63,7 @@ skip_reference_elongation	SKIP_E	$SKIP_E
 read_statistic	USE_MEDIAN	$USE_MEDIAN
 minimum_statistic_quality	QUAL_THRESHOLD	$QUAL_THRESHOLD
 minimum_read_length	MIN_LEN	$MIN_LEN
+adapter_trim_read_motif	ADAPTER	${ADAPTER}
 interval_significance_level	SIG_LEVEL	$SIG_LEVEL
 maximum_read_gathering_rounds	MAX_ROUNDS	$MAX_ROUNDS
 read_fasta_input	FASTA	$FASTA
