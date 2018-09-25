@@ -6,7 +6,7 @@ use Storable;
 use Getopt::Long;
 GetOptions(	'ignore-annotation|G' => \$ignoreAnnotation, 'silence-complex-indel|S' => \$silenceBadIndels );
 if ( scalar(@ARGV) != 3 ) {
-	die("Usage:\t$0 <REF> <SAM> <OUT>\n");
+	die("Usage:\n\t$0 <REF> <SAM> <OUT>\n");
 }
 
 open(REF,'<',$ARGV[0]) or die("Cannot open REF $ARGV[0] for reading.\n");
@@ -25,7 +25,7 @@ while($record = <REF>) {
 close(REF);
 if ( !defined($N) ) { die("ERROR: no reference found in $ARGV[0].\n"); }
 
-if ( $ignoreAnnotation && $REF_NAME =~ /^([^{]+){[^}]*}/  ) {
+if ( $ignoreAnnotation && $REF_NAME =~ /^([^{]+)\{[^}]*}/  ) {
 	$REF_NAME = $1;
 }
 
@@ -48,7 +48,7 @@ while($line=<SAM>) {
 		}
 	}
 
-	if ( $ignoreAnnotation && $rname =~ /^([^{]+){[^}]*}/  ) { $rname = $1; }
+	if ( $ignoreAnnotation && $rname =~ /^([^{]+)\{[^}]*}/  ) { $rname = $1; }
 
 	if ( $REF_NAME eq $rname ) {
 		$seq = uc($seq);

@@ -29,7 +29,7 @@ foreach $file ( @ARGV ) {
 			next;
 		}
 
-		if ( $ignoreAnnotation && $gene =~ /^([^{]+){[^}]*}/  ) {
+		if ( $ignoreAnnotation && $gene =~ /^([^{]+)\{[^}]*}/  ) {
 			$gene = $1;
 		}
 

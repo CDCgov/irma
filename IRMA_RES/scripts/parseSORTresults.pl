@@ -20,7 +20,7 @@ open(IN,'<',$ARGV[0]) or die("Cannot open $ARGV[0] for reading.\n");
 while($line=<IN>) {
 	chomp($line);
 	($ID,$target,$score) = split("\t",$line);
-	if ( $ignoreAnnotations && $target =~ /^([^{]+){[^}]*}$/ ) { $target = $1; }
+	if ( $ignoreAnnotations && $target =~ /^([^{]+)\{[^}]*}$/ ) { $target = $1; }
 
 	$counts{$target}++;
 	$IDs{$ID}{$target} = $score;
