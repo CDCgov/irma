@@ -271,7 +271,8 @@ original_path=$ppath
 function moveProject() {
 	local x=2
 	local mvpath=$owd/$RUN
-	
+
+	time_stamp "moving project"	
 	if [ ! -d $mvpath ];then
 		mv $original_path $mvpath
 	else
