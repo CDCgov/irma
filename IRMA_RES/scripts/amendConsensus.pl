@@ -11,7 +11,7 @@ GetOptions(
 		'name|N=s' => \$name,
 		'seg|S=s' => \$convertSeg,
 		'prefix|P=s' => \$prefix,
-		'fa-header-suffix' => \$faHeaderSuffix,
+		'fa-header-suffix|H' => \$faHeaderSuffix,
 		'min-del-freq|D=f' => \$minFreqDel,
 		'min-ins-freq|I=f' => \$minFreqIns,
 		'deletion-file|d=s'=> \$delFile,
