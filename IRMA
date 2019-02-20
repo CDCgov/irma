@@ -1225,7 +1225,7 @@ function doPostProcessing() {
 	if [ "$(grep '3-match' $ppath/tables/READ_COUNTS.txt -c)" -gt "0" -a "$(grep '3-nomatch' $ppath/tables/READ_COUNTS.txt -c)" -gt "0" ];then
 		local factor=$( expr $(grep '3-match' $ppath/tables/READ_COUNTS.txt|cut -f3) / $(grep '3-altmatch' $ppath/tables/READ_COUNTS.txt|cut -f3) ) 
 		if [ "${factor:-0}" -lt "${RESIDUAL_ASSEMBLY_FACTOR:-400}" ];then
-			time_stamp "residual read patterns non-trivial (${factor:-0} < ${RESIDUAL_ASSEMBLY_FACTOR:-400})"
+			time_stamp "residual read pattern ratio non-trivial (${factor:-0}x < ${RESIDUAL_ASSEMBLY_FACTOR:-400}x)"
 			local alt_ppath=$ppath/secondary/residual_assemblies
 			mkdir $alt_ppath; createDirs $alt_ppath
 			ln $ppath/R0.xfl $alt_ppath/R0.xfl
