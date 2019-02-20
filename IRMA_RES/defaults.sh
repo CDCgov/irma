@@ -31,6 +31,7 @@ INCL_CHIM=0		# includes chimera or not [0,1]
 ADAPTER="AGATGTGTATAAGAGACAG"
 FUZZY_ADAPTER=1		# Allow 1 adapter mismatch
 MERGE_SECONDARY=0	# Merge secondary data after the first round to the unmatched pool. Useful if co-infections are not expected.
+RESIDUAL_ASSEMBLY_FACTOR=0	# The ratio of match read patterns to altmatch is measured, and if it's less than factor, residual assembly is performed. Set 0 for off.
 
 ## MATCH STEP
 MATCH_PROC=20		# grid maximum processes for the MATCH

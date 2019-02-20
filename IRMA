@@ -3,8 +3,8 @@ PROGRAM="Iterative Refinement Meta-Assembler (IRMA)"
 AUTHOR="Samuel S. Shepard"
 EMAIL="vfn4@cdc.gov"
 AFFIL="NCIRD/OID/CDC"
-DATE="25 SEP 2018"
-VERSION="0.8.4"
+DATE="19 FEB 2019"
+VERSION="0.9.0"
 LICENSE="GPL version 3. This program comes with ABSOLUTELY NO WARRANTY. This is free software.
 You are welcome to redistribute it under certain conditions. See:  <http://www.gnu.org/licenses/>.
 Components of this pipeline have non-commercial restrictions. See: IRMA_RES/scripts/packaged-citations-licenses"
@@ -49,6 +49,17 @@ function time_stamp() {
 	local t=$(date +"%Y-%m-%d %k:%M:%S")
 	echo -e "[$t]\tIRMA/$MODULE_CONFIG $1"
 }
+
+function rmglob () {
+	local glob=""
+
+	for glob in "$@";do
+		if test -n "$(shopt -s nullglob;echo $glob)";then
+			rm $glob
+		fi
+	done
+}
+
 ###########################
 
 # variables
@@ -223,12 +234,24 @@ else
 fi
 
 # stage paths
-matchp=$ppath/MATCH
-sortp=$ppath/SORT
-alignp=$ppath/ALIGN
-assemp=$ppath/ASSEMBLY
-refp=$ppath/GENES
-mkdir $matchp $sortp $alignp $assemp $refp
+function createDirs() {
+	local p=$1
+	local d=""
+	for d in MATCH SORT ALIGN ASSEMBLY GENES;do
+		[ ! -d "$p/$d" ] && mkdir $p/$d
+	done
+}
+
+function setDirs() {
+	local p=$1
+	matchp=$p/MATCH
+	sortp=$p/SORT
+	alignp=$p/ALIGN
+	assemp=$p/ASSEMBLY
+	refp=$p/GENES
+}
+createDirs $ppath
+setDirs $ppath
 
 # global program options
 SSW_OPTS="-x $SSW_X -m $SSW_M -o $SSW_O -e $SSW_E"
@@ -244,20 +267,20 @@ export IRMA_QUEUE
 
 #####################
 ### Main Functions ###
-
+original_path=$ppath
 function moveProject() {
 	local x=2
 	local mvpath=$owd/$RUN
 	
 	if [ ! -d $mvpath ];then
-		mv $ppath $mvpath
+		mv $original_path $mvpath
 	else
 		local outpath=${mvpath}-V$x
 		while [ -d $outpath ];do
 			((x++))
 			outpath=${mvpath}-V$x
 		done
-		mv $ppath $outpath
+		mv $original_path $outpath
 	fi
 }
 
@@ -328,6 +351,7 @@ $BLAT $refDB \$INPUT \$OUTPUT $BLAT_OPTS
 $spath/parseBlat.pl \$OUTPUT \$INPUT $options -P $prefix
 EOL
 ###
+
 	chmod 755 ${script}.sh
 	$Lspath/interleavedSamples.pl -G $procs $queryDB $workdir/$prefix-$name > /dev/null 2>&1
 	if [ "$doGrid" -eq "1" ];then
@@ -354,16 +378,11 @@ function doMATCH() {
 	local i=0
 
 	if [ "$MATCH_PROG" == "BLAT" ];then
-		doBLAT $REF_SET $DB $prefix $name $matchp $MATCH_PROC $LIMIT_BLAT
+		doBLAT $REF_SET $DB $prefix $name $matchp $MATCH_PROC $LIMIT_BLAT || return 1
 		match_ext="blat"
 	else
 		time_stamp "$prefix aborted, MATCH:$MATCH_PROG not implemented"
-		if [ $R -gt 1 ];then
-			doPostProcessing
-		fi
-		moveProject
-		time_stamp 'finished!'
-		exit
+		return 1
 	fi
 
 	time_stamp "$prefix all-match with $MATCH_PROG finished"
@@ -384,18 +403,18 @@ function doMATCH() {
 	fi
 
 	# CLEAN UP	
-	rm $matchp/${prefix}-${name}_????.{match,nomatch,chim,fasta}
+	rmglob $matchp/${prefix}-${name}_'????.{match,nomatch,chim,fasta}'
 	cd $matchp
 	tar -cf - ${prefix}-${name}_????.$match_ext|$ZIP -4 - > $matchp/${prefix}.tar.gz 2> /dev/null
 	cd - > /dev/null
-	rm $matchp/${prefix}-${name}_????.$match_ext
+	rmglob $matchp/${prefix}-${name}_'????'.$match_ext
 	time_stamp "$prefix consolidated & cleaned"
 
 	# EXTEND to SORT
 	if [ "$SORT_PROG" == "$MATCH_PROG" ];then
 		mkdir $sortp/${prefix}
 		cat $matchp/${prefix}-${name}_????.class > $sortp/$prefix/SORT_result.txt
-		rm $matchp/${prefix}-${name}_????.class
+		rmglob $matchp/${prefix}-${name}_'????'.class
 	fi
 
 	# EXTEND to ALIGN
@@ -404,6 +423,7 @@ function doMATCH() {
 			mv $matchp/*.sto $alignp
 		fi
 	fi
+	return 0
 }
 
 function doSORT() {
@@ -423,7 +443,7 @@ function doSORT() {
 			fi
 		else
 			# SORT using LABEL full
-			doLABEL $matchp/${prefix}.match $MODULE $MODULE $sortp/${prefix} $LIMIT_LABEL
+			doLABEL $matchp/${prefix}.match $MODULE $MODULE $sortp/${prefix} $LIMIT_LABEL || return 1
 		fi
 		cat $sortp/${prefix}/SORTED_*.tab > $sortp/${prefix}/SORT_result.txt 2> /dev/null
 	elif [ "$SORT_PROG" == "BLAT" ];then
@@ -431,35 +451,20 @@ function doSORT() {
 		:
 	else
 		time_stamp "$prefix aborted, SORT:$SORT_PROG not implemented"
-		if [ $R -gt 1 ];then
-			doPostProcessing
-		fi
-		moveProject
-		time_stamp 'finished!'
-		exit
+		return 1
 	fi
 	time_stamp "$prefix sorted using $SORT_PROG"
 
 	if [ ! -r $sortp/$prefix/SORT_result.txt ];then
 		time_stamp "$prefix aborted, sort failed"
-		if [ $R -gt 1 ];then
-			doPostProcessing
-		fi
-		moveProject
-		time_stamp 'finished!'
-		exit
+		return 1
 	fi
 
 	x=$(grep UNRECOGNIZABLE $sortp/$prefix/SORT_result.txt -c)
 	y=$(wc -l < $sortp/$prefix/SORT_result.txt)
 	if [ $x -gt 0 -a $x -eq $y ];then
 		time_stamp "$prefix found no significant reads"
-		if [ $R -gt 1 ];then
-			doPostProcessing
-		fi
-		moveProject
-		time_stamp 'finished!'
-		exit
+		return 1
 	fi
 
 	local options="-C $MIN_RC -D $MIN_RP"
@@ -471,6 +476,7 @@ function doSORT() {
 	# CLEAN UP
 	cd $sortp/$prefix; tar  -cf - SORT_result.txt |$ZIP -4 - > $sortp/$prefix.tar.gz
 	cd - > /dev/null; rm -rf $sortp/$prefix
+	return 0
 }
 
 function doSAM() {
@@ -556,12 +562,7 @@ function doALIGN() {
 			:	
 		else
 			time_stamp "$prefix aborted, ALIGN:$ALIGN_PROG not implemented"
-			if [ $R -gt 1 ];then
-				doPostProcessing
-			fi
-			moveProject
-			time_stamp 'finished!'
-			exit
+			return 1
 		fi
 	done
 	wait
@@ -583,6 +584,7 @@ function doALIGN() {
 		done
 		wait
 	fi
+	return 0
 }
 
 function doRound() {
@@ -597,21 +599,16 @@ function doRound() {
 	time_stamp "$prefix started ($n)"
 
 	# MATCH stage
-	doMATCH $DB $prefix
+	doMATCH $DB $prefix || return 1
 	n=$(grep '>' $matchp/${prefix}.match -c)
 	if [ "$n" -eq "0" ];then
 		time_stamp "$prefix aborted, no matches found"
-		if [ $R -gt 1 ];then
-			doPostProcessing
-		fi
-		moveProject
-		time_stamp 'finished!'
-		exit
+		return 1
 	fi
 	
 	### SORT stage ###
 	DB=$matchp/${prefix}.match
-	doSORT $DB $prefix
+	doSORT $DB $prefix || return 1
 
 	# PRIMARY vs SECONDARY tests
 	# if we have primary data from the current round
@@ -639,21 +636,21 @@ function doRound() {
 
 	# add R0 for tracing history better
 	if [ "$ASSEM_REF" -eq "0" -a "$R" -eq "1" ];then
-		for i in $sortp/$prefix-*.fa;do
-			if test -n "$(shopt -s nullglob;echo $sortp/$prefix-*.fa)";then
-				name=$(basename $i .fa)
-				gene=${name#*-}
-				$Lspath/selectSequences.pl -I $gene $REF1_SET > $refp/R0-${gene}.ref
-			fi
-		done
+		if test -n "$(shopt -s nullglob;echo $sortp/$prefix-*.fa)";then
+			for i in $sortp/$prefix-*.fa;do
+					name=$(basename $i .fa)
+					gene=${name#*-}
+					$Lspath/fastaExtractor.pl $refp/R0.refs <(echo $gene) > $refp/R0-${gene}.ref
+			done
+		fi
 	fi
 
 	### ALIGN stage ###
 	# given we have primary data in this round	
 	if test -n "$(shopt -s nullglob;echo $sortp/$prefix-*.fa)";then
-		doALIGN $prefix
+		doALIGN $prefix || return 1
 	else
-		time_stamp "$prefix aborted, found fewer than $MIN_RP RPs or $MIN_RC reads for all template"
+		time_stamp "$prefix aborted, found fewer than $MIN_RP RPs or $MIN_RC reads for all templates"
 		if [ $R -eq 1 ];then
 			mkdir $ppath/low_abundance
 			mkdir $ppath/other_data
@@ -680,13 +677,13 @@ function doRound() {
 			fi
 			rm $ppath/R*.{fa,xfl}
 			rm -rf $alignp $matchp $refp $sortp $assemp
-		else
-			doPostProcessing
+#		else
+#			doPostProcessing
 		fi
-	
-		moveProject
-		time_stamp 'finished!'
-		exit
+		return 1	
+		#moveProject
+		#time_stamp 'finished!'
+		#exit
 	fi
 
 	if [ "$ALIGN_PROG" != "NONE" ];then
@@ -700,6 +697,8 @@ function doRound() {
 	if [ "${MERGE_SECONDARY:-0}" -eq "1" -a "$R" -eq "1" ];then
 		test -n "$(shopt -s nullglob;echo $sortp/R1-*.fa.2)" && cat $sortp/R1-*.fa.2 >> $QUERY_SET && rm $sortp/R1-*.fa.2
 	fi
+
+	return 0
 }
 
 #############################################
@@ -1042,11 +1041,14 @@ function ASSEMBLE_REPORT() {
 	$SAMTOOLS view -bS ${final}.sam > ${final}.bam 2> /dev/null
 	$SAMTOOLS sort ${final}.bam $final > /dev/null 2>&1
 	$SAMTOOLS index ${final}.bam > /dev/null 2>&1
-	rm $assemp/F*-$gene.sam
+	rmglob $assemp/'F*-$gene.sam'
 	time_stamp "finished $gene (F$last_iter)"
 }
 
 function doPostProcessing() {
+	# Create directory for the phases
+	mkdir $ppath/intermediate
+
 	# INFLATE TO FASTQ
 	if [ "$ASSEM_REF" -eq "1" ];then
 		if test -n "$(shopt -s nullglob;echo $refp/R0-*.ref)";then
@@ -1061,13 +1063,15 @@ function doPostProcessing() {
 			done
 		fi
 	else
-		# -G gets rid of alternative references
-		for name in $($spath/finalRefs.pl -G $refp/*.refs);do
-			gene=${name#*-}
-			cat $sortp/R*-$gene.fa > $assemp/$gene.fa
-			$spath/xflate.pl -I -Q -R $ppath/R0.xfl $assemp/$gene.fa > $assemp/$gene.fastq &
-			head -n2 $refp/$name.ref > $assemp/F1-$gene.ref
-		done
+		if test -n "$(shopt -s nullglob;echo $refp/R[1-9].refs)";then
+			# -G gets rid of alternative references
+			for name in $($spath/finalRefs.pl -G $refp/R[1-9].refs);do
+				gene=${name#*-}
+				cat $sortp/R*-$gene.fa > $assemp/$gene.fa
+				$spath/xflate.pl -I -Q -R $ppath/R0.xfl $assemp/$gene.fa > $assemp/$gene.fastq &
+				head -n2 $refp/$name.ref > $assemp/F1-$gene.ref
+			done
+		fi
 	fi
 	wait
 	time_stamp 'converted back to fastq'
@@ -1092,7 +1096,7 @@ function doPostProcessing() {
 		fi
 	fi
 
-	### experimental ###
+	### READ COUNTS ###
 	echo -e "Record\tReads\tPatterns\tPairsAndWidows" >> $ppath/READ_COUNTS.txt
 	if [ "$PAIRED" -eq "1" ];then
 		raw1=$(grep LEFT.log $ppath/QC_log.txt |$spath/sumField.pl -F 2)
@@ -1117,49 +1121,55 @@ function doPostProcessing() {
 		read raw pats <<<$(grep '>' $sortp/*UNRECOGNIZABLE*|cut -f2 -d'%'|$spath/sumField.pl -S)
 		echo -e "3-unrecognizable\t${raw}\t${pats}\tNA" >> $ppath/READ_COUNTS.txt
 	fi
+	### END COUNTS ###
 
-
-	### end experimental ###
 	grep '>' $matchp/R?.{match,nomatch,chim} $ppath/R0.fa -c > $ppath/NR_COUNTS_log.txt
-	rm $ppath/R0.{fa,xfl} &
-	[ "$ALIGN_PROG" != "NONE" ] && rm $alignp/R*.sto &
-	rm $refp/R*.refs &
-	rm $matchp/R*.{match,nomatch,chim} &
-	rm $sortp/R*.fa &
+	[ "$ALIGN_PROG" != "NONE" ] && rmglob $alignp/'R*.sto' &
+	rmglob $matchp/'R*.{match,chim}' &
+	rmglob $sortp/'R*.fa' &
 	wait
 	
 	# POLISH the final assembly & do variant calls/phasing
-	for ref1 in $assemp/F1-*.ref;do
-		name=$(basename $ref1 .ref)
-		gene=${name#*-}
-		ASSEMBLE_REPORT $gene &
-	done
-	wait
-	time_stamp 'mapped to references, BAM files created'
+	if test -n "$(shopt -s nullglob;echo $assemp/F1-*.ref)";then
+		for ref1 in $assemp/F1-*.ref;do
+			name=$(basename $ref1 .ref)
+			gene=${name#*-}
+			if [ -s "$assemp/${gene}.fastq" ];then
+				ASSEMBLE_REPORT $gene &
+			else
+				time_stamp "skipping $gene assembly, no fastq"
+			fi
+		done
+		wait
+		time_stamp 'mapped to references, BAM files created'
 
-	for i in $ppath/*bam;do
-		pairs=$($SAMTOOLS view -c $i)
-		gene=$(basename $i .bam)
-		read raw pats <<<$(grep '>' $assemp/${gene}.fa|cut -f2 -d'%'|$spath/sumField.pl -S)
-		echo -e "4-${gene}\t${raw}\t${pats}\t${pairs}" >> $ppath/READ_COUNTS.txt.tmp
-		echo ${i}:$pairs >> $ppath/READ_log.txt
-	done
+		for i in $ppath/*bam;do
+			pairs=$($SAMTOOLS view -c $i)
+			gene=$(basename $i .bam)
+			read raw pats <<<$(grep '>' $assemp/${gene}.fa|cut -f2 -d'%'|$spath/sumField.pl -S)
+			echo -e "4-${gene}\t${raw}\t${pats}\t${pairs}" >> $ppath/READ_COUNTS.txt.tmp
+			echo ${i}:$pairs >> $ppath/READ_log.txt
+		done
 
-	cd $assemp
-	tar -cf - *.fastq|$ZIP -4 - > $assemp/reads.tar.gz
-	cd - > /dev/null
-	grep '>' $assemp/*.fa -Hc >> $ppath/NR_COUNTS_log.txt
-	rm $assemp/*.fastq $assemp/*.fa
+		cd $assemp
+		tar -cf - *.fastq|$ZIP -4 - > $assemp/reads.tar.gz
+		cd - > /dev/null
+		grep '>' $assemp/*.fa -Hc >> $ppath/NR_COUNTS_log.txt
+		rm $assemp/*.fastq $assemp/*.fa
 
-	[ ! -d $ppath/amended_consensus ] && mkdir $ppath/amended_consensus
-	[ -n "$(shopt -s nullglob;echo $ppath/*.fa)" ] && mv $ppath/*.fa $ppath/amended_consensus
-	
-	[ ! -d $ppath/matrices ] && mkdir $ppath/matrices	
-	[ -n "$(shopt -s nullglob;echo $ppath/*.sqm)" ] && mv $ppath/*.sqm $ppath/matrices
-	
-	echo -e "Total Score\tAlignment" > $ppath/ASSEMBLY_log.txt
-	cat $assemp/*.log >> $ppath/ASSEMBLY_log.txt
-	rm $assemp/*.log $ppath/*.sam
+		[ ! -d $ppath/amended_consensus ] && mkdir $ppath/amended_consensus
+		[ -n "$(shopt -s nullglob;echo $ppath/*.fa)" ] && mv $ppath/*.fa $ppath/amended_consensus
+		
+		[ ! -d $ppath/matrices ] && mkdir $ppath/matrices	
+		[ -n "$(shopt -s nullglob;echo $ppath/*.sqm)" ] && mv $ppath/*.sqm $ppath/matrices
+		
+		echo -e "Total Score\tAlignment" > $ppath/ASSEMBLY_log.txt
+		cat $assemp/*.log >> $ppath/ASSEMBLY_log.txt
+		rm $assemp/*.log $ppath/*.sam
+	else
+		time_stamp "skipping final assembly, no reference files found"
+		touch $ppath/READ_COUNTS.txt.tmp
+	fi
 
 	# handle logs
 	mkdir $ppath/logs
@@ -1210,7 +1220,25 @@ function doPostProcessing() {
 	[ ! -d $ppath/tables ] && mkdir $ppath/tables
 	[ -n "$(shopt -s nullglob;echo $ppath/*.txt)" ] && mv $ppath/*.txt $ppath/tables
 
-	mkdir $ppath/intermediate
+	# Check to see if a residual assembly may be possible, if so, store data
+	if [ "$(grep '3-match' $ppath/tables/READ_COUNTS.txt -c)" -gt "0" -a "$(grep '3-nomatch' $ppath/tables/READ_COUNTS.txt -c)" -gt "0" ];then
+		local factor=$( expr $(grep '3-match' $ppath/tables/READ_COUNTS.txt|cut -f3) / $(grep '3-altmatch' $ppath/tables/READ_COUNTS.txt|cut -f3) ) 
+		if [ "${factor:-0}" -lt "${RESIDUAL_ASSEMBLY_FACTOR:-400}" ];then
+			time_stamp "residual read patterns non-trivial (${factor:-0} < ${RESIDUAL_ASSEMBLY_FACTOR:-400})"
+			local alt_ppath=$ppath/secondary/residual_assemblies
+			mkdir $alt_ppath; createDirs $alt_ppath
+			ln $ppath/R0.xfl $alt_ppath/R0.xfl
+			ln $ppath/logs/QC_log.txt $alt_ppath/QC_log.txt
+			ln $refp/R0.refs $alt_ppath/GENES/R0.refs
+			cp $matchp/R${LAST_ROUND}.nomatch $alt_ppath/R0.fa
+			if test -n "$(shopt -s nullglob;echo $ppath/secondary/R*.fa)";then
+				cat $ppath/secondary/R*.fa >> $alt_ppath/R0.fa
+			fi
+			[ ! -s "$alt_ppath/R0.fa" ] && rm -rf $alt_ppath && time_stamp "No data found for 'residual_assembles'"
+		fi
+	fi
+
+	rmglob $ppath/R0.xfl $matchp/'R*.nomatch' $refp/'R*.refs'
 	mv $refp $ppath/intermediate/0-ITERATIVE-REFERENCES
 	mv $matchp $ppath/intermediate/1-MATCH_$MATCH_PROG
 	mv $sortp $ppath/intermediate/2-SORT_$SORT_PROG
@@ -1337,22 +1365,52 @@ elif [ "$ASSEM_REF" -eq "1" ];then
 		time_stamp "run aborted, sequences in $REF_SET not ${MODULE}-like"
 		moveProject; time_stamp 'finished!'; exit
 	fi
+elif [ "$REF_SET" != "$refp/R0.refs" ];then
+	cp $REF_SET $refp/R0.refs && REF_SET=$refp/R0.refs
 fi
 
 QUERY_SET=$ppath/R0.fa
 while [ $R -le $MAX_ROUNDS ];do
 	setPrograms
-	doRound $QUERY_SET R$R
-	MIN_RC=1
-	MIN_RP=1
+	doRound $QUERY_SET R$R || break
+	MIN_RC=1;MIN_RP=1
 
-	if [ -s $QUERY_SET ];then
+	if [ -s "$QUERY_SET" ];then
 		((R++))
 	else
 		break
 	fi
 done
+
 doPostProcessing
+
+# Take data in the secondary folder, if it exists, and do another round of assembly
+if [ -s "$ppath/secondary/residual_assemblies/R0.fa" ];then
+	time_stamp "attempting residual assembly"
+	ppath=$ppath/secondary/residual_assemblies
+	REF_SET=$ppath/GENES/R0.refs
+	QUERY_SET=$ppath/R0.fa
+	R=1;RUN+="-residual"
+	setDirs $ppath
+	
+	SORT_GROUPS=""
+	RESIDUAL_ASSEMBLY_FACTOR=0;
+	MIN_RP=${MIN_RP_RESIDUAL:-150}
+	MIN_RC=${MIN_RC_RESIDUAL:-150}
+
+	while [ "$R" -le "$MAX_ROUNDS" ];do
+		setPrograms
+		doRound $QUERY_SET R$R || break
+		MIN_RC=1;MIN_RP=1
+
+		if [ -s "$QUERY_SET" ];then
+			((R++))
+		else
+			break
+		fi
+	done
+	doPostProcessing
+fi
 
 moveProject
 time_stamp 'finished!'
