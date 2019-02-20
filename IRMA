@@ -1395,7 +1395,7 @@ if [ -s "$ppath/secondary/residual_assemblies/R0.fa" ];then
 	R=1;RUN+="-residual"
 	setDirs $ppath
 	
-	SORT_GROUPS=""
+	SORT_GROUPS="";SEG_NUMBERS=""
 	RESIDUAL_ASSEMBLY_FACTOR=0;
 	MIN_RP=${MIN_RP_RESIDUAL:-150}
 	MIN_RC=${MIN_RC_RESIDUAL:-150}
