@@ -276,9 +276,10 @@ export IRMA_QUEUE
 #####################
 ### Main Functions ###
 original_path=$ppath
+original_run=$RUN
 function moveProject() {
 	local x=2
-	local mvpath=$owd/$RUN
+	local mvpath=$owd/$original_run
 
 	time_stamp "moving project"	
 	if [ ! -d $mvpath ];then
@@ -1384,11 +1385,10 @@ while [ $R -le $MAX_ROUNDS ];do
 		break
 	fi
 done
-
 doPostProcessing
 
 # Take data in the secondary folder, if it exists, and do another round of assembly
-if [ -s "$ppath/secondary/residual_assemblies/R0.fa" ];then
+if [ -s "$ppath/residual_assemblies/R0.fa" ];then
 	time_stamp "attempting residual assembly"
 	ppath=$ppath/residual_assemblies
 	REF_SET=$ppath/GENES/R0.refs
