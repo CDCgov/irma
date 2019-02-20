@@ -1127,7 +1127,7 @@ function doPostProcessing() {
 	grep '>' $matchp/R?.{match,nomatch,chim} $ppath/R0.fa -c > $ppath/NR_COUNTS_log.txt
 	[ "$ALIGN_PROG" != "NONE" ] && rmglob $alignp/'R*.sto' &
 	rmglob $matchp/'R*.{match,chim}' &
-	rmglob $sortp/'R*.fa' &
+	rmglob $sortp/'R*.fa' $ppath/R0.fa &
 	wait
 	
 	# POLISH the final assembly & do variant calls/phasing
@@ -1156,7 +1156,7 @@ function doPostProcessing() {
 		tar -cf - *.fastq|$ZIP -4 - > $assemp/reads.tar.gz
 		cd - > /dev/null
 		grep '>' $assemp/*.fa -Hc >> $ppath/NR_COUNTS_log.txt
-		rm $assemp/*.fastq $assemp/*.fa
+		rmglob $assemp/'*.fastq' $assemp/'*.fa'
 
 		[ ! -d $ppath/amended_consensus ] && mkdir $ppath/amended_consensus
 		[ -n "$(shopt -s nullglob;echo $ppath/*.fa)" ] && mv $ppath/*.fa $ppath/amended_consensus
