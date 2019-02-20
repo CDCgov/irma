@@ -404,18 +404,18 @@ function doMATCH() {
 	fi
 
 	# CLEAN UP	
-	rmglob $matchp/${prefix}-${name}_'????.{match,nomatch,chim,fasta}'
+	rmglob $matchp/${prefix}-${name}_????.{match,nomatch,chim,fasta}
 	cd $matchp
 	tar -cf - ${prefix}-${name}_????.$match_ext|$ZIP -4 - > $matchp/${prefix}.tar.gz 2> /dev/null
 	cd - > /dev/null
-	rmglob $matchp/${prefix}-${name}_'????'.$match_ext
+	rmglob $matchp/${prefix}-${name}_????.$match_ext
 	time_stamp "$prefix consolidated & cleaned"
 
 	# EXTEND to SORT
 	if [ "$SORT_PROG" == "$MATCH_PROG" ];then
 		mkdir $sortp/${prefix}
 		cat $matchp/${prefix}-${name}_????.class > $sortp/$prefix/SORT_result.txt
-		rmglob $matchp/${prefix}-${name}_'????'.class
+		rmglob $matchp/${prefix}-${name}_????.class
 	fi
 
 	# EXTEND to ALIGN
@@ -1042,7 +1042,7 @@ function ASSEMBLE_REPORT() {
 	$SAMTOOLS view -bS ${final}.sam > ${final}.bam 2> /dev/null
 	$SAMTOOLS sort ${final}.bam $final > /dev/null 2>&1
 	$SAMTOOLS index ${final}.bam > /dev/null 2>&1
-	rmglob $assemp/'F*-$gene.sam'
+	rmglob $assemp/F\*-$gene.sam
 	time_stamp "finished $gene (F$last_iter)"
 }
 
@@ -1125,9 +1125,9 @@ function doPostProcessing() {
 	### END COUNTS ###
 
 	grep '>' $matchp/R?.{match,nomatch,chim} $ppath/R0.fa -c > $ppath/NR_COUNTS_log.txt
-	[ "$ALIGN_PROG" != "NONE" ] && rmglob $alignp/'R*.sto' &
-	rmglob $matchp/'R*.{match,chim}' &
-	rmglob $sortp/'R*.fa' $ppath/R0.fa &
+	[ "$ALIGN_PROG" != "NONE" ] && rmglob $alignp/R*.sto &
+	rmglob $matchp/R*.{match,chim} &
+	rmglob $sortp/R*.fa $ppath/R0.fa &
 	wait
 	
 	# POLISH the final assembly & do variant calls/phasing
@@ -1156,7 +1156,7 @@ function doPostProcessing() {
 		tar -cf - *.fastq|$ZIP -4 - > $assemp/reads.tar.gz
 		cd - > /dev/null
 		grep '>' $assemp/*.fa -Hc >> $ppath/NR_COUNTS_log.txt
-		rmglob $assemp/'*.fastq' $assemp/'*.fa'
+		rmglob $assemp/*.fastq $assemp/*.fa
 
 		[ ! -d $ppath/amended_consensus ] && mkdir $ppath/amended_consensus
 		[ -n "$(shopt -s nullglob;echo $ppath/*.fa)" ] && mv $ppath/*.fa $ppath/amended_consensus
@@ -1239,7 +1239,7 @@ function doPostProcessing() {
 		fi
 	fi
 
-	rmglob $ppath/R0.xfl $matchp/'R*.nomatch' $refp/'R*.refs'
+	rmglob $ppath/R0.xfl $matchp/R*.nomatch $refp/R*.refs
 	mv $refp $ppath/intermediate/0-ITERATIVE-REFERENCES
 	mv $matchp $ppath/intermediate/1-MATCH_$MATCH_PROG
 	mv $sortp $ppath/intermediate/2-SORT_$SORT_PROG
