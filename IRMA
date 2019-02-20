@@ -1034,6 +1034,7 @@ function ASSEMBLE_REPORT() {
 
 	local options="-C $MIN_C -N $RUN -F $MIN_AMBIG -P $ppath"
 	[ "$SEG_NUMBERS" != "" ] && options+=" -S $SEG_NUMBERS"
+	[ "$SEG_NUMBERS" == "" -a "${NONSEGMENTED:-1}" -eq "0" ] && options+=" -H"
 	$spath/amendConsensus.pl ${final}.fasta ${final}-variants.txt $options
 
 	if [ -r ${final}-insertions.txt -a -r ${final}-deletions.txt ];then
@@ -1227,7 +1228,7 @@ function doPostProcessing() {
 		local factor=$( expr $(grep '3-match' $ppath/tables/READ_COUNTS.txt|cut -f3) / $(grep '3-altmatch' $ppath/tables/READ_COUNTS.txt|cut -f3) ) 
 		if [ "${factor:-0}" -lt "${RESIDUAL_ASSEMBLY_FACTOR:-400}" ];then
 			time_stamp "residual read pattern ratio non-trivial (${factor:-0}x < ${RESIDUAL_ASSEMBLY_FACTOR:-400}x)"
-			local alt_ppath=$ppath/secondary/residual_assemblies
+			local alt_ppath=$ppath/residual_assemblies
 			mkdir $alt_ppath; createDirs $alt_ppath
 			ln $ppath/R0.xfl $alt_ppath/R0.xfl
 			ln $ppath/logs/QC_log.txt $alt_ppath/QC_log.txt
@@ -1389,7 +1390,7 @@ doPostProcessing
 # Take data in the secondary folder, if it exists, and do another round of assembly
 if [ -s "$ppath/secondary/residual_assemblies/R0.fa" ];then
 	time_stamp "attempting residual assembly"
-	ppath=$ppath/secondary/residual_assemblies
+	ppath=$ppath/residual_assemblies
 	REF_SET=$ppath/GENES/R0.refs
 	QUERY_SET=$ppath/R0.fa
 	R=1;RUN+="-residual"

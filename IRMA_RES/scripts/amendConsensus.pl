@@ -11,6 +11,7 @@ GetOptions(
 		'name|N=s' => \$name,
 		'seg|S=s' => \$convertSeg,
 		'prefix|P=s' => \$prefix,
+		'fa-header-suffix' => \$faHeaderSuffix,
 		'min-del-freq|D=f' => \$minFreqDel,
 		'min-ins-freq|I=f' => \$minFreqIns,
 		'deletion-file|d=s'=> \$delFile,
@@ -26,7 +27,8 @@ if ( scalar(@ARGV) != 2 ) {
 	$message .= "\t\t-D|--min-del-freq <FLT>\t\tMinimum deletion frequency.\n";
 	$message .= "\t\t-i|--insertion-file <STR>\tIRMA generated insertion table.\n";
 	$message .= "\t\t-I|--min-ins-freq <FLT>\t\tMinimum insertion frequency.\n";
-	$message .= "\t\t-N|--name <STR>\t\t\tName of header.\n";
+	$message .= "\t\t-N|--name <STR>\t\t\tName of header and file.\n";
+	$message .= "\t\t-H|--fa-header-suffix\t\tAdd fasta header as suffix to <name>.\n";
 	$message .= "\t\t-S|--seg\t\t\tConvert the seg name to number and add to ISA.\n";
 	$message .= "\t\t-P|--prefix <STR>\t\tOutput prefix for file.\n";
 	$message .= "\t\t-T|--min-total-depth <INT>\tMinimum non-ambiguous column coverage. Default = 2.\n";
@@ -128,6 +130,11 @@ if ( defined($convertSeg) ) {
 		}
 	}
 }
+
+# Add fasta header as suffix
+if ( defined($faHeaderSuffix) && !defined($name) ) {
+	$outHdr .= '-'.$faHeader;
+} 
 
 # encode variants that are valid
 foreach $pos ( keys(%validPos) ) {
