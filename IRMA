@@ -52,10 +52,18 @@ function time_stamp() {
 
 function rmglob () {
 	local glob=""
-
 	for glob in "$@";do
 		if test -n "$(shopt -s nullglob;echo $glob)";then
 			rm $glob
+		fi
+	done
+}
+
+function catglob () {
+	local glob=""
+	for glob in "$@";do
+		if test -n "$(shopt -s nullglob;echo $glob)";then
+			cat $glob
 		fi
 	done
 }
@@ -534,7 +542,7 @@ EOL
 	else
 		$PARALLEL --workdir $workdir -j $procs $BASH ${script}.sh {} ::: $(seq $procs) > /dev/null 2>&1
 	fi
-	rm $workdir/${prefix}-${name}_????.{fasta,a2m} ${script}.sh
+	rmglob $workdir/${prefix}-${name}_????.{fasta,a2m} ${script}.sh
 }
 
 function doALIGN() {
@@ -555,7 +563,7 @@ function doALIGN() {
 			j=$(($R - 1))
 			if [ "$R" -gt 1 ];then
 				for i in $(seq $j);do
-					rm $alignp/R${i}-$name*.sto 2>/dev/null
+					rmglob $alignp/R${i}-$name*.sto
 					doBLAT $refp/R${j}-$name.ref $sortp/R${i}-${name}.fa R$i $name $alignp $ALIGN_PROC $LIMIT_BLAT &
 				done
 			fi
@@ -581,7 +589,7 @@ function doALIGN() {
 			$spath/combineALIGNstats.pl -N $gene $options $alignp/R*-${gene}_????.sto > $refp/$name.ref &
 
 			# consider placing burden on the function itself to do the cleanup
-			[ "$ALIGN_PROG" == "BLAT" -a "$R" -gt 1 ] && rm $alignp/R*-${gene}_????.{match,nomatch,chim,fasta,class,blat} &
+			[ "$ALIGN_PROG" == "BLAT" -a "$R" -gt 1 ] && rmglob $alignp/R*-${gene}_????.{match,nomatch,chim,fasta,class,blat} &
 		done
 		wait
 	fi
@@ -661,7 +669,7 @@ function doRound() {
 
 			if test -n "$(shopt -s nullglob;echo $ppath/low_abundance/*UNRECOGNIZABLE*)";then
 				cat $ppath/low_abundance/*UNRECOGNIZABLE* > $ppath/other_data/failed_sort.fa
-				rm $ppath/low_abundance/*UNRECOGNIZABLE*
+				rmglob $ppath/low_abundance/*UNRECOGNIZABLE*
 			fi
 
 			mv $matchp/R1.nomatch $ppath/other_data/unmatched_data.fa
@@ -672,11 +680,7 @@ function doRound() {
 			cat $sortp/R1.txt >> $ppath/sorted_read_stats.txt && rm $sortp/R1.txt
 			echo -e "Interleaved sample\tStarting reads\tQC'd reads\tQuality threshold\tMin length\tUse median" > $ppath/read_QC_filtering.txt
 			cat $ppath/QC_log.txt >> $ppath/read_QC_filtering.txt && rm $ppath/QC_log.txt
-			
-			if test -n "$(shopt -s nullglob;echo $ppath/R1.match.*)";then
-				rm $ppath/R1.match.*
-			fi
-			rm $ppath/R*.{fa,xfl}
+			rmglob $ppath/R1.match.* $ppath/R*.{fa,xfl}
 			rm -rf $alignp $matchp $refp $sortp $assemp
 #		else
 #			doPostProcessing
@@ -907,7 +911,7 @@ EOL
 	for i in EXPENRD JACCARD MUTUALD NJOINTP;do
 		cat ${final}-*-${i}.sqm > $final-${i}.sqm
 		$spath/completeMatrix.pl $final-${i}.sqm
-		rm ${final}-*-${i}.sqm
+		rmglob ${final}-*-${i}.sqm
 	done
 }
 
@@ -978,8 +982,7 @@ function REFINE_ASSEMBLY_CALL_VARIANTS() {
 	fi
 
 	# CLEAN UP
-	rm $assemp/${gene}_????.fastq
-	rm $assemp/*-${gene}-????.*
+	rmglob $assemp/${gene}_????.fastq $assemp/*-${gene}-????.*
 	return $iter
 }
 
@@ -1042,7 +1045,7 @@ function ASSEMBLE_REPORT() {
 	$SAMTOOLS view -bS ${final}.sam > ${final}.bam 2> /dev/null
 	$SAMTOOLS sort ${final}.bam $final > /dev/null 2>&1
 	$SAMTOOLS index ${final}.bam > /dev/null 2>&1
-	rmglob $assemp/F\*-$gene.sam
+	rmglob $assemp/F*-$gene.sam
 	time_stamp "finished $gene (F$last_iter)"
 }
 
@@ -1092,9 +1095,7 @@ function doPostProcessing() {
 
 	# CLEAN UP
 	if [ "$LFASTM" -eq "1" -a "$SORT_PROG" == "LABEL" ];then 
-		if test -n "$(shopt -s nullglob;echo $matchp/R?.match.*)";then
-			rm $matchp/R?.match.*
-		fi
+		rmglob $matchp/R?.match.*
 	fi
 
 	### READ COUNTS ###
@@ -1166,7 +1167,7 @@ function doPostProcessing() {
 		
 		echo -e "Total Score\tAlignment" > $ppath/ASSEMBLY_log.txt
 		cat $assemp/*.log >> $ppath/ASSEMBLY_log.txt
-		rm $assemp/*.log $ppath/*.sam
+		rmglob $assemp/*.log $ppath/*.sam
 	else
 		time_stamp "skipping final assembly, no reference files found"
 		touch $ppath/READ_COUNTS.txt.tmp
@@ -1310,7 +1311,7 @@ if [ "$PAIRED" -eq "1" ];then
 		<($CAT < $LEFT|$PARALLEL --pipe -L4 -j$DOUBLE_LOCAL_PROC $spath/fastQ_converter.pl $FASTQ_CONV_OPTS -G $ppath/LEFT.log -g {#}) \
 		<($CAT < $RIGHT|$PARALLEL --pipe -L4 -j$DOUBLE_LOCAL_PROC $spath/fastQ_converter.pl $FASTQ_CONV_OPTS -G $ppath/RIGHT.log -g {#}) \
 		> $ppath/R0.fa
-	cat $ppath/{LEFT,RIGHT}.log > $ppath/QC_log.txt && rm $ppath/{LEFT,RIGHT}.log
+	cat $ppath/{LEFT,RIGHT}.log > $ppath/QC_log.txt && rmglob $ppath/{LEFT,RIGHT}.log
 	time_stamp 'pre-processed'
 else
 	$spath/xflate.pl -C -Q -L INTER $ppath/R0.xfl \
@@ -1343,7 +1344,7 @@ elif [ "$ASSEM_REF" -eq "1" ];then
 		if [ -r "$DEF_SET" ];then
 			doBLAT $DEF_SET $REF_SET R0 $MODULE $sortp/R0 $SORT_PROC $LIMIT_BLAT
 			cat $sortp/R0/R0-${MODULE}_????.class > $sortp/R0/SORT_result.txt
-			rm $sortp/R0/R0-${MODULE}_????.class
+			rmglob $sortp/R0/R0-${MODULE}_????.class
 		fi
 	fi
 
@@ -1360,7 +1361,7 @@ elif [ "$ASSEM_REF" -eq "1" ];then
 			gene=${name#*-}
 			$spath/ordinalHeaders.pl -N $gene $fasta > $refp/${name}.ref
 		done
-		cat $refp/R0-*.ref > $refp/R0.refs; rm $refp/R0-*.fa; REF_SET=$refp/R0.refs
+		cat $refp/R0-*.ref > $refp/R0.refs; rmglob $refp/R0-*.fa; REF_SET=$refp/R0.refs
 		time_stamp 'sorted user supplied reference set'
 	else
 		time_stamp "run aborted, sequences in $REF_SET not ${MODULE}-like"
