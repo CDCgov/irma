@@ -132,7 +132,7 @@ if ( defined($convertSeg) ) {
 }
 
 # Add fasta header as suffix
-if ( defined($faHeaderSuffix) && !defined($name) ) {
+if ( defined($faHeaderSuffix) && defined($name) ) {
 	$outHdr .= '-'.$faHeader;
 } 
 
