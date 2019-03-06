@@ -1226,7 +1226,9 @@ function doPostProcessing() {
 
 	# Check to see if a residual assembly may be possible, if so, store data
 	if [ "$(grep '3-match' $ppath/tables/READ_COUNTS.txt -c)" -gt "0" -a "$(grep '3-nomatch' $ppath/tables/READ_COUNTS.txt -c)" -gt "0" ];then
-		local factor=$( expr $(grep '3-match' $ppath/tables/READ_COUNTS.txt|cut -f3) / $(grep '3-altmatch' $ppath/tables/READ_COUNTS.txt|cut -f3) ) 
+		local cntmatch=$(grep '3-match' $ppath/tables/READ_COUNTS.txt|cut -f3)
+		local altmatch=$(grep '3-altmatch' $ppath/tables/READ_COUNTS.txt|cut -f3)
+		local factor=$( expr ${cntmatch:-1} / ${altmatch:-1} ) 
 		if [ "${factor:-0}" -lt "${RESIDUAL_ASSEMBLY_FACTOR:-400}" ];then
 			time_stamp "residual read pattern ratio non-trivial (${factor:-0}x < ${RESIDUAL_ASSEMBLY_FACTOR:-400}x)"
 			local alt_ppath=$ppath/residual_assemblies
@@ -1347,6 +1349,18 @@ elif [ "$ASSEM_REF" -eq "1" ];then
 			doBLAT $DEF_SET $REF_SET R0 $MODULE $sortp/R0 $SORT_PROC $LIMIT_BLAT
 			cat $sortp/R0/R0-${MODULE}_????.class > $sortp/R0/SORT_result.txt
 			rmglob $sortp/R0/R0-${MODULE}_????.class
+			if [ ! -s "$sortp/R0/SORT_result.txt" ];then
+				time_stamp "BLAT could not identify any references, trying LABEL."
+				doLABEL $REF_SET $MODULE $MODULE $sortp/R0 $LIMIT_LABEL
+				cat $sortp/R0/SORTED_*.tab > $sortp/R0/SORT_result.txt 
+				if [ ! -s "$sortp/R0/SORT_result.txt" ];then
+					time_stamp "LABEL could not identify the custom reference either, exiting"
+					moveProject; exit 1
+				fi
+			fi
+		else
+			time_stamp "no default classification set found"
+			moveProject; exit 1
 		fi
 	fi
 
@@ -1361,7 +1375,7 @@ elif [ "$ASSEM_REF" -eq "1" ];then
 		for fasta in $refp/R0-*.fa;do
 			name=$(basename $fasta .fa)
 			gene=${name#*-}
-			$spath/ordinalHeaders.pl -N $gene $fasta > $refp/${name}.ref
+			$spath/ordinalHeaders.pl -O $gene $fasta > $refp/${name}.ref
 		done
 		cat $refp/R0-*.ref > $refp/R0.refs; rmglob $refp/R0-*.fa; REF_SET=$refp/R0.refs
 		time_stamp 'sorted user supplied reference set'
