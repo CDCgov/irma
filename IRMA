@@ -3,7 +3,7 @@ PROGRAM="Iterative Refinement Meta-Assembler (IRMA)"
 AUTHOR="Samuel S. Shepard"
 EMAIL="vfn4@cdc.gov"
 AFFIL="NCIRD/OID/CDC"
-DATE="19 FEB 2019"
+DATE="20 MAR 2019"
 VERSION="0.9.0"
 LICENSE="GPL version 3. This program comes with ABSOLUTELY NO WARRANTY. This is free software.
 You are welcome to redistribute it under certain conditions. See:  <http://www.gnu.org/licenses/>.
@@ -31,20 +31,6 @@ else
 fi
 
 #### UTILITY FUNCTIONS ####
-# FNC - ERROR TEST #
-# Idea courtesy: steve-parker.org/sh/exitcodes.shtml
-function err_test() {
-	if [ "$1" -ne "0" ];then
-		echo ""
-		if [ $# -eq "1" ]; then 
-			echo "$(basename $0) ERROR: operations have been ABORTED!"
-		else
-			echo "$(basename $0) ERROR ($2): operations have been ABORTED!"
-		fi
-		exit 1
-	fi
-}
-
 function time_stamp() {
 	local t=$(date +"%Y-%m-%d %k:%M:%S")
 	echo -e "[$t]\tIRMA/$MODULE_CONFIG $1"
@@ -240,6 +226,7 @@ else
 	echo "$(basename $0) ERROR: run '$RUN' exists, operations have been ABORTED!"
 	exit 1
 fi
+original_run=$RUN
 
 # stage paths
 function createDirs() {
@@ -263,7 +250,7 @@ setDirs $ppath
 
 # global program options
 SSW_OPTS="-x $SSW_X -m $SSW_M -o $SSW_O -e $SSW_E"
-BLAT_OPTS="-oneOff=1 -minIdentity=80 -tileSize=10"
+BLAT_OPTS="-oneOff=1 -minIdentity=${BLAT_IDENTITY:-80} -tileSize=10"
 
 # FASTQ converter/QC options
 FASTQ_CONV_OPTS="-Q -M -T $QUAL_THRESHOLD -L $MIN_LEN"
@@ -280,6 +267,8 @@ original_run=$RUN
 function moveProject() {
 	local x=2
 	local mvpath=$owd/$original_run
+	[ -r "$original_path/R0.fa.bak" ] && rm $original_path/R0.fa.bak
+	[ -r "$original_path/R0.xfl.bak" ] && rm $original_path/R0.xfl.bak
 
 	time_stamp "moving project"	
 	if [ ! -d $mvpath ];then
@@ -683,13 +672,8 @@ function doRound() {
 			cat $ppath/QC_log.txt >> $ppath/read_QC_filtering.txt && rm $ppath/QC_log.txt
 			rmglob $ppath/R1.match.* $ppath/R*.{fa,xfl}
 			rm -rf $alignp $matchp $refp $sortp $assemp
-#		else
-#			doPostProcessing
 		fi
 		return 1	
-		#moveProject
-		#time_stamp 'finished!'
-		#exit
 	fi
 
 	if [ "$ALIGN_PROG" != "NONE" ];then
@@ -1035,7 +1019,7 @@ function ASSEMBLE_REPORT() {
 
 	local options="-C $MIN_C -N $RUN -F $MIN_AMBIG -P $ppath"
 	[ "$SEG_NUMBERS" != "" ] && options+=" -S $SEG_NUMBERS"
-	[ "$SEG_NUMBERS" == "" -a "${NONSEGMENTED:-1}" -eq "0" ] && options+=" -H"
+	[ "$SORT_GROUPS" == "" -a "${NONSEGMENTED:-1}" -eq "0" ] && options+=" -H"
 	$spath/amendConsensus.pl ${final}.fasta ${final}-variants.txt $options
 
 	if [ -r ${final}-insertions.txt -a -r ${final}-deletions.txt ];then
@@ -1212,8 +1196,31 @@ function doPostProcessing() {
 		echo -e "3-altmatch\t$x\t$y\tNA" >> $ppath/READ_COUNTS.txt
 	fi
 
-	# adjust counts
-	[ -r $ppath/READ_COUNTS.txt.tmp ] && cat $ppath/READ_COUNTS.txt.tmp >> $ppath/READ_COUNTS.txt && rm $ppath/READ_COUNTS.txt.tmp
+	# Check to see if a residual assembly may be possible, if so, store data
+	if [ "$(grep '3-match' $ppath/READ_COUNTS.txt -c)" -gt "0" -a "$(grep '3-nomatch' $ppath/READ_COUNTS.txt -c)" -gt "0" ];then
+		local cntmatch=$(grep '3-match' $ppath/READ_COUNTS.txt|cut -f3)
+		local altmatch=$(grep '3-altmatch' $ppath/READ_COUNTS.txt|cut -f3)
+		local factor=$( expr ${cntmatch:-1} / ${altmatch:-1} ) 
+		if [ "${factor:-0}" -lt "${RESIDUAL_ASSEMBLY_FACTOR:-400}" ];then
+			time_stamp "residual read pattern ratio non-trivial (${factor:-0}x < ${RESIDUAL_ASSEMBLY_FACTOR:-400}x)"
+			local alt_ppath=$original_path/residual_assemblies
+			mkdir $alt_ppath; createDirs $alt_ppath
+			ln $ppath/R0.xfl.bak $alt_ppath/R0.xfl
+			ln $ppath/logs/QC_log.txt $alt_ppath/QC_log.txt
+			ln $refp/R0.refs $alt_ppath/GENES/R0.refs
+			cp $matchp/R${LAST_ROUND}.nomatch $alt_ppath/R0.fa
+			catglob $ppath/secondary/R*.fa >> $alt_ppath/R0.fa
+			grep '3-chimeric' $ppath/READ_COUNTS.txt	>> $alt_ppath/READ_COUNTS.txt.prim
+			grep '3-match' $ppath/READ_COUNTS.txt | perl -pe '$_ =~ s/match/altmatch/' >> $alt_ppath/READ_COUNTS.txt.prim
+
+
+			[ ! -s "$alt_ppath/R0.fa" ] && rm -rf $alt_ppath && time_stamp "No data found for 'residual_assembles'"
+		fi
+	fi
+
+	# adjust counts, prim is from primary if this is secondary
+	[ -r "$ppath/READ_COUNTS.txt.prim" ] && cat $ppath/READ_COUNTS.txt.prim >> $ppath/READ_COUNTS.txt && rm $ppath/READ_COUNTS.txt.prim
+	[ -r "$ppath/READ_COUNTS.txt.tmp"  ] && cat $ppath/READ_COUNTS.txt.tmp  >> $ppath/READ_COUNTS.txt && rm $ppath/READ_COUNTS.txt.tmp
 	$RSCRIPT $spath/percentages.R $RUN $ppath/READ_COUNTS.txt $ppath/READ_PERCENTAGES.pdf $PAIRED > /dev/null 2>&1
 
 	# save figures
@@ -1223,26 +1230,6 @@ function doPostProcessing() {
 	# save tables
 	[ ! -d $ppath/tables ] && mkdir $ppath/tables
 	[ -n "$(shopt -s nullglob;echo $ppath/*.txt)" ] && mv $ppath/*.txt $ppath/tables
-
-	# Check to see if a residual assembly may be possible, if so, store data
-	if [ "$(grep '3-match' $ppath/tables/READ_COUNTS.txt -c)" -gt "0" -a "$(grep '3-nomatch' $ppath/tables/READ_COUNTS.txt -c)" -gt "0" ];then
-		local cntmatch=$(grep '3-match' $ppath/tables/READ_COUNTS.txt|cut -f3)
-		local altmatch=$(grep '3-altmatch' $ppath/tables/READ_COUNTS.txt|cut -f3)
-		local factor=$( expr ${cntmatch:-1} / ${altmatch:-1} ) 
-		if [ "${factor:-0}" -lt "${RESIDUAL_ASSEMBLY_FACTOR:-400}" ];then
-			time_stamp "residual read pattern ratio non-trivial (${factor:-0}x < ${RESIDUAL_ASSEMBLY_FACTOR:-400}x)"
-			local alt_ppath=$ppath/residual_assemblies
-			mkdir $alt_ppath; createDirs $alt_ppath
-			ln $ppath/R0.xfl $alt_ppath/R0.xfl
-			ln $ppath/logs/QC_log.txt $alt_ppath/QC_log.txt
-			ln $refp/R0.refs $alt_ppath/GENES/R0.refs
-			cp $matchp/R${LAST_ROUND}.nomatch $alt_ppath/R0.fa
-			if test -n "$(shopt -s nullglob;echo $ppath/secondary/R*.fa)";then
-				cat $ppath/secondary/R*.fa >> $alt_ppath/R0.fa
-			fi
-			[ ! -s "$alt_ppath/R0.fa" ] && rm -rf $alt_ppath && time_stamp "No data found for 'residual_assembles'"
-		fi
-	fi
 
 	rmglob $ppath/R0.xfl $matchp/R*.nomatch $refp/R*.refs
 	mv $refp $ppath/intermediate/0-ITERATIVE-REFERENCES
@@ -1254,6 +1241,8 @@ function doPostProcessing() {
 
 function setPrograms() {
 	local i=$(($R-1))
+
+	BLAT_OPTS="-oneOff=1 -minIdentity=${BLAT_IDENTITY:-80} -tileSize=10"
 	if [ -z "${MATCH_PROGS[$i]}" ];then
 		MATCH_PROG=${MATCH_PROGS[${#MATCH_PROGS[@]}-1]}
 	elif [[ "${MATCH_PROGS[$i]}" =~ ^(BLAT)$ ]];then
@@ -1387,6 +1376,9 @@ elif [ "$REF_SET" != "$refp/R0.refs" ];then
 	cp $REF_SET $refp/R0.refs && REF_SET=$refp/R0.refs
 fi
 
+# Backup primary data and begin normal assembly
+ln $ppath/R0.fa $ppath/R0.fa.bak
+ln $ppath/R0.xfl $ppath/R0.xfl.bak
 QUERY_SET=$ppath/R0.fa
 while [ $R -le $MAX_ROUNDS ];do
 	setPrograms
@@ -1403,14 +1395,14 @@ doPostProcessing
 
 # Take data in the secondary folder, if it exists, and do another round of assembly
 if [ -s "$ppath/residual_assemblies/R0.fa" ];then
-	time_stamp "attempting residual assembly"
+	time_stamp "attempting RESIDUAL assembly"
 	ppath=$ppath/residual_assemblies
 	REF_SET=$ppath/GENES/R0.refs
 	QUERY_SET=$ppath/R0.fa
-	R=1;RUN+="-residual"
+	R=1;RUN="${original_run}-residual"
 	setDirs $ppath
 	
-	SORT_GROUPS="";SEG_NUMBERS=""
+	SORT_GROUPS=""
 	RESIDUAL_ASSEMBLY_FACTOR=0;
 	MIN_RP=${MIN_RP_RESIDUAL:-150}
 	MIN_RC=${MIN_RC_RESIDUAL:-150}
@@ -1429,7 +1421,56 @@ if [ -s "$ppath/residual_assemblies/R0.fa" ];then
 	doPostProcessing
 fi
 
+# Do secondary assembly if able
+if [ "${DO_SECONDARY:-0}" -eq "1" -a -n "$(shopt -s nullglob;echo $original_path/residual_assemblies/*.fasta)" ];then
+	time_stamp "performing SECONDARY assembly"
+	ppath=$original_path/secondary_assembly;mkdir $ppath
+	createDirs $ppath && setDirs $ppath
+	R=1;RUN="${original_run}-secondary"
+	
+	SORT_GROUPS="";RESIDUAL_ASSEMBLY_FACTOR=0;
+	MIN_RP=${MIN_RP_RESIDUAL:-150}
+	MIN_RC=${MIN_RC_RESIDUAL:-150}
+	BLAT_IDENTITY=96
+	MATCH_PROG=BLAT;MATCH_PROGS=($MATCH_PROG)
+	SORT_PROG=BLAT;SORT_PROGS=($SORT_PROG)
+	ALIGN_PROG=BLAT;ALIGN_PROGS=($ALIGN_PROG)
+	SKIP_E=1
+	REF_SET=$ppath/GENES/R0.refs
+	QUERY_SET=$ppath/R0.fa
+
+	ln $original_path/R0.fa.bak $ppath/R0.fa
+	ln $original_path/R0.xfl.bak $ppath/R0.xfl
+	ln $original_path/logs/QC_log.txt $ppath/QC_log.txt
+
+	catglob $original_path/*.fasta > $REF_SET
+	cd $ppath
+	for residual_fasta in $original_path/residual_assemblies/*.fasta;do 
+		gene=$(basename $residual_fasta .fasta)
+		if [ -r "$phmms/${gene}_hmm.mod" ];then
+			cat $residual_fasta <( $spath/ordinalHeaders.pl -O default <( $Lspath/selectSequences.pl $DEF_SET -I $gene ) ) > $ppath/${gene}.patch.fa 
+			$A2M ${gene}.patch -db $ppath/${gene}.patch.fa -modelfile $phmms/${gene}_hmm.mod > /dev/null 2>&1
+			$spath/makePatchworkConsensus.pl $ppath/${gene}.patch.a2m default -N $gene >> $REF_SET
+		else
+			cat $residual_fasta >> $REF_SET
+		fi
+	done
+	rmglob $ppath/*.patch.*
+
+	while [ "$R" -le "$MAX_ROUNDS" ];do
+		setPrograms
+		doRound $QUERY_SET R$R || break
+		MIN_RC=1;MIN_RP=1
+
+		if [ -s "$QUERY_SET" ];then
+			((R++))
+		else
+			break
+		fi
+	done
+	doPostProcessing
+fi
 moveProject
 time_stamp 'finished!'
 exit 0
-### END ###
+### END ### 

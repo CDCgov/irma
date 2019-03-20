@@ -41,12 +41,17 @@ INCL_CHIM=$INCL_CHIM		# includes chimera or not [0,1]
 			# applicable to nexttera pair-end reads 
 ADAPTER="$ADAPTER"
 MERGE_SECONDARY=$MERGE_SECONDARY	# merge secondary data after the first round, good if no co-infections
+BLAT_IDENTITY=${BLAT_IDENTITY:-80}	# blat identity for read gathering, usually 80
+DO_SECONDARY=${DO_SECONDARY:-0}		# do secondary assembly
+RESIDUAL_ASSEMBLY_FACTOR=${RESIDUAL_ASSEMBLY_FACTOR:-400}	# the primary match to alternative match (secondary) ratio limit. If less than this number, do the residual.
 
 ## MATCH STEP
 MATCH_PROC=$MATCH_PROC		# grid maximum processes for the MATCH
 MATCH_PROG="${MATCH_PROGS[@]}"	# match (all or any match) program [BLAT]
-MIN_RP=$MIN_RP		# minimum read pattern count to continue
-MIN_RC=$MIN_RC		# minimum read count to continue
+MIN_RP=$MIN_RP		# minimum read pattern count to continue doing primary assembly
+MIN_RC=$MIN_RC		# minimum read count to continue doing primary assembly
+MIN_RP_RESIDUAL=${MIN_RP_RESIDUAL:-150}		# minimum read pattern count to continue doing residual assembly
+MIN_RC_RESIDUAL=${MIN_RC_RESIDUAL:-150}		# minimum read count to continue doing residual assembly
 
 ## SORT STEP 
 SORT_PROG="${SORT_PROGS[@]}"	# [LABEL,BLAT]

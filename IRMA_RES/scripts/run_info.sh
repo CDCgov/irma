@@ -27,7 +27,7 @@ else
 	ASSEM_OPTS=""
 fi
 
-if [ "$PAIRED" -eq "1" ];then
+if [ "${PAIRED:-0}" -eq "1" ];then
 	INPUT_READ_DATA="LEFT;RIGHT	$LEFT;$RIGHT"
 else
 	INPUT_READ_DATA="LEFT	$LEFT"
@@ -51,6 +51,7 @@ assemble_last_program	ASSEM_PROG	$ASSEM_PROG$ASSEM_OPTS
 match_programs	MATCH_PROGS	${MATCH_PROGS[@]}
 sort_programs	SORT_PROGS	${SORT_PROGS[@]}
 align_programs	ALIGN_PROGS	${ALIGN_PROGS[@]}
+blat_identity	BLAT_IDENTITY ${BLAT_IDENTITY:-80}
 profiles	phmms	$phmms
 do_not_merge_read_pairs	NO_MERGE	$NO_MERGE
 starting_reference	REF_SET	$REF1_SET
@@ -68,7 +69,10 @@ interval_significance_level	SIG_LEVEL	$SIG_LEVEL
 maximum_read_gathering_rounds	MAX_ROUNDS	$MAX_ROUNDS
 read_fasta_input	FASTA	$FASTA
 minimum_read_patterns	MIN_RP	$MIN_RP
+minimum_read_patterns_residual	MIN_RP_RESIDUAL	${MIN_RP_RESIDUAL:-150}
 minimum_reads	MIN_RC	$MIN_RC
+minimum_reads_residual	MIN_RC_RESIDUAL	${MIN_RC_RESIDUAL:-150}
+match_to_altmatch_ratio	RESIDUAL_ASSEMBLY_FACTOR	${RESIDUAL_ASSEMBLY_FACTOR:-400}
 minimum_insertion_edit_threshold	INS_T	$INS_T
 minimum_deletion_edit_threshold	DEL_T	$DEL_T
 silence_complex_indels_for_editing	SILENCE_COMPLEX_INDELS ${SILENCE_COMPLEX_INDELS:-0}
@@ -82,4 +86,5 @@ minimum_variant_average_quality	MIN_AQ	$MIN_AQ
 minimum_variant_depth	MIN_TCC	$MIN_TCC
 minimum_confidence_not_sequencer_error	MIN_CONF	$MIN_CONF
 merge_secondary_data	MERGE_SECONDARY	$MERGE_SECONDARY
+do_secondary_assembly	DO_SECONDARY ${DO_SECONDARY:-0}
 EOF

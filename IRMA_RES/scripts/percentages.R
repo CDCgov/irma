@@ -54,7 +54,7 @@ legend("bottomright", grps, fill=cols)
 assembled=D$Patterns[D$Record =='3-match']
 total=D$Patterns[D$Record =='2-passQC']
 if ( sum(D$Record == '3-chimeric') > 0 ) {
-	chimeric=D$Patterns[D$Record =='3-chimeric']
+	chimeric=sum(D$Patterns[D$Record =='3-chimeric'])
 } else {
 	chimeric=0
 }
@@ -66,7 +66,7 @@ if ( sum(D$Record=='3-unrecognizable') > 0 ) {
 }
 
 if ( sum(D$Record=='3-altmatch') > 0 ) {
-	unused=unused+D$Patterns[D$Record=='3-altmatch']
+	unused=unused+sum(D$Patterns[D$Record=='3-altmatch'])
 }
 unmatched=D$Patterns[D$Record =='3-nomatch']
 
