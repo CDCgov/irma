@@ -34,7 +34,7 @@ SEG_NUMBERS="A_PB2:1,B_PB2:2,C_PB2:1,D_PB2:1,A_PB1:2,B_PB1:1,C_PB1:2,D_PB1:2,P3:
 LFASTM=0		# LABEL sorting fast-mode
 
 ## ALIGN STEP ##
-ALIGN_PROG="BLAT"	# rough assembly / alignment to working reference [SAM,BLAT]
+ALIGN_PROG="SAM"	# rough assembly / alignment to working reference [SAM,BLAT]
 ALIGN_PROC=20		# grid maximum processes for the rough align
 
 ### FINISHING ASSEMBLY ###
