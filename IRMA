@@ -358,13 +358,11 @@ EOL
 		if [ "$?" -ne "0" ];then
 			time_stamp "qsub of '${prefix}-${name}-BLAT' failed. Switching to master node."
 			$PARALLEL --workdir $workdir -j $SINGLE_LOCAL_PROC $BASH ${script}.sh {} ::: $(seq $procs) > /dev/null 2>&1
-		else
-			rm ${script}.o
 		fi
 	else 
 		$PARALLEL --workdir $workdir -j $procs $BASH ${script}.sh {} ::: $(seq $procs) > /dev/null 2>&1
 	fi
-	rm ${script}.sh
+	rmglob ${script}.sh
 }
 
 function doMATCH() {
@@ -650,9 +648,8 @@ function doRound() {
 		doALIGN $prefix || return 1
 	else
 		time_stamp "$prefix aborted, found fewer than $MIN_RP RPs or $MIN_RC reads for all templates"
-		if [ $R -eq 1 ];then
-			mkdir $ppath/low_abundance
-			mkdir $ppath/other_data
+		if [ "$R" -eq 1 ];then
+			mkdir $ppath/low_abundance $ppath/other_data
 			for i in $sortp/*2;do
 				mv $i $ppath/low_abundance/$(basename $i .2)
 			done
@@ -1036,6 +1033,9 @@ function ASSEMBLE_REPORT() {
 }
 
 function doPostProcessing() {
+	# if failed to assemble anything, skip post processing
+	[ -d "$ppath/other_data" ] && return 0
+
 	# Create directory for the phases
 	mkdir $ppath/intermediate
 
@@ -1364,7 +1364,7 @@ elif [ "$ASSEM_REF" -eq "1" ];then
 		for fasta in $refp/R0-*.fa;do
 			name=$(basename $fasta .fa)
 			gene=${name#*-}
-			$spath/ordinalHeaders.pl -O $gene $fasta > $refp/${name}.ref
+			$spath/ordinalHeaders.pl -N $gene $fasta > $refp/${name}.ref
 		done
 		cat $refp/R0-*.ref > $refp/R0.refs; rmglob $refp/R0-*.fa; REF_SET=$refp/R0.refs
 		time_stamp 'sorted user supplied reference set'
