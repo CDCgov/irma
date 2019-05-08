@@ -30,7 +30,7 @@ SORT_PROG="BLAT"	# [LABEL,BLAT]
 SORT_PROC=64		# currently not used
 NONSEGMENTED=0		# segmented! [0,1]
 # LABEL
-LFASTM=0		# LABEL sorting fast-mode
+SECONDARY_SORT=0	# LABEL sorting fast-mode
 
 ## ALIGN STEP ##
 ALIGN_PROG="BLAT"	# rough assembly / alignment to working reference [SAM,BLAT]

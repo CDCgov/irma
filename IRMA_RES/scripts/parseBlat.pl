@@ -213,6 +213,7 @@ while($line=<IN>) {
 	chomp($line);
 	@v = split("\t",$line);
 	($match,$mismatch,$strand,$query,$target) = ($v[0],$v[1],$v[8],$v[9],$v[13]);
+	$target =~ s/\{S\d+\}$//;
 	$score = $match - $mismatch;
 	if ( $score >= $maxScore{$query} && $score > 0 ) {
 	       	$maxGene{$query}{$target}[0] = $strand;
@@ -328,7 +329,6 @@ while( $record = <IN> ) {
 		# chimera
 		if ( $sortOutChim && index($Q{$header},'c') != -1 ) {
 			print CHIM '>',$header,"\n",$sequence,"\n";
-
 		} else {
 			foreach $gene ( keys(%{$maxGene{$q}}) ) {
 				($strand,$matchLine,$score,$sg) = (@{$maxGene{$q}{$gene}});
