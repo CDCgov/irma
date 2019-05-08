@@ -3,7 +3,7 @@ PROGRAM="Iterative Refinement Meta-Assembler (IRMA)"
 AUTHOR="Samuel S. Shepard"
 EMAIL="vfn4@cdc.gov"
 AFFIL="NCIRD/OID/CDC"
-DATE="20 MAR 2019"
+DATE="03 MAY 2019"
 VERSION="0.9.0"
 LICENSE="GPL version 3. This program comes with ABSOLUTELY NO WARRANTY. This is free software.
 You are welcome to redistribute it under certain conditions. See:  <http://www.gnu.org/licenses/>.
@@ -158,6 +158,7 @@ else
 		exit 0
 	fi
 fi
+[ ! -z "$LFASTM" ] && SECONDARY_SORT=$LFASTM
 REF1_SET=$REF_SET
 
 # selection of zip utility
@@ -294,7 +295,7 @@ function doLABEL() {
 	
 	[ "$n" -gt "$limit" -a "$GRID_ON" -eq "1" ] && Earg=2
 	if [ "$n" -gt "0" ]; then
-		$LABEL -E $Earg -W $workdir $queryDB $name irma-$labelmodule > /dev/null 2>&1
+		$LABEL -E $Earg -W $workdir $queryDB $name $labelmodule > /dev/null 2>&1
 		mv $workdir/${name}/${name}_final.tab $workdir/SORTED_${name}.tab
 	fi
 }
@@ -326,8 +327,8 @@ function doBLAT() {
 		else
 			options="-C"
 		fi
-	elif [ "$SORT_PROG" == "LABEL" -a "$LFASTM" -eq "1" ];then 
-		[ -z "$GENE_GROUP" ] && options="-T" || options="-G $GENE_GROUP"
+	elif [ "$SORT_PROG" == "LABEL" -a "${SECONDARY_SORT:-0}" -eq "1" ];then 
+		[ -z "${GENE_GROUP}" ] && options="-T" || options="-G $GENE_GROUP"
 	fi
 	[ "$INCL_CHIM" -eq "1" ] && options+=" -I"
 	[ "$SKIP_E" -eq "1" ] && options+=" -S"
@@ -390,7 +391,7 @@ function doMATCH() {
 	wait
 
 	# LABEL fast mode consoldiation
-	if [ "$LFASTM" -eq "1" -a "$SORT_PROG" == "LABEL" -a ! -z "$GENE_GROUP" ];then
+	if [ "${SECONDARY_SORT:-0}" -eq "1" -a "$SORT_PROG" == "LABEL" -a ! -z "$GENE_GROUP" ];then
 		for i in $(echo $GENE_GROUP|tr ',:' ' ');do
 			if test -n "$(shopt -s nullglob;echo $matchp/${prefix}-${name}_????.match.$i)";then
 				cat $matchp/${prefix}-${name}_????.match.$i > $matchp/${prefix}.match.$i && rm $matchp/${prefix}-${name}_????.match.$i &
@@ -429,18 +430,29 @@ function doSORT() {
 
 	if [ "$SORT_PROG" == "LABEL" ];then
 		mkdir $sortp/${prefix}
-		if [ "$LFASTM" -eq "1" ];then
-			groupFile=""
-			if test -n "$(shopt -s nullglob;echo $matchp/${prefix}.match.*)";then
-				for groupFile in $matchp/${prefix}.match.*;do
-					local geneGroup=$(basename $groupFile|cut -f3 -d'.')
-					doLABEL $groupFile "$MODULE-$geneGroup" "$MODULE-$geneGroup" $sortp/${prefix} $LIMIT_LABEL &
-				done
-				wait
+		if [ "${SECONDARY_SORT:-0}" -eq "1" ];then
+			local gene_groups=($(echo $GENE_GROUP|tr ',:' ' '))
+			local label_modules=($(echo $SECONDARY_LABEL_MODULES|tr ',:' ' '))
+			if [ "${#gene_groups[@]}" -ne "${#label_modules[@]}" -o "${#gene_groups}" -eq "0" ];then
+				time_stamp "Bad LABEL module specification for SECONDARY_SORT=$SECONDARY_SORT, see: '$GENE_GROUP' and '$SECONDARY_LABEL_MODULES'"
+				return 1 
 			fi
+			
+			local index=0
+			local geneGroup=""
+			for index in "${!gene_groups[@]}";do
+				geneGroup=${gene_groups[$index]}
+				labelModule=${label_modules[$index]}
+				groupFile="$matchp/${prefix}.match.$geneGroup"
+
+				if [ -s "$groupFile" ];then
+					doLABEL "$groupFile" "$MODULE-$geneGroup" "$labelModule" "$sortp/${prefix}" $LIMIT_LABEL &
+				fi
+			done
+			wait
 		else
 			# SORT using LABEL full
-			doLABEL $matchp/${prefix}.match $MODULE $MODULE $sortp/${prefix} $LIMIT_LABEL || return 1
+			doLABEL $matchp/${prefix}.match $MODULE $LABEL_MODULE $sortp/${prefix} $LIMIT_LABEL || return 1
 		fi
 		cat $sortp/${prefix}/SORTED_*.tab > $sortp/${prefix}/SORT_result.txt 2> /dev/null
 	elif [ "$SORT_PROG" == "BLAT" ];then
@@ -1080,7 +1092,7 @@ function doPostProcessing() {
 	time_stamp 'saved unmatched read patterns'
 
 	# CLEAN UP
-	if [ "$LFASTM" -eq "1" -a "$SORT_PROG" == "LABEL" ];then 
+	if [ "${SECONDARY_SORT:-0}" -eq "1" -a "$SORT_PROG" == "LABEL" ];then 
 		rmglob $matchp/R?.match.*
 	fi
 
@@ -1331,7 +1343,7 @@ elif [ "$ASSEM_REF" -eq "1" ];then
 	mkdir $sortp/R0
 	# Sort out the references
 	if [ "$SORT_PROG" == "LABEL" ];then
-		doLABEL $REF_SET $MODULE $MODULE $sortp/R0 $LIMIT_LABEL
+		doLABEL $REF_SET $MODULE $LABEL_MODULE $sortp/R0 $LIMIT_LABEL
 		cat $sortp/R0/SORTED_*.tab > $sortp/R0/SORT_result.txt 2> /dev/null
 	elif [ "$SORT_PROG" == "BLAT" ];then
 		if [ -r "$DEF_SET" ];then
@@ -1340,7 +1352,7 @@ elif [ "$ASSEM_REF" -eq "1" ];then
 			rmglob $sortp/R0/R0-${MODULE}_????.class
 			if [ ! -s "$sortp/R0/SORT_result.txt" ];then
 				time_stamp "BLAT could not identify any references, trying LABEL."
-				doLABEL $REF_SET $MODULE $MODULE $sortp/R0 $LIMIT_LABEL
+				doLABEL $REF_SET $MODULE $LABEL_MODULE $sortp/R0 $LIMIT_LABEL
 				cat $sortp/R0/SORTED_*.tab > $sortp/R0/SORT_result.txt 
 				if [ ! -s "$sortp/R0/SORT_result.txt" ];then
 					time_stamp "LABEL could not identify the custom reference either, exiting"

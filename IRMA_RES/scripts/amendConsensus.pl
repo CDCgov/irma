@@ -16,7 +16,9 @@ GetOptions(
 		'min-ins-freq|I=f' => \$minFreqIns,
 		'deletion-file|d=s'=> \$delFile,
 		'insertion-file|i=s'=> \$insFile,
-		'rewrite-coverage|c=s' => \$covgRewrite
+		'rewrite-coverage|c=s' => \$covgRewrite,
+		'replace-not-ambiguate|R' => \$replaceNotEncode,
+		'belong-to-phase|B=i' => \$replaceWithPhase
 	);
 
 if ( scalar(@ARGV) != 2 ) {
@@ -36,17 +38,10 @@ if ( scalar(@ARGV) != 2 ) {
 }
 
 # DEFAULT THRESHOLDS
-if ( !defined($minFreq) ) {
-	$minFreq = 0.25;
-}
-
-if ( !defined($minCount) ) {
-	$minCount = 2;
-}
-
-if ( !defined($prefix) ) {
-	$prefix = '.';
-}
+if ( !defined($minFreq) ) 		{ $minFreq = 0.25; 		}
+if ( !defined($minCount) ) 		{ $minCount = 2; 		}
+if ( !defined($prefix) ) 		{ $prefix = '.'; 		}
+if ( defined($replaceWithPhase) )	{ $replaceNotEncode = 1;	}
 
 if ( !defined($minFreqIns) ) {
 	$minFreqIns = $minFreq;
@@ -102,12 +97,17 @@ $/ = "\n"; $header = <IN>;
 @variants = <IN>; chomp(@variants);
 %validPos = %freqByAllele = ();
 foreach $line ( @variants ) {
-	($ref,$pos,$total,$majAllele,$allele,$majCount,$count,$majFreq,$freq,$majAQ,$aq,$con,$pairedUB,$qualityUB) = split("\t",$line);
+	($ref,$pos,$total,$majAllele,$allele,$majCount,$count,$majFreq,$freq,$majAQ,$aq,$con,$pairedUB,$qualityUB,$phase) = split("\t",$line);
 	$allele = uc($allele);
 	# necessary for a called variant to be used for mixed base call
-	if ( $count >= $minCount && $freq >= $minFreq && $total >= $minTotal  ) {
-		# get all minor alleles greater than thresholds
-		$validPos{$pos} .= $allele;
+	
+	if ( defined($replaceNotEncode) && defined($replaceWithPhase) && $replaceWithPhase == $phase ) {
+			$validPos{$pos} = lc($allele);
+	} else {	
+		if ( $count >= $minCount && $freq >= $minFreq && $total >= $minTotal ) {
+			# get all minor alleles greater than thresholds
+			$validPos{$pos} .= $allele;
+		}
 	}
 }
 close(IN);
@@ -139,13 +139,13 @@ if ( defined($faHeaderSuffix) && defined($name) ) {
 # encode variants that are valid
 foreach $pos ( keys(%validPos) ) {
 	$p = $pos-1;				# base zero
-	$nts = $seq[$p] . $validPos{$pos};	# major + minor
 
-	$seq[$p] = encode($nts);
-# 	TRIPLET debugging
-#	if ( length($nts) > 2 ) {
-#		print STDERR $pos,"\t",$inHdr,"\n";
-#	}
+	if ( !defined($replaceNotEncode) ) {
+		$nts = $seq[$p] . $validPos{$pos};	# major + minor
+		$seq[$p] = encode($nts);
+	} else {
+		$seq[$p] = $validPos{$pos};		# set to minor
+	}
 }
 
 if ( defined($delFile) ) {

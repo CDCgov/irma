@@ -63,6 +63,9 @@ if ( defined($banList) && length($banList) > 0 ) {
 
 # If we have a pattern list we must divide into groups
 if ( defined($patternList) && length($patternList) > 0) {
+	$patternList =~ tr/ //d;
+	$patternList =~ tr/;/,/;
+	$patternList =~ tr/\//|/;
 	@patterns = split(',',$patternList);
 
 	# If ALL genes are in a group, get the best (2nd best & on are invalid)

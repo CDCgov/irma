@@ -46,9 +46,11 @@ SORT_GROUPS=""			# if blank, default is not to group any genes into primary & se
 BAN_GROUPS="UNRECOGNIZABLE"	# patterns not allowed, useful for LABEL
 NONSEGMENTED=0			# segmented! [0,1]
 # LABEL
-LFASTM=1		# LABEL sorting fast-mode
-GENE_GROUP="HA,NA:OG"	# item1,item2,item3:otherwise
-LIMIT_LABEL=1000	# limit on LABEL grid activation (self-adjusts)
+LIMIT_LABEL=1000		# limit on LABEL grid activation (self-adjusts)
+GENE_GROUP=""			# item1,item2:otherwise
+SECONDARY_SORT=0		# sort via BLAT then the SORT program
+LABEL_MODULE=""			# primary LABEL sort
+LABEL_SECONDARY_MODULES=""	# secondary LABEL sort
 
 ## ALIGN STEP ##
 ALIGN_PROG="SAM"	# rough assembly / alignment to working reference [SAM,BLAT]

@@ -27,11 +27,14 @@ MIN_RC=15		# minimum read count to continue
 SORT_PROG="BLAT"	# [LABEL,BLAT]
 SORT_PROC=80		# currently not used
 NONSEGMENTED=0		# segmented! [0,1]
-SORT_GROUPS="PB2,PB1,P3,PA,H,NP,NA,MP,NS"
+SORT_GROUPS="PB2,PB1,PA/P3,HA/HE,NP,NA/HE,MP,NS"
 SEG_NUMBERS="A_PB2:1,B_PB2:2,C_PB2:1,D_PB2:1,A_PB1:2,B_PB1:1,C_PB1:2,D_PB1:2,P3:3,PA:3,HA:4,HE:4,NP:5,NA:6,A_MP:7,B_MP:7,C_MP:6,D_MP:6,A_NS:8,B_NS:8,C_NS:7,D_NS:7"
 
 # LABEL
-LFASTM=0		# LABEL sorting fast-mode
+SECONDARY_SORT=1								# LABEL sorting fast-mode
+LABEL_MODULE="irma-FLU-v2"							# if LABEL SECONDARY SORT is 0, use LABEL_MODULE
+SECONDARY_LABEL_MODULES="irma-FLU-HA,irma-FLU-HE,irma-FLU-NA:irma-FLU-OG-v2"	# otherwise, search for primary classification from BLAT and use the modules accordingly
+GENE_GROUP="HA,HE,NA:OG"							# specify primary sorting gene groups for BLAT
 
 ## ALIGN STEP ##
 ALIGN_PROG="SAM"	# rough assembly / alignment to working reference [SAM,BLAT]
