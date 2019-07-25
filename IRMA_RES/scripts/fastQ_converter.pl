@@ -19,7 +19,8 @@ GetOptions(	'read-quality|T=i'=> \$qualityThreshold,
 		'keep-header|H' => \$keepHeader,
 		'mask-adapter|m=s' => \$maskAdapter,
 		'clip-adapter|c=s' => \$clipAdapter,
-		'fuzzy-adapter|Z' => \$fuzzyAdapter
+		'fuzzy-adapter|Z' => \$fuzzyAdapter,
+		'uracil-to-thymine|U' => \$uracilToThymine
 	);
 
 
@@ -39,8 +40,11 @@ if ( -t STDIN && scalar(@ARGV) != 1 ) {
 	$message .= "\t\t-c|--clip-adapter <STR>\t\t\tClip adapter.\n";
 	$message .= "\t\t-m|--mask-adapter <STR>\t\t\tMask adapter.\n";
 	$message .= "\t\t-Z|--fuzzy-adapter\t\t\tAllow one mismatch.\n";
+	$message .= "\t\t-U|--uracil-to-thymine\t\t\tCovert uracil to thymine.\n";
 	die($message."\n");
 }
+
+$uracilToThymine = defined($uracilToThymine) ? 1 : 0;
 
 if ( defined($clipAdapter) ) {
 	$forwardAdapter = $clipAdapter;
@@ -155,6 +159,10 @@ while($hdr=<>) {
 
 	if ( length($seq) < $minLength ) {
 		next;
+	}
+
+	if ( $uracilToThymine ) {
+		$seq =~ tr/uU/tT/;
 	}
 
 	if ( $clipAdapter ) {

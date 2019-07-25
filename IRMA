@@ -3,8 +3,8 @@ PROGRAM="Iterative Refinement Meta-Assembler (IRMA)"
 AUTHOR="Samuel S. Shepard"
 EMAIL="vfn4@cdc.gov"
 AFFIL="NCIRD/OID/CDC"
-DATE="08 MAY 2019"
-VERSION="0.9.1"
+DATE="25 JUL 2019"
+VERSION="0.9.2"
 LICENSE="GPL version 3. This program comes with ABSOLUTELY NO WARRANTY. This is free software.
 You are welcome to redistribute it under certain conditions. See:  <http://www.gnu.org/licenses/>.
 Components of this pipeline have non-commercial restrictions. See: IRMA_RES/scripts/packaged-citations-licenses"
@@ -136,20 +136,20 @@ fi
 # load module parameter file
 DEF_SET=$mpath/reference/consensus.fasta
 if [ -r $rpath/defaults.sh ];then
-	source $rpath/defaults.sh
+	source "$rpath/defaults.sh"
 else
 	time_stamp "Missing defaults. ABORTING. Please restore from $rpath/.defaults.sh.bak" 
 fi
 
 # init variables from config files
-[ -r $mpath/init.sh ] && source $mpath/init.sh
+[ -r $mpath/init.sh ] && "source $mpath/init.sh"
 
 if [ -r "$mpath/config/${MODULE_CONFIG}.sh" ];then
-	source $mpath/config/${MODULE_CONFIG}.sh
+	source "$mpath/config/${MODULE_CONFIG}.sh"
 else
 	CONFIG=$(echo ${MODULE_CONFIG}|cut -f2 -d'-')
 	if [ -r "$mpath/config/${CONFIG}.sh" ];then
-		source $mpath/config/${CONFIG}.sh
+		source "$mpath/config/${CONFIG}.sh"
 	elif [ "$MODULE" != "$CONFIG" ];then
 		echo "IRMA ERROR: Configuration '$MODULE_CONFIG' not found. Valid configs are:"
 		tmp=" "
@@ -254,7 +254,7 @@ SSW_OPTS="-x $SSW_X -m $SSW_M -o $SSW_O -e $SSW_E"
 BLAT_OPTS="-oneOff=1 -minIdentity=${BLAT_IDENTITY:-80} -tileSize=10"
 
 # FASTQ converter/QC options
-FASTQ_CONV_OPTS="-Q -M -T $QUAL_THRESHOLD -L $MIN_LEN"
+FASTQ_CONV_OPTS="-U -Q -M -T $QUAL_THRESHOLD -L $MIN_LEN"
 if [ "$PAIRED" -eq "1" -a "$ADAPTER" != "" ];then
 	FASTQ_CONV_OPTS+=" -c $ADAPTER"
 	[ "${FUZZY_ADAPTER:-1}" -eq "1" ] && FASTQ_CONV_OPTS+=" -Z"
@@ -1175,8 +1175,8 @@ function doPostProcessing() {
 	mkdir $ppath/logs
 	mv $ppath/*log.txt $ppath/logs
 	[ -r $rpath/.commit ] && LAST_COMMIT="$(cat $rpath/.commit)" || LAST_COMMIT="NOT_AVAILBLE"
-	source $spath/run_info.sh
-	source $spath/run_config.sh
+	source "$spath/run_info.sh"
+	source "$spath/run_config.sh"
 
 	# final order
 	mkdir $ppath/secondary
