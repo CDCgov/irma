@@ -99,7 +99,7 @@ if [ -d "$bpath/LABEL_RES/scripts/" ];then
 else
 	check_prgm LABEL
 	LABEL=$(which LABEL)
-	Lspath="$(dirname $LABEL)/LABEL_RES/scripts"
+	Lspath="$(dirname "$LABEL")/LABEL_RES/scripts"
 fi
 
 check_prgm Rscript
@@ -134,7 +134,7 @@ else
 fi
 
 # load reference dataset paths
-Lmpath="$(dirname $LABEL)/LABEL_RES/training_data/irma-$MODULE"
+Lmpath="$(dirname "$LABEL")/LABEL_RES/training_data/irma-$MODULE"
 if [ -n "$(shopt -s nullglob;echo "$mpath"/profiles/*.mod)" ];then
 	phmms="$mpath"/profiles
 elif [ -r "$Lmpath" ];then

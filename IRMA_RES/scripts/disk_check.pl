@@ -7,7 +7,7 @@ if ( scalar(@ARGV) < 2 ) {
 
 $ppath = shift(@ARGV);
 if ( -e $ppath ) {
-	open(DF, "df -k $ppath|") or die("Cannot run df.\n");
+	open(DF, "df -k \"$ppath\"|") or die("Cannot run df.\n");
 	@lines = <DF>; chomp(@lines); close(DF);
 	$available_k = ( split(/\s+/,$lines[$#lines] ) )[3] ;
 	# K to M

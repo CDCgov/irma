@@ -33,7 +33,7 @@ else
 	INPUT_READ_DATA="LEFT	$LEFT"
 fi
 
-cat <<EOF > $ppath/logs/run_info.txt
+cat <<EOF > "$ppath"/logs/run_info.txt
 program_name	PROGRAM	$PROGRAM
 program_version	VERSION	$VERSION
 last_git_commit_hash	LAST_COMMIT	$LAST_COMMIT
@@ -56,8 +56,8 @@ profiles	phmms	$phmms
 do_not_merge_read_pairs	NO_MERGE	$NO_MERGE
 starting_reference	REF_SET	$REF1_SET
 grid_acceleration_on	GRID_ON	$GRID_ON
-grid_optional_path	GRID_PATH	${GRID_PATH:-0}
-working_directory	ppath	$ppath
+grid_optional_path	GRID_PATH	"${GRID_PATH:-0}"
+working_directory	ppath	"$ppath"
 alternative_frequency	MIN_FA	$MIN_FA
 alternative_count	MIN_CA	$MIN_CA
 skip_reference_elongation	SKIP_E	$SKIP_E
