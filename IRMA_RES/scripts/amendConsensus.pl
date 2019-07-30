@@ -75,7 +75,7 @@ if ( !defined($minTotal) || $minTotal < 0 ) {
 );
 
 # PROCESS fasta data
-open(IN, '<', $ARGV[0]) or die("Cannot open $ARGV[0].\n");
+open(IN, '<', $ARGV[0]) or die("$0 ERROR: cannot open $ARGV[0].\n");
 $/ = ">"; $i = 0; %count = (); $L = 0;
 while($record = <IN> ) {
 	chomp($record);
@@ -92,7 +92,7 @@ close(IN);
 
 
 # GET called variant data
-open(IN,'<',$ARGV[1]) or die("Cannot open $ARGV[1].\n");
+open(IN,'<',$ARGV[1]) or die("$0 ERROR: cannot open $ARGV[1].\n");
 $/ = "\n"; $header = <IN>;
 @variants = <IN>; chomp(@variants);
 %validPos = %freqByAllele = ();
@@ -149,7 +149,7 @@ foreach $pos ( keys(%validPos) ) {
 }
 
 if ( defined($delFile) ) {
-	open(IN,'<',$delFile) or die("Cannot open $delFile for reading.\n");
+	open(IN,'<',$delFile) or die("$0 ERROR: cannot open $delFile for reading.\n");
 	$header = <IN>;
 	while($line=<IN>) {
 		chomp($line);
@@ -166,7 +166,7 @@ if ( defined($delFile) ) {
 
 %insertions = ();
 if ( defined($insFile) ) {
-	open(IN,'<',$insFile) or die("Cannot open $insFile for reading.\n");
+	open(IN,'<',$insFile) or die("$0 ERROR: cannot open $insFile for reading.\n");
 	$header = <IN>;
 	while($line=<IN>) {
 		chomp($line);
@@ -185,7 +185,7 @@ if ( defined($insFile) ) {
 }
 
 # amended consensus is written to a file
-open(OUT,'>',$prefix.'/'.$outHdr.'.fa') or die("Cannot open $outHdr.fa for writing.\n");
+open(OUT,'>',$prefix.'/'.$outHdr.'.fa') or die("$0 ERROR: cannot open $outHdr.fa for writing.\n");
 print OUT '>',$outHdr,"\n";
 for $p (0..$#seq) {
 	if ( $seq[$p] ne '-' && $seq[$p] ne '.' ) {
@@ -203,11 +203,11 @@ close(OUT);
 
 if ( $covgRewrite ) {
 	$/ = "\n";
-	open(IN,'<',$covgRewrite) or die("Cannot open $covgRewrite.\n");
+	open(IN,'<',$covgRewrite) or die("$0 ERROR: cannot open $covgRewrite.\n");
 	$header = <IN>; chomp($header);
 	@coverages = <IN>; chomp(@coverages); close(IN);
 
-	open(OUT,'>',$prefix.'/'.$outHdr.'-coverage.txt') or die("Cannot open $outHdr-coverage.txt.\n");
+	open(OUT,'>',$prefix.'/'.$outHdr.'-coverage.txt') or die("$0 ERROR: cannot open $outHdr-coverage.txt.\n");
 	print OUT $header,"\n";
 
 	$iPos = 1; $iCon = 3; $cursor = 1; $offset = 0;

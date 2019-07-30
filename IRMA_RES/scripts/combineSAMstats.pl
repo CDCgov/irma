@@ -24,7 +24,7 @@ if ( scalar(@ARGV) < 2 ) {
 	die($message."\n");
 }
 
-open(REF,'<',$ARGV[0]) or die("Cannot open REF $ARGV[0] for reading.\n");
+open(REF,'<',$ARGV[0]) or die("$0 ERROR: cannot open REF $ARGV[0] for reading.\n");
 $/ = ">";
 while($record = <REF>) {
 	chomp($record);
@@ -38,7 +38,7 @@ while($record = <REF>) {
 	last;
 }
 close(REF);
-if ( !defined($N) ) { die("ERROR: no reference found in $ARGV[0].\n"); }
+if ( !defined($N) ) { die("$0 ERROR: no reference found in $ARGV[0].\n"); }
 
 if ( !defined($insertionThreshold) ) {
 	$insertionThreshold = 0.15;

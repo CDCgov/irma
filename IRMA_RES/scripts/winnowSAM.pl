@@ -28,7 +28,7 @@ sub countMatch($) {
 #############
 $pair = 0;
 $/ = "\n"; $previous = $header = '';
-open(SAM,'<',$ARGV[0]) or die("Cannot open $ARGV[0] for reading.\n");
+open(SAM,'<',$ARGV[0]) or die("$0 ERROR: cannot open $ARGV[0] for reading.\n");
 while($line = <SAM>) {
 	if ( substr($line,0,1) eq '@' ) {
 		if ( $line ne $previous ) {
@@ -68,7 +68,7 @@ while($line = <SAM>) {
 close(SAM);
 
 if ( $inPlace ) {
-	open(SAM,'>',$ARGV[0]) or die("Cannot open $ARGV[0] for writing.\n");
+	open(SAM,'>',$ARGV[0]) or die("$0 ERROR: cannot open $ARGV[0] for writing.\n");
 	print SAM $header;
 	foreach $query ( keys(%recordByQuery) ) {
 		print SAM $recordByQuery{$query},"\n";

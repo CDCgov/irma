@@ -3,7 +3,7 @@ PROGRAM="Iterative Refinement Meta-Assembler (IRMA)"
 AUTHOR="Samuel S. Shepard"
 EMAIL="vfn4@cdc.gov"
 AFFIL="NCIRD/OID/CDC"
-DATE="25 JUL 2019"
+DATE="30 JUL 2019"
 VERSION="0.9.2"
 LICENSE="GPL version 3. This program comes with ABSOLUTELY NO WARRANTY. This is free software.
 You are welcome to redistribute it under certain conditions. See:  <http://www.gnu.org/licenses/>.
@@ -40,7 +40,7 @@ function rmglob () {
 	local glob=""
 	for glob in "$@";do
 		if test -n "$(shopt -s nullglob;echo $glob)";then
-			rm $glob
+			rm "$glob"
 		fi
 	done
 }
@@ -49,9 +49,19 @@ function catglob () {
 	local glob=""
 	for glob in "$@";do
 		if test -n "$(shopt -s nullglob;echo $glob)";then
-			cat $glob
+			cat "$glob"
 		fi
 	done
+}
+
+wait_check() {
+        local F=0
+        local p=0
+        local -a P=("$@")
+        for p in "${P[@]}";do
+                wait "$p" || F=1
+        done
+        return $F
 }
 
 ###########################
@@ -71,21 +81,21 @@ bpath=
 if [ "$bpath" == "" ]; then
 	bpath=$( cd -P "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 fi
-rpath=$bpath/IRMA_RES	# IRMA resources
-spath=$rpath/scripts	# IRMA specific scripts/binaries
+rpath="$bpath"/IRMA_RES	# IRMA resources
+spath="$rpath"/scripts	# IRMA specific scripts/binaries
 
 
 # FNC - CHECK PROGRAM #
 # Idea courtesy: stackoverflow.com/questions/592620/check-if-a-program-exists-from-a-bash-script
 function check_prgm() {
-	command -v $1 >/dev/null 2>&1 || { echo "$PROGRAM ERROR: '$1' not found, add to the PATH or install." >&2; exit 1; }
+	command -v "$1" >/dev/null 2>&1 || { echo "$PROGRAM ERROR: '$1' not found, add to the PATH or install." >&2; exit 1; }
 }
 
 # Check and find supporting code
 if [ -d "$bpath/LABEL_RES/scripts/" ];then
-	Lspath="$bpath/LABEL_RES/scripts/"
-	check_prgm $bpath/LABEL
-	LABEL=$bpath/LABEL
+	Lspath="$bpath"/LABEL_RES/scripts
+	check_prgm "$bpath"/LABEL
+	LABEL="$bpath"/LABEL
 else
 	check_prgm LABEL
 	LABEL=$(which LABEL)
@@ -95,12 +105,12 @@ fi
 check_prgm Rscript
 check_prgm perl
 
-PARALLEL="$spath/parallel --will-cite"
-SAMTOOLS=$spath/samtools_$OS
-BLAT=$spath/blat_$OS
-SSW=$spath/ssw_$OS
-A2M=$Lspath/align2model_$OS
-RSCRIPT="$(which Rscript) --vanilla"
+PARALLEL="$spath"/parallel
+SAMTOOLS="$spath"/samtools_$OS
+BLAT="$spath"/blat_$OS
+SSW="$spath"/ssw_$OS
+A2M="$Lspath"/align2model_$OS
+RSCRIPT="$(which Rscript)"
 BASH=bash
 
 # select cat for reading reads
@@ -120,40 +130,40 @@ if [ ! -d "$rpath/modules/$MODULE" ];then
 	echo "IRMA ERROR: $MODULE not found."
 	exit 1
 else
-	mpath=$rpath/modules/$MODULE	
+	mpath="$rpath"/modules/$MODULE	
 fi
 
 # load reference dataset paths
-Lmpath=$(dirname $LABEL)/LABEL_RES/training_data/irma-$MODULE
-if [ -n "$(shopt -s nullglob;echo $mpath/profiles/*.mod)" ];then
-	phmms=$mpath/profiles
+Lmpath="$(dirname $LABEL)/LABEL_RES/training_data/irma-$MODULE"
+if [ -n "$(shopt -s nullglob;echo "$mpath"/profiles/*.mod)" ];then
+	phmms="$mpath"/profiles
 elif [ -r "$Lmpath" ];then
-	phmms=$Lmpath
+	phmms="$Lmpath"
 else
 	phmms="none"
 fi
 
 # load module parameter file
-DEF_SET=$mpath/reference/consensus.fasta
-if [ -r $rpath/defaults.sh ];then
-	source "$rpath/defaults.sh"
+DEF_SET="$mpath"/reference/consensus.fasta
+if [ -r "$rpath"/defaults.sh ];then
+	source "$rpath"/defaults.sh
 else
 	time_stamp "Missing defaults. ABORTING. Please restore from $rpath/.defaults.sh.bak" 
 fi
 
 # init variables from config files
-[ -r $mpath/init.sh ] && "source $mpath/init.sh"
+[ -r "$mpath"/init.sh ] && source "$mpath"/init.sh
 
 if [ -r "$mpath/config/${MODULE_CONFIG}.sh" ];then
-	source "$mpath/config/${MODULE_CONFIG}.sh"
+	source "$mpath"/config/${MODULE_CONFIG}.sh
 else
 	CONFIG=$(echo ${MODULE_CONFIG}|cut -f2 -d'-')
 	if [ -r "$mpath/config/${CONFIG}.sh" ];then
-		source "$mpath/config/${CONFIG}.sh"
+		source "$mpath"/config/${CONFIG}.sh
 	elif [ "$MODULE" != "$CONFIG" ];then
 		echo "IRMA ERROR: Configuration '$MODULE_CONFIG' not found. Valid configs are:"
 		tmp=" "
-		for i in $mpath/config/*sh;do tmp="$tmp $(basename $i .sh)";done
+		for i in "$mpath"/config/*sh;do tmp="$tmp $(basename $i .sh)";done
 		echo $tmp
 		exit 0
 	fi
@@ -162,22 +172,25 @@ fi
 REF1_SET=$REF_SET
 
 # selection of zip utility
-if command -v $spath/pigz_$OS >/dev/null 2>&1;then
-	ZIP="$spath/pigz_$OS -p $DOUBLE_LOCAL_PROC"
+if command -v "$spath"/pigz_$OS >/dev/null 2>&1;then
+	ZIP="$spath"/pigz_$OS
+	Z_OPTS="-p $DOUBLE_LOCAL_PROC -4"
 elif command -v pigz >/dev/null 2>&1;then
-	ZIP="pigz -p $DOUBLE_LOCAL_PROC"
+	ZIP="pigz"
+	Z_OPTS="-p $DOUBLE_LOCAL_PROC -4"
 elif command -v gzip >/dev/null 2>&1;then
 	ZIP="gzip"
+	Z_OPTS="-4"
 else
 	check_prgm gzip
 fi
 
 # process seed reference library
 if [ ! -s "$REF_SET" ];then
-	echo "IRMA ERROR! The REF_SET data was not found for: $REF_SET"
+	echo "IRMA ERROR! The REF_SET data was not found for: '$REF_SET'"
 	exit 0
 elif [ ! -r "$REF_SET" ];then
-	echo "IRMA ERROR! The REF_SET file was not readable: $REF_SET"
+	echo "IRMA ERROR! The REF_SET file was not readable: '$REF_SET'"
 	exit 0
 fi
 
@@ -201,23 +214,23 @@ fi
 # define ppath
 TOKEN=$(perl -e '@chars = ("A".."Z","0".."9","a".."z");print $chars[int(rand(scalar(@chars)))] for 1..32;')
 if [ "$ALLOW_TMP" -eq "1" -a "$GRID_ON" -eq "0" ];then
-	ppath=$TMP/$(whoami)/IRMAv$VERSION/${RUN}-${TOKEN}
+	ppath="$TMP"/$(whoami)/IRMAv$VERSION/${RUN}-${TOKEN}
 else
 	if [ "${GRID_PATH:-0}" != "0" -a "${GRID_ON:-0}" -eq "1" ];then
-		ppath=$GRID_PATH/$(whoami)/IRMAv$VERSION/${RUN}-${TOKEN}
+		ppath="$GRID_PATH"/$(whoami)/IRMAv$VERSION/${RUN}-${TOKEN}
 	else
-		ppath=$rpath/ppath/${RUN}-${TOKEN}
+		ppath="$rpath"/ppath/${RUN}-${TOKEN}
 	fi
 fi
 
 # check if RUN already exists
 if [ ! -d "$ppath" ]; then
-	mkdir -p $ppath
+	mkdir -p "$ppath"
 	if [ "$?" -ne "0" ];then
 		if [ "$ALLOW_TMP" -eq "1" -a "$GRID_ON" -eq "0" ];then
-			echo "$(basename $0) WARNING: cannot create directory '$ppath', trying: $rpath/ppath/${RUN}-${TOKEN}"
-			ppath=$rpath/ppath/${RUN}-${TOKEN}
-			mkdir -p $ppath
+			echo "$(basename $0) WARNING: cannot create directory '$ppath', trying: "$rpath"/ppath/${RUN}-${TOKEN}"
+			ppath="$rpath"/ppath/${RUN}-${TOKEN}
+			mkdir -p "$ppath"
 			[ "$?" -ne "0" ] && echo "$(basename $0) ERROR: cannot create directory '$ppath', operations ABORTED!" && exit 1
 		else
 			echo "$(basename $0) ERROR: cannot create directory '$ppath', operations ABORTED!" && exit 1
@@ -234,20 +247,20 @@ function createDirs() {
 	local p=$1
 	local d=""
 	for d in MATCH SORT ALIGN ASSEMBLY GENES;do
-		[ ! -d "$p/$d" ] && mkdir $p/$d
+		[ ! -d "$p/$d" ] && mkdir "$p/$d"
 	done
 }
 
 function setDirs() {
 	local p=$1
-	matchp=$p/MATCH
-	sortp=$p/SORT
-	alignp=$p/ALIGN
-	assemp=$p/ASSEMBLY
-	refp=$p/GENES
+	matchp="$p"/MATCH
+	sortp="$p"/SORT
+	alignp="$p"/ALIGN
+	assemp="$p"/ASSEMBLY
+	refp="$p"/GENES
 }
-createDirs $ppath
-setDirs $ppath
+createDirs "$ppath"
+setDirs "$ppath"
 
 # global program options
 SSW_OPTS="-x $SSW_X -m $SSW_M -o $SSW_O -e $SSW_E"
@@ -263,25 +276,32 @@ export IRMA_QUEUE
 
 #####################
 ### Main Functions ###
-original_path=$ppath
+original_path="$ppath"
 original_run=$RUN
 function moveProject() {
 	local x=2
 	local mvpath=$owd/$original_run
-	[ -r "$original_path/R0.fa.bak" ] && rm $original_path/R0.fa.bak
-	[ -r "$original_path/R0.xfl.bak" ] && rm $original_path/R0.xfl.bak
+	[ -r "$original_path/R0.fa.bak" ] && rm "$original_path"/R0.fa.bak
+	[ -r "$original_path/R0.xfl.bak" ] && rm "$original_path"/R0.xfl.bak
 
 	time_stamp "moving project"	
-	if [ ! -d $mvpath ];then
-		mv $original_path $mvpath
+	if [ ! -d "$mvpath" ];then
+		mv "$original_path" "$mvpath"
 	else
-		local outpath=${mvpath}-V$x
-		while [ -d $outpath ];do
+		local outpath="${mvpath}-V$x"
+		while [ -d "$outpath" ];do
 			((x++))
-			outpath=${mvpath}-V$x
+			outpath="${mvpath}-V$x"
 		done
-		mv $original_path $outpath
+		mv "$original_path" "$outpath"
 	fi
+}
+
+function die() {
+	local msg=$1
+	time_stamp "ERROR: $1"
+	moveProject
+	exit 1
 }
 
 function doLABEL() {
@@ -295,8 +315,8 @@ function doLABEL() {
 	
 	[ "$n" -gt "$limit" -a "$GRID_ON" -eq "1" ] && Earg=2
 	if [ "$n" -gt "0" ]; then
-		$LABEL -E $Earg -W $workdir $queryDB $name $labelmodule > /dev/null 2>&1
-		mv $workdir/${name}/${name}_final.tab $workdir/SORTED_${name}.tab
+		$LABEL -E $Earg -W "$workdir" "$queryDB" $name $labelmodule > /dev/null 2>&1
+		mv "$workdir"/${name}/${name}_final.tab "$workdir"/SORTED_${name}.tab
 	fi
 }
 
@@ -309,7 +329,7 @@ function doBLAT() {
 	local procs=$6
 	local limit=$7
 	local doGrid=0
-	local script=$workdir/${prefix}-${name}-BLAT
+	local script="$workdir"/${prefix}-${name}-BLAT
 	local n=$(grep '>' $queryDB -c)
 
 	if [ "$n" -gt "$limit" -a "$GRID_ON" -eq "1" ];then
@@ -334,7 +354,7 @@ function doBLAT() {
 	[ "$SKIP_E" -eq "1" ] && options+=" -S"
 
 ###
-cat >${script}.sh  <<EOL
+cat > "${script}.sh" <<EOL
 #!/bin/bash
 LANG=$LANG
 shopt -u nocaseglob;shopt -u nocasematch
@@ -344,26 +364,26 @@ if [ "\$#" -eq "1" ];then
 else
 	ID=\$(printf %04d \$SGE_TASK_ID)
 fi
-INPUT=$workdir/${prefix}-${name}_\$ID.fasta
-OUTPUT=$workdir/${prefix}-${name}_\$ID.blat
+INPUT="$workdir"/${prefix}-${name}_\$ID.fasta
+OUTPUT="$workdir"/${prefix}-${name}_\$ID.blat
 
-$BLAT $refDB \$INPUT \$OUTPUT $BLAT_OPTS
-$spath/parseBlat.pl \$OUTPUT \$INPUT $options -P $prefix
+"$BLAT" "$refDB" "\$INPUT" "\$OUTPUT" $BLAT_OPTS
+"$spath"/parseBlat.pl "\$OUTPUT" "\$INPUT" $options -P "$prefix"
 EOL
 ###
 
-	chmod 755 ${script}.sh
-	$Lspath/interleavedSamples.pl -G $procs $queryDB $workdir/$prefix-$name > /dev/null 2>&1
+	chmod 755 "${script}.sh"
+	"$Lspath"/interleavedSamples.pl -G $procs "$queryDB" "$workdir"/$prefix-$name > /dev/null 2>&1
 	if [ "$doGrid" -eq "1" ];then
-		qsub $IRMA_QUEUE -t 1-$procs:1 -N ${prefix}-${name}-BLAT -sync y -wd $workdir -j y -o ${script}.o ${script}.sh > /dev/null 2>&1
+		qsub $IRMA_QUEUE -t 1-$procs:1 -N ${prefix}-${name}-BLAT -sync y -wd "$workdir" -j y -o "${script}.o" "${script}.sh" > /dev/null 2>&1
 		if [ "$?" -ne "0" ];then
 			time_stamp "qsub of '${prefix}-${name}-BLAT' failed. Switching to master node."
-			$PARALLEL --workdir $workdir -j $SINGLE_LOCAL_PROC $BASH ${script}.sh {} ::: $(seq $procs) > /dev/null 2>&1
+			"$PARALLEL" --nn --workdir "$workdir" -j $SINGLE_LOCAL_PROC -q $BASH "${script}.sh" {} ::: $(seq $procs) > /dev/null 2>&1
 		fi
 	else 
-		$PARALLEL --workdir $workdir -j $procs $BASH ${script}.sh {} ::: $(seq $procs) > /dev/null 2>&1
+		"$PARALLEL" --nn --workdir "$workdir" -j $procs -q $BASH "${script}.sh" {} ::: $(seq $procs) > /dev/null 2>&1
 	fi
-	rmglob ${script}.sh
+	rmglob "${script}.sh"
 }
 
 function doMATCH() {
@@ -374,9 +394,10 @@ function doMATCH() {
 	local doGrid=0
 	local procs=0
 	local i=0
+	local -a pid=()
 
 	if [ "$MATCH_PROG" == "BLAT" ];then
-		doBLAT $REF_SET $DB $prefix $name $matchp $MATCH_PROC $LIMIT_BLAT || return 1
+		doBLAT "$REF_SET" "$DB" $prefix $name "$matchp" $MATCH_PROC $LIMIT_BLAT || return 1
 		match_ext="blat"
 	else
 		time_stamp "$prefix aborted, MATCH:$MATCH_PROG not implemented"
@@ -385,40 +406,40 @@ function doMATCH() {
 
 	time_stamp "$prefix all-match with $MATCH_PROG finished"
 	# consolidate
-	cat $matchp/${prefix}-${name}_????.match > $matchp/${prefix}.match &
-	cat $matchp/${prefix}-${name}_????.nomatch > $matchp/${prefix}.nomatch &
-	cat $matchp/${prefix}-${name}_????.chim > $matchp/${prefix}.chim &
+	cat "$matchp"/${prefix}-${name}_????.match > "$matchp"/${prefix}.match &
+	cat "$matchp"/${prefix}-${name}_????.nomatch > "$matchp"/${prefix}.nomatch &
+	cat "$matchp"/${prefix}-${name}_????.chim > "$matchp"/${prefix}.chim &
 	wait
 
 	# LABEL fast mode consoldiation
 	if [ "${SECONDARY_SORT:-0}" -eq "1" -a "$SORT_PROG" == "LABEL" -a ! -z "$GENE_GROUP" ];then
 		for i in $(echo $GENE_GROUP|tr ',:' ' ');do
-			if test -n "$(shopt -s nullglob;echo $matchp/${prefix}-${name}_????.match.$i)";then
-				cat $matchp/${prefix}-${name}_????.match.$i > $matchp/${prefix}.match.$i && rm $matchp/${prefix}-${name}_????.match.$i &
+			if test -n "$(shopt -s nullglob;echo "$matchp"/${prefix}-${name}_????.match.$i)";then
+				cat "$matchp"/${prefix}-${name}_????.match.$i > "$matchp"/${prefix}.match.$i && rm "$matchp"/${prefix}-${name}_????.match.$i & pid+=($!)
 			fi
 		done
-		wait
+		wait_check "${pid[@]}" || { time_stamp 'LABEL sort failed, ABORTING.'; return 1; }
 	fi
 
 	# CLEAN UP	
-	rmglob $matchp/${prefix}-${name}_????.{match,nomatch,chim,fasta}
-	cd $matchp
-	tar -cf - ${prefix}-${name}_????.$match_ext|$ZIP -4 - > $matchp/${prefix}.tar.gz 2> /dev/null
+	rmglob "$matchp"/${prefix}-${name}_????.{match,nomatch,chim,fasta}
+	cd "$matchp"
+	tar -cf - ${prefix}-${name}_????.$match_ext|"$ZIP" $Z_OPTS - > "$matchp"/${prefix}.tar.gz 2> /dev/null
 	cd - > /dev/null
-	rmglob $matchp/${prefix}-${name}_????.$match_ext
+	rmglob "$matchp"/${prefix}-${name}_????.$match_ext
 	time_stamp "$prefix consolidated & cleaned"
 
 	# EXTEND to SORT
 	if [ "$SORT_PROG" == "$MATCH_PROG" ];then
-		mkdir $sortp/${prefix}
-		cat $matchp/${prefix}-${name}_????.class > $sortp/$prefix/SORT_result.txt
-		rmglob $matchp/${prefix}-${name}_????.class
+		mkdir "$sortp"/${prefix}
+		cat "$matchp"/${prefix}-${name}_????.class > "$sortp"/$prefix/SORT_result.txt
+		rmglob "$matchp"/${prefix}-${name}_????.class
 	fi
 
 	# EXTEND to ALIGN
 	if [ "$ALIGN_PROG" == "$MATCH_PROG" ];then
-		if test -n "$(shopt -s nullglob;echo $matchp/*.sto)";then
-			mv $matchp/*.sto $alignp
+		if test -n "$(shopt -s nullglob;echo "$matchp"/*.sto)";then
+			mv "$matchp"/*.sto "$alignp"
 		fi
 	fi
 	return 0
@@ -427,9 +448,10 @@ function doMATCH() {
 function doSORT() {
 	local DB=$1
 	local prefix=$2
+	local -a pid=()
 
 	if [ "$SORT_PROG" == "LABEL" ];then
-		mkdir $sortp/${prefix}
+		mkdir "$sortp"/${prefix}
 		if [ "${SECONDARY_SORT:-0}" -eq "1" ];then
 			local gene_groups=($(echo $GENE_GROUP|tr ',:' ' '))
 			local label_modules=($(echo $SECONDARY_LABEL_MODULES|tr ',:' ' '))
@@ -446,15 +468,15 @@ function doSORT() {
 				groupFile="$matchp/${prefix}.match.$geneGroup"
 
 				if [ -s "$groupFile" ];then
-					doLABEL "$groupFile" "$MODULE-$geneGroup" "$labelModule" "$sortp/${prefix}" $LIMIT_LABEL &
+					doLABEL "$groupFile" "$MODULE-$geneGroup" "$labelModule" "$sortp/${prefix}" $LIMIT_LABEL & pid+=($!)
 				fi
 			done
-			wait
+			wait_check "${pid[@]}" || { time_stamp 'LABEL sort failed, ABORTING.'; return 1; }
 		else
 			# SORT using LABEL full
-			doLABEL $matchp/${prefix}.match $MODULE $LABEL_MODULE $sortp/${prefix} $LIMIT_LABEL || return 1
+			doLABEL "$matchp"/${prefix}.match $MODULE $LABEL_MODULE "$sortp"/${prefix} $LIMIT_LABEL || return 1
 		fi
-		cat $sortp/${prefix}/SORTED_*.tab > $sortp/${prefix}/SORT_result.txt 2> /dev/null
+		cat "$sortp"/${prefix}/SORTED_*.tab > "$sortp"/${prefix}/SORT_result.txt 2> /dev/null
 	elif [ "$SORT_PROG" == "BLAT" ];then
 		# TO-DO: assumes BLAT was run on MATCH	
 		:
@@ -464,13 +486,13 @@ function doSORT() {
 	fi
 	time_stamp "$prefix sorted using $SORT_PROG"
 
-	if [ ! -r $sortp/$prefix/SORT_result.txt ];then
+	if [ ! -r "$sortp"/$prefix/SORT_result.txt ];then
 		time_stamp "$prefix aborted, sort failed"
 		return 1
 	fi
 
-	x=$(grep UNRECOGNIZABLE $sortp/$prefix/SORT_result.txt -c)
-	y=$(wc -l < $sortp/$prefix/SORT_result.txt)
+	x=$(grep UNRECOGNIZABLE "$sortp"/$prefix/SORT_result.txt -c)
+	y=$(wc -l < "$sortp"/$prefix/SORT_result.txt)
 	if [ $x -gt 0 -a $x -eq $y ];then
 		time_stamp "$prefix found no significant reads"
 		return 1
@@ -480,11 +502,11 @@ function doSORT() {
 	[ "$SORT_PROG" == "BLAT" ] && options+=" -G"
 	[ "$SORT_GROUPS" != "" ] && options+=" -P $SORT_GROUPS"
 	[ "$BAN_GROUPS" != "" ] && options+=" -B $BAN_GROUPS"
-	$spath/parseSORTresults.pl $sortp/$prefix/SORT_result.txt $matchp/$prefix.match $sortp/$prefix $options
+	"$spath"/parseSORTresults.pl "$sortp"/$prefix/SORT_result.txt "$matchp"/$prefix.match "$sortp"/$prefix $options
 
 	# CLEAN UP
-	cd $sortp/$prefix; tar  -cf - SORT_result.txt |$ZIP -4 - > $sortp/$prefix.tar.gz
-	cd - > /dev/null; rm -rf $sortp/$prefix
+	cd "$sortp"/$prefix; tar  -cf - SORT_result.txt |"$ZIP" $Z_OPTS - > "$sortp"/$prefix.tar.gz
+	cd - > /dev/null; rm -rf "$sortp"/$prefix
 	return 0
 }
 
@@ -496,9 +518,9 @@ function doSAM() {
 	local procs=$5
 	local limit=$6
 	local doGrid=0
-	local mod=$phmms/${name}_hmm.mod
-	local script=$workdir/$prefix-$name-SAM
-	local n=$(grep '>' $queryDB -c)
+	local mod="$phmms"/${name}_hmm.mod
+	local script="$workdir"/$prefix-$name-SAM
+	local n=$(grep '>' "$queryDB" -c)
 
 	if [ "$n" -gt "$limit" -a "$GRID_ON" -eq "1" ];then
 		doGrid=1
@@ -521,28 +543,29 @@ if [ "\$#" -eq "1" ];then
 else
 	ID=\$(printf %04d \$SGE_TASK_ID)
 fi
-DB=$workdir/${prefix}-${name}_\$ID.fasta
-RUN=$workdir/${prefix}-${name}_\$ID
-MOD=$mod
+DB=${prefix}-${name}_\$ID.fasta
+RUN="$workdir"/${prefix}-${name}_\$ID
+MOD="$mod"
 
-$A2M \$RUN -modelfile \$MOD -db \$DB
-$spath/a2mToMatchStats.pl \$RUN.a2m \$RUN.sto $options
+cd "$workdir"
+"$A2M" \$RUN -modelfile "\$MOD" -db "\$DB"
+"$spath"/a2mToMatchStats.pl "\$RUN.a2m" "\$RUN.sto" $options
 EOL
 
-	chmod 755 ${script}.sh
-	$Lspath/interleavedSamples.pl $queryDB $workdir/$prefix-$name -G $procs > /dev/null
+	chmod 755 "${script}.sh"
+	"$Lspath"/interleavedSamples.pl "$queryDB" "$workdir"/$prefix-$name -G $procs > /dev/null
 	if [ "$doGrid" -eq "1" ];then
-		qsub $IRMA_QUEUE -t 1-$procs:1 -N $prefix-$name-SAM -sync y -wd $workdir -j y -o ${script}.o ${script}.sh > /dev/null 2>&1
+		qsub $IRMA_QUEUE -t 1-$procs:1 -N $prefix-$name-SAM -sync y -wd "$workdir" -j y -o "${script}.o" "${script}.sh" > /dev/null 2>&1
 		if [ "$?" -ne "0" ];then
 			time_stamp "qsub of '${prefix}-${name}-SAM' failed. Switching to master node."
-			$PARALLEL --workdir $workdir -j $SINGLE_LOCAL_PROC $BASH ${script}.sh {} ::: $(seq $procs) > /dev/null 2>&1
+			"$PARALLEL" --nn --workdir "$workdir" -j $SINGLE_LOCAL_PROC -q $BASH "${script}.sh" {} ::: $(seq $procs) > /dev/null 2>&1
 		else
-			rm ${script}.o
+			rm "${script}.o"
 		fi
 	else
-		$PARALLEL --workdir $workdir -j $procs $BASH ${script}.sh {} ::: $(seq $procs) > /dev/null 2>&1
+		"$PARALLEL" --nn --workdir "$workdir" -j $procs -q $BASH "${script}.sh" {} ::: $(seq $procs) > /dev/null 2>&1
 	fi
-	rmglob $workdir/${prefix}-${name}_????.{fasta,a2m} ${script}.sh
+	rmglob "$workdir"/${prefix}-${name}_????.fasta "$workdir"/${prefix}-${name}_????.a2m "${script}.sh"
 }
 
 function doALIGN() {
@@ -552,19 +575,20 @@ function doALIGN() {
 	local j=0
 	local name=""
 	local gene=""
+	local -a pid=()
 
 	# FOR EACH GENE
-	for queryDB in $sortp/$prefix-*.fa;do
-		name=$(basename $queryDB .fa);name=${name#*-}
+	for queryDB in "$sortp"/$prefix-*.fa;do
+		name=$(basename "$queryDB" .fa);name=${name#*-}
 
 		if [ "$ALIGN_PROG" == "SAM" ];then
-			doSAM $queryDB $prefix $name $alignp $ALIGN_PROC $LIMIT_SAM &
+			doSAM "$queryDB" "$prefix" "$name" "$alignp" $ALIGN_PROC $LIMIT_SAM & pid+=($!)
 		elif [ "$ALIGN_PROG" == "BLAT" ];then
 			j=$(($R - 1))
 			if [ "$R" -gt 1 ];then
 				for i in $(seq $j);do
-					rmglob $alignp/R${i}-$name*.sto
-					doBLAT $refp/R${j}-$name.ref $sortp/R${i}-${name}.fa R$i $name $alignp $ALIGN_PROC $LIMIT_BLAT &
+					rmglob "$alignp"/R${i}-$name*.sto
+					doBLAT "$refp"/R${j}-$name.ref "$sortp"/R${i}-${name}.fa R$i "$name" "$alignp" $ALIGN_PROC $LIMIT_BLAT & pid+=($!)
 				done
 			fi
 		elif [ "$ALIGN_PROG" == "NONE" ];then
@@ -574,24 +598,24 @@ function doALIGN() {
 			return 1
 		fi
 	done
-	wait
-	time_stamp "$prefix rough aligned reads using $ALIGN_PROG"
+	wait_check "${pid[@]}" && time_stamp "$prefix rough aligned reads using $ALIGN_PROG" || { time_stamp "failed $prefix rough alignment, ABORTING."; return 1; }
 
 	# CREATE NEW REFERENCES
+	pid=()
 	local options="-C $MIN_CA -F $MIN_FA"
 	[ "$ALIGN_PROG" == "BLAT" ] && options+=" -A"
 	[ "$SKIP_E" -eq "1" ] && options+=" -S" 
 	[ "$DENOM" != "" ] && options+=" -O $DENOM"
 	if [ "$ALIGN_PROG" != "NONE" ];then
-		for i in $sortp/$prefix-*.fa;do
-			name=$(basename $i .fa)
+		for i in "$sortp"/$prefix-*.fa;do
+			name=$(basename "$i" .fa)
 			gene=${name#*-}
-			$spath/combineALIGNstats.pl -N $gene $options $alignp/R*-${gene}_????.sto > $refp/$name.ref &
+			"$spath"/combineALIGNstats.pl -N $gene $options "$alignp"/R*-${gene}_????.sto > "$refp"/$name.ref & pid+=($!)
 
 			# consider placing burden on the function itself to do the cleanup
-			[ "$ALIGN_PROG" == "BLAT" -a "$R" -gt 1 ] && rmglob $alignp/R*-${gene}_????.{match,nomatch,chim,fasta,class,blat} &
+			[ "$ALIGN_PROG" == "BLAT" -a "$R" -gt 1 ] && rmglob "$alignp"/R*-${gene}_????.{match,nomatch,chim,fasta,class,blat}
 		done
-		wait
+		wait_check "${pid[@]}" || { time_stamp 'failed match stat aggregation, ABORTING.'; return 1; }
 	fi
 	return 0
 }
@@ -608,93 +632,93 @@ function doRound() {
 	time_stamp "$prefix started ($n)"
 
 	# MATCH stage
-	doMATCH $DB $prefix || return 1
-	n=$(grep '>' $matchp/${prefix}.match -c)
+	doMATCH "$DB" "$prefix" || return 1
+	n=$(grep '>' "$matchp"/${prefix}.match -c)
 	if [ "$n" -eq "0" ];then
 		time_stamp "$prefix aborted, no matches found"
 		return 1
 	fi
 	
 	### SORT stage ###
-	DB=$matchp/${prefix}.match
-	doSORT $DB $prefix || return 1
+	DB="$matchp"/${prefix}.match
+	doSORT "$DB" "$prefix" || return 1
 
 	# PRIMARY vs SECONDARY tests
 	# if we have primary data from the current round
-	if test -n "$(shopt -s nullglob;echo $sortp/$prefix-*.fa)";then
+	if test -n "$(shopt -s nullglob;echo "$sortp"/$prefix-*.fa)";then
 		# for each current primary dataset
-		for i in $sortp/$prefix-*.fa;do
+		for i in "$sortp"/$prefix-*.fa;do
 			name=$(basename $i .fa)
 			gene=${name#*-}
 			# if previously a secondary lineage, make the current primary a secondary
-			test -n "$(shopt -s nullglob;echo $sortp/R*-${gene}.fa.2)" && mv $i ${i}.2
+			test -n "$(shopt -s nullglob;echo "$sortp"/R*-${gene}.fa.2)" && mv $i ${i}.2
 		done
 	fi
 
 	# vice-versa, if we have secondary data from this round
-	if test -n "$(shopt -s nullglob;echo $sortp/$prefix-*.fa.2)";then
+	if test -n "$(shopt -s nullglob;echo "$sortp"/$prefix-*.fa.2)";then
 		# for each current secondary dataset
-		for i in $sortp/$prefix-*.fa.2;do
+		for i in "$sortp"/$prefix-*.fa.2;do
 			name=$(basename $i .fa.2)
 			gene=${name#*-}
 			# if previously a primary lineage, make the current secondary a primary
 			# used to be ".ref"
-			test -n "$(shopt -s nullglob;echo $sortp/R*-${gene}.fa)" && mv $i $sortp/$(basename $i .2)
+			test -n "$(shopt -s nullglob;echo "$sortp"/R*-${gene}.fa)" && mv $i "$sortp"/$(basename $i .2)
 		done
 	fi
 
 	# add R0 for tracing history better
 	if [ "$ASSEM_REF" -eq "0" -a "$R" -eq "1" ];then
-		if test -n "$(shopt -s nullglob;echo $sortp/$prefix-*.fa)";then
-			for i in $sortp/$prefix-*.fa;do
+		if test -n "$(shopt -s nullglob;echo "$sortp"/$prefix-*.fa)";then
+			for i in "$sortp"/$prefix-*.fa;do
 					name=$(basename $i .fa)
 					gene=${name#*-}
-					$Lspath/fastaExtractor.pl $refp/R0.refs <(echo $gene) > $refp/R0-${gene}.ref
+					"$Lspath"/fastaExtractor.pl "$refp"/R0.refs <(echo $gene) > "$refp"/R0-${gene}.ref
 			done
 		fi
 	fi
 
 	### ALIGN stage ###
 	# given we have primary data in this round	
-	if test -n "$(shopt -s nullglob;echo $sortp/$prefix-*.fa)";then
-		doALIGN $prefix || return 1
+	if test -n "$(shopt -s nullglob;echo "$sortp"/$prefix-*.fa)";then
+		doALIGN "$prefix" || return 1
 	else
 		time_stamp "$prefix aborted, found fewer than $MIN_RP RPs or $MIN_RC reads for all templates"
 		if [ "$R" -eq 1 ];then
-			mkdir $ppath/low_abundance $ppath/other_data
-			for i in $sortp/*2;do
-				mv $i $ppath/low_abundance/$(basename $i .2)
+			mkdir "$ppath"/low_abundance "$ppath"/other_data
+			for i in "$sortp"/*2;do
+				mv $i "$ppath"/low_abundance/$(basename $i .2)
 			done
 
-			if test -n "$(shopt -s nullglob;echo $ppath/low_abundance/*UNRECOGNIZABLE*)";then
-				cat $ppath/low_abundance/*UNRECOGNIZABLE* > $ppath/other_data/failed_sort.fa
-				rmglob $ppath/low_abundance/*UNRECOGNIZABLE*
+			if test -n "$(shopt -s nullglob;echo "$ppath"/low_abundance/*UNRECOGNIZABLE*)";then
+				cat "$ppath"/low_abundance/*UNRECOGNIZABLE* > "$ppath"/other_data/failed_sort.fa
+				rmglob "$ppath"/low_abundance/*UNRECOGNIZABLE*
 			fi
 
-			mv $matchp/R1.nomatch $ppath/other_data/unmatched_data.fa
-			mv $matchp/R1.chim $ppath/other_data/chimeric.fa
-			mv $matchp/R1.tar.gz $ppath/other_data/match_output.tar.gz
-			mv $sortp/R1.tar.gz $ppath/other_data/sort_output.tar.gz
-			echo -e "Gene\tRead Patterns\tRead Count" > $ppath/sorted_read_stats.txt
-			cat $sortp/R1.txt >> $ppath/sorted_read_stats.txt && rm $sortp/R1.txt
-			echo -e "Interleaved sample\tStarting reads\tQC'd reads\tQuality threshold\tMin length\tUse median" > $ppath/read_QC_filtering.txt
-			cat $ppath/QC_log.txt >> $ppath/read_QC_filtering.txt && rm $ppath/QC_log.txt
-			rmglob $ppath/R1.match.* $ppath/R*.{fa,xfl}
-			rm -rf $alignp $matchp $refp $sortp $assemp
+			mv "$matchp"/R1.nomatch "$ppath"/other_data/unmatched_data.fa
+			mv "$matchp"/R1.chim "$ppath"/other_data/chimeric.fa
+			mv "$matchp"/R1.tar.gz "$ppath"/other_data/match_output.tar.gz
+			mv "$sortp"/R1.tar.gz "$ppath"/other_data/sort_output.tar.gz
+			echo -e "Gene\tRead Patterns\tRead Count" > "$ppath"/sorted_read_stats.txt
+			cat "$sortp"/R1.txt >> "$ppath"/sorted_read_stats.txt && rm "$sortp"/R1.txt
+			echo -e "Interleaved sample\tStarting reads\tQC'd reads\tQuality threshold\tMin length\tUse median" > "$ppath"/read_QC_filtering.txt
+			cat "$ppath"/QC_log.txt >> "$ppath"/read_QC_filtering.txt && rm "$ppath"/QC_log.txt
+			rmglob "$ppath"/R1.match.* "$ppath"/R*.{fa,xfl}
+			rm -rf "$alignp" "$matchp" "$refp" "$sortp" "$assemp"
 		fi
 		return 1	
 	fi
 
 	if [ "$ALIGN_PROG" != "NONE" ];then
-		cat $refp/${prefix}*.ref > $refp/${prefix}.refs
-		REF_SET=$refp/${prefix}.refs
-		QUERY_SET=$matchp/$prefix.nomatch
+		cat "$refp"/${prefix}*.ref > "$refp"/${prefix}.refs
+		REF_SET="$refp"/${prefix}.refs
+		QUERY_SET="$matchp"/$prefix.nomatch
 		time_stamp "$prefix references created"
 	fi
 
 	# if we have MERGE_SECONDARY set and it is after the first round, load the alt match data back in for the next round
 	if [ "${MERGE_SECONDARY:-0}" -eq "1" -a "$R" -eq "1" ];then
-		test -n "$(shopt -s nullglob;echo $sortp/R1-*.fa.2)" && cat $sortp/R1-*.fa.2 >> $QUERY_SET && rm $sortp/R1-*.fa.2
+		test -n "$(shopt -s nullglob;echo "$sortp"/R1-*.fa.2)" && cat "$sortp"/R1-*.fa.2 >> $QUERY_SET && rm "$sortp"/R1-*.fa.2
 	fi
 
 	return 0
@@ -713,14 +737,14 @@ function ASSEM_RUN_SSW() {
 	local ref=$3
 	local procs=$4
 	local doGrid=$5
-	local script=$assemp/F${iter}-${gene}
+	local script="$assemp"/F${iter}-${gene}
 
 	local options=""
 	[ "$ASSEM_REF" -eq "1" ] && options+=" -G"
 	[ "${SILENCE_COMPLEX_INDELS:-0}" -eq "1" ] && options+=" -S"
 
 ###
-cat > ${script}.sh  <<EOL
+cat > "${script}.sh"  <<EOL
 #!/bin/bash
 LANG=$LANG
 shopt -u nocaseglob;shopt -u nocasematch
@@ -730,31 +754,31 @@ if [ "\$#" -eq "1" ];then
 else
 	ID=\$(printf %04d \$SGE_TASK_ID)
 fi
-FASTQ=$assemp/${gene}_\$ID.fastq
-SAM=$assemp/F${iter}-${gene}-\$ID.sam
-STAT=$assemp/F${iter}-${gene}-\$ID.sto
+FASTQ="$assemp"/${gene}_\$ID.fastq
+SAM="$assemp"/F${iter}-${gene}-\$ID.sam
+STAT="$assemp"/F${iter}-${gene}-\$ID.sto
 
-$SSW -s -c -h -r $SSW_OPTS $ref \$FASTQ > \$SAM 2> /dev/null
-$spath/winnowSAM.pl -I \$SAM
-$spath/samStats.pl $options $ref \$SAM \$STAT
+"$SSW" -s -c -h -r $SSW_OPTS "$ref" "\$FASTQ" > "\$SAM" 2> /dev/null
+"$spath"/winnowSAM.pl -I "\$SAM"
+"$spath"/samStats.pl $options "$ref" "\$SAM" "\$STAT"
 EOL
 ###
 
 	# ASSEMBLE on grid vs local
-	chmod 755 ${script}.sh
+	chmod 755 "${script}.sh"
 	if [ "$doGrid" -eq "1" ];then
-		qsub $IRMA_QUEUE -t 1-$procs:1 -N F${iter}-$gene -sync y -wd $assemp -j y -o ${script}.o ${script}.sh > /dev/null 2>&1
+		qsub $IRMA_QUEUE -t 1-$procs:1 -N F${iter}-$gene -sync y -wd "$assemp" -j y -o "${script}.o" "${script}.sh" > /dev/null 2>&1
 		if [ "$?" -ne "0" ];then
 			time_stamp "qsub of 'F${iter}-$gene' failed. Switching to master node."
-			$PARALLEL --workdir $ppath -j $SINGLE_LOCAL_PROC $BASH ${script}.sh {} ::: $(seq $procs)
+			"$PARALLEL" --nn --workdir "$ppath" -j $SINGLE_LOCAL_PROC -q $BASH "${script}.sh" {} ::: $(seq $procs)
 		else
-			rm ${script}.o
+			rm "${script}.o"
 		fi
 	else
-		$PARALLEL --workdir $ppath -j $procs $BASH ${script}.sh {} ::: $(seq $procs)
+		"$PARALLEL" --nn --workdir "$ppath" -j $procs -q $BASH "${script}.sh" {} ::: $(seq $procs)
 	fi
-	$spath/catSAMfiles.pl $assemp/F${iter}-${gene}-*.sam > $assemp/F${iter}-$gene.sam
-	rm ${script}.sh
+	"$spath"/catSAMfiles.pl "$assemp"/F${iter}-${gene}-*.sam > "$assemp"/F${iter}-$gene.sam
+	rm "${script}.sh"
 }
 
 
@@ -763,7 +787,7 @@ EOL
 #-------------------------------------------#
 function ASSEM_SCORE_SSW() {
 	local SAM=$1
-	$spath/scoreSAM.pl $SAM
+	"$spath"/scoreSAM.pl "$SAM"
 }
 #############################################
 #############################################
@@ -776,24 +800,24 @@ function doCALLS() {
 	local final=$3
 	local procs=$4
 	local doGrid=$5
-	local ref=$assemp/F${iter}-${gene}.ref
+	local ref="$assemp"/F${iter}-${gene}.ref
 
 	# PAIRED VS SINGLE END
 	if [ "$PAIRED" -eq "1" ];then
 		local prefix=M${iter}-${gene}
-		local prefix2=$assemp/M${iter}-${gene}
-		local pstats="-E $final-pairingStats.txt"
+		local prefix2="$assemp"/M${iter}-${gene}
+		local -a pstats=("-E" "$final-pairingStats.txt")
 	else
 		local prefix=S${iter}-${gene}
-		local prefix2=$assemp/F${iter}-${gene}
-		local pstats=""
+		local prefix2="$assemp"/F${iter}-${gene}
+		local -a pstats=()
 	fi
 	local script="$assemp/${prefix}"
 
 #########################################
 # DO CALL STATS and MERGE if PAIRED END #
 #########################################
-cat > ${script}.sh <<EOL
+cat > "${script}.sh" <<EOL
 #!/bin/bash
 LANG=$LANG
 shopt -u nocaseglob;shopt -u nocasematch
@@ -803,44 +827,44 @@ if [ "\$#" -eq "1" ];then
 else
 	ID=\$(printf %04d \$SGE_TASK_ID)
 fi
-SAM=$assemp/F${iter}-${gene}-\$ID.sam
-VPREFIX=$assemp/V${iter}-${gene}-\$ID
+SAM="$assemp"/F${iter}-${gene}-\$ID.sam
+VPREFIX="$assemp"/V${iter}-${gene}-\$ID
 
 if [ "$PAIRED" -eq "1" ];then
-	MSAM=$assemp/M${iter}-${gene}-\$ID.sam
-	MPREFIX=$assemp/M${iter}-${gene}-\$ID
-	$spath/mergeSAMpairs.pl -S $ref \$SAM \$MPREFIX
-	$spath/varCallStats.pl $ref \$MSAM \$VPREFIX
+	MSAM="$assemp"/M${iter}-${gene}-\$ID.sam
+	MPREFIX="$assemp"/M${iter}-${gene}-\$ID
+	"$spath"/mergeSAMpairs.pl -S "$ref" "\$SAM" \$MPREFIX
+	"$spath"/varCallStats.pl "$ref" "\$MSAM" \$VPREFIX
 else
-	$spath/varCallStats.pl $ref \$SAM \$VPREFIX
+	"$spath"/varCallStats.pl "$ref" "\$SAM" \$VPREFIX
 fi
 
 EOL
 #########################################
 
 	# GRID vs LOCAL execution of the CALL STATS step, inherits from ASSEMBLY step currently
-	chmod 755 ${script}.sh
+	chmod 755 "${script}.sh"
 	if [ "$doGrid" -eq "1" ];then
-		qsub $IRMA_QUEUE -t 1-$procs:1 -N $prefix -sync y -wd $assemp -j y -o ${script}.o ${script}.sh > /dev/null 2>&1
+		qsub $IRMA_QUEUE -t 1-$procs:1 -N $prefix -sync y -wd "$assemp" -j y -o "${script}.o" "${script}.sh" > /dev/null 2>&1
 		if [ "$?" -ne "0" ];then
 			time_stamp "qsub of '${prefix}' failed. Switching to master node."
-			$PARALLEL --workdir $ppath -j $SINGLE_LOCAL_PROC $BASH ${script}.sh {} ::: $(seq $procs)
+			"$PARALLEL" --nn --workdir "$ppath" -j $SINGLE_LOCAL_PROC -q $BASH "${script}.sh" {} ::: $(seq $procs)
 		else
-			rm ${script}.o
+			rm "${script}.o"
 		fi
 	else
-		$PARALLEL --workdir $ppath -j $procs $BASH ${script}.sh {} ::: $(seq $procs)
+		"$PARALLEL" --nn --workdir "$ppath" -j $procs -q $BASH "${script}.sh" {} ::: $(seq $procs)
 	fi
-	rm ${script}.sh
+	rm "${script}.sh"
 
 	# GROUP
-	$spath/catSAMfiles.pl ${prefix2}-*.sam > ${final}.sam
+	"$spath"/catSAMfiles.pl "${prefix2}"-*.sam > "${final}.sam"
 
 	# DO the CALL step
 	local options="-C $MIN_C -F $MIN_F -I $MIN_FI -D $MIN_FD -Q $MIN_AQ -T $MIN_TCC -M $MIN_CONF -S $SIG_LEVEL"
 	[ "$AUTO_F" -eq 1 ] && options+=" -A"
-	[ "$PAIRED" -eq "1" ] && $spath/getPairingStats.pl ${prefix2}-*.sto > $final-pairingStats.txt
-	$spath/call.pl -P -G $options $pstats $ref $final $assemp/V${iter}-${gene}-*.sto
+	[ "$PAIRED" -eq "1" ] && "$spath"/getPairingStats.pl "${prefix2}"-*.sto > "$final-pairingStats.txt"
+	"$spath"/call.pl -P -G $options "${pstats[@]}" "$ref" "$final" "$assemp"/V${iter}-${gene}-*.sto
 }
 
 
@@ -850,7 +874,7 @@ function doPHASING() {
 	local proc=1
 	local doGrid=0
 	local script=${final}-phasing
-	local n=$(wc -l < ${final}-variants.txt)
+	local n=$(wc -l < "${final}-variants.txt" )
 	((n--))
  	local ops=$(( (($n*$n)-$n)/2 ))
 	if [ "$n" -lt "2" ];then
@@ -870,7 +894,7 @@ function doPHASING() {
 #########################################
 # DO PHASING			        #
 #########################################
-cat > ${script}.sh <<EOL
+cat > "${script}.sh" <<EOL
 #!/bin/bash
 LANG=$LANG
 shopt -u nocaseglob;shopt -u nocasematch
@@ -880,32 +904,32 @@ if [ "\$#" -eq "1" ];then
 else
 	ID=\$SGE_TASK_ID
 fi
-PATS=$final-pats.sto
-VARS=$final-vars.sto
+PATS="$final-pats.sto"
+VARS="$final-vars.sto"
 
-$spath/phase.pl $final \$VARS \$PATS -S $procs -I \$ID
+"$spath"/phase.pl "$final" "\$VARS" "\$PATS" -S $procs -I \$ID
 EOL
 #########################################
 
-	chmod 755 ${script}.sh
+	chmod 755 "${script}.sh"
 	if [ "$doGrid" -eq "1" ];then
-		qsub $IRMA_QUEUE -t 1-$procs:1 -N ${gene}-phasing -sync y -wd $ppath -j y -o ${script}.o ${script}.sh > /dev/null 2>&1
+		qsub $IRMA_QUEUE -t 1-$procs:1 -N ${gene}-phasing -sync y -wd "$ppath" -j y -o "${script}.o" "${script}.sh" > /dev/null 2>&1
 		if [ "$?" -ne "0" ];then
 			time_stamp "qsub of '${gene}-phasing' failed. Switching to master node."
-			$PARALLEL --workdir $ppath -j $SINGLE_LOCAL_PROC $BASH ${script}.sh {} ::: $(seq $procs) > /dev/null 2>&1
+			"$PARALLEL" --nn --workdir "$ppath" -j $SINGLE_LOCAL_PROC -q $BASH "${script}.sh" {} ::: $(seq $procs) > /dev/null 2>&1
 		else
-			rm ${script}.o
+			rm "${script}.o"
 		fi
 	else 
-		$PARALLEL --workdir $ppath -j $procs $BASH ${script}.sh {} ::: $(seq $procs) > /dev/null 2>&1
+		"$PARALLEL" --nn --workdir "$ppath" -j $procs -q $BASH "${script}.sh" {} ::: $(seq $procs) > /dev/null 2>&1
 	fi
-	rm ${final}-pats.sto ${final}-vars.sto ${script}.sh
+	rm "${final}-pats.sto" "${final}-vars.sto" "${script}.sh"
 
 	local i=""
 	for i in EXPENRD JACCARD MUTUALD NJOINTP;do
-		cat ${final}-*-${i}.sqm > $final-${i}.sqm
-		$spath/completeMatrix.pl $final-${i}.sqm
-		rmglob ${final}-*-${i}.sqm
+		cat "${final}"-*-${i}.sqm > "$final-${i}.sqm"
+		"$spath"/completeMatrix.pl "$final-${i}.sqm"
+		rmglob "${final}"-*-${i}.sqm
 	done
 }
 
@@ -929,36 +953,36 @@ function REFINE_ASSEMBLY_CALL_VARIANTS() {
 	fi
 
 	# DEFINE local variables
-	local log=$assemp/$gene.log
+	local log="$assemp"/$gene.log
 	local COMBINE_SAM_OPTS="-N $gene -I $INS_T -D $DEL_T -A $MIN_FA -C $MIN_CA"
-	local theRef="";local theStats="";local newRef=""
+	local theRef="";local -a theStats=();local newRef=""
 	local theBAM="";local theSAM=""
 	local lastScore=0;local currentScore=0;local iter=1
 
 	for (( iter=1; iter <= $MAX_ITER_ASSEM; iter++ ));do
 		# perform current assembly
-		theRef=$assemp/F${iter}-$gene.ref
-		$ASSEM_FUNCTION $iter $gene $theRef $procs $doGrid
+		theRef="$assemp"/F${iter}-$gene.ref
+		$ASSEM_FUNCTION $iter "$gene" "$theRef" $procs $doGrid
 
 		# convert SAM to BAM
-		theSAM=$assemp/F${iter}-$gene.sam;theBAM=$assemp/F${iter}-$gene.bam
-		$SAMTOOLS view -bS $theSAM > $theBAM 2> /dev/null
+		theSAM="$assemp"/F${iter}-$gene.sam;theBAM="$assemp"/F${iter}-$gene.bam
+		"$SAMTOOLS" view -bS "$theSAM" > "$theBAM" 2> /dev/null
 
 		# save last score & take current score
-		lastScore=$currentScore;currentScore=$($ASSEM_SCORE $theSAM)
+		lastScore=$currentScore;currentScore=$($ASSEM_SCORE "$theSAM")
 		echo -e "$currentScore\t$theSAM" >> $log
 
-		theStats=$assemp/F${iter}-$gene-*.sto
+		theStats=("$assemp"/F${iter}-$gene-*.sto)
 		if [ "$lastScore" -lt "$currentScore" ];then
 			if [ "$iter" -lt "$MAX_ITER_ASSEM" ];then
 				# generate next reference
 				newRef="$assemp/F$(( $iter + 1 ))-$gene.ref"
-				$spath/combineSAMstats.pl $theRef $COMBINE_SAM_OPTS $theStats > $newRef
+				"$spath"/combineSAMstats.pl "$theRef" $COMBINE_SAM_OPTS "${theStats[@]}" > "$newRef" || return 1
 			fi
-			rm $theStats
+			rm "${theStats[@]}"
 		else
 			# we are finished
-			rm $theStats
+			rm "${theStats[@]}"
 			break
 		fi
 	done
@@ -966,24 +990,25 @@ function REFINE_ASSEMBLY_CALL_VARIANTS() {
 	# CALL variants
 	if [ "$iter" -gt "$MAX_ITER_ASSEM" ];then
 		((iter--))
-		doCALLS $MAX_ITER_ASSEM $gene $final $procs $doGrid
+		doCALLS $MAX_ITER_ASSEM "$gene" "$final" $procs $doGrid || return 1
 	else
 		if [ "$lastScore" -gt "$currentScore" ];then
-			rm $theRef $theSAM $theBAM			
+			rm "$theRef" "$theSAM" "$theBAM"			
 			((iter--))
 		fi
-		doCALLS $iter $gene $final $procs $doGrid
+		doCALLS $iter "$gene" "$final" $procs $doGrid || return 1
 	fi
 
 	# CLEAN UP
-	rmglob $assemp/${gene}_????.fastq $assemp/*-${gene}-????.*
-	return $iter
+	rmglob "$assemp"/${gene}_????.fastq "$assemp"/*-${gene}-????.*
+	time_stamp "finished $gene (F$iter)"
+	return 0
 }
 
 function ASSEMBLE_REPORT() {
 	local gene=$1
-	local final=$ppath/$gene
-	local fastq=$assemp/$gene.fastq
+	local final="$ppath"/$gene
+	local fastq="$assemp"/$gene.fastq
 	local size=$(( $(wc -l < $fastq) / 4 ))
 	local doGrid=0
 	local procs=0
@@ -1004,88 +1029,89 @@ function ASSEMBLE_REPORT() {
 
 	# ITERATIVE REFINEMENT of ASSEMBLY chained to CALLING and PHASING
 	if [ "$PAIRED" -eq "1" ];then
-		$Lspath/interleavedSamples.pl -G $procs -P $fastq $assemp/$gene > /dev/null
+		"$Lspath"/interleavedSamples.pl -G $procs -P "$fastq" "$assemp"/"$gene" > /dev/null
 	else
-		$Lspath/interleavedSamples.pl -G $procs -Q $fastq $assemp/$gene > /dev/null
+		"$Lspath"/interleavedSamples.pl -G $procs -Q "$fastq" "$assemp"/"$gene" > /dev/null
 	fi
 	time_stamp "started $gene ($size)"
-	REFINE_ASSEMBLY_CALL_VARIANTS $gene $procs $doGrid $final
-	last_iter=$?	
-	doPHASING $gene $final
+	REFINE_ASSEMBLY_CALL_VARIANTS "$gene" $procs $doGrid "$final" || return 1
+	doPHASING "$gene" "$final" || return 1
 
-	local n=$(wc -l < ${final}-variants.txt)
-	$spath/addPhaseField.pl ${final}-variants.txt <($spath/phases.R ${final}-EXPENRD.sqm $PHASE_DISTANCE)
+	local n=$(wc -l < "${final}-variants.txt")
+	[ "$?" -ne "0" ] && { time_stamp "missing variant file for $gene"; return 1; }
+	"$spath"/addPhaseField.pl "${final}-variants.txt" <("$spath"/phases.R "${final}-EXPENRD.sqm" $PHASE_DISTANCE)
 	if [ "$n" -gt "1" ]; then
-		$RSCRIPT $spath/coverageDiagram.R $RUN $gene $final-coverage.txt $final-variants.txt $final-pairingStats.txt $final-coverageDiagram.pdf > /dev/null 2>&1
+		"$RSCRIPT" --vanilla "$spath"/coverageDiagram.R $RUN "$gene" "$final-coverage.txt" "$final-variants.txt" "$final-pairingStats.txt" "$final-coverageDiagram.pdf" > /dev/null 2>&1
 		if [ "$n" -gt "2" ]; then
-			$PARALLEL $RSCRIPT $spath/sqmHeatmap.R ${final}-{}.sqm ${final}-{}.pdf 2 ::: EXPENRD JACCARD MUTUALD NJOINTP > /dev/null
+			"$PARALLEL" --nn -q "$RSCRIPT" --vanilla "$spath"/sqmHeatmap.R "${final}"-{}.sqm "${final}"-{}.pdf 2 ::: EXPENRD JACCARD MUTUALD NJOINTP > /dev/null
 		fi
 	else
-		$RSCRIPT $spath/simpleCoverageDiagram.R $RUN $gene $final-coverage.txt $final-coverageDiagram.pdf > /dev/null 2>&1
+		"$RSCRIPT" --vanilla "$spath"/simpleCoverageDiagram.R $RUN "$gene" "$final-coverage.txt" "$final-coverageDiagram.pdf" > /dev/null 2>&1
 	fi
 
-	$RSCRIPT $spath/heuristicDiagram.R $MIN_AQ $MIN_F $MIN_TCC $MIN_CONF ${final}-allAlleles.txt ${final}-heuristics.pdf > /dev/null 2>&1
+	"$RSCRIPT" --vanilla "$spath"/heuristicDiagram.R $MIN_AQ $MIN_F $MIN_TCC $MIN_CONF "${final}-allAlleles.txt" "${final}-heuristics.pdf" > /dev/null 2>&1
 
-	local options="-C $MIN_C -N $RUN -F $MIN_AMBIG -P $ppath"
+	local options="-C $MIN_C -N $RUN -F $MIN_AMBIG"
 	[ "$SEG_NUMBERS" != "" ] && options+=" -S $SEG_NUMBERS"
 	[ "$SORT_GROUPS" == "" -a "${NONSEGMENTED:-1}" -eq "0" ] && options+=" -H"
-	$spath/amendConsensus.pl ${final}.fasta ${final}-variants.txt $options
+	"$spath"/amendConsensus.pl -P "$ppath" "${final}.fasta" "${final}-variants.txt" $options
 
-	if [ -r ${final}-insertions.txt -a -r ${final}-deletions.txt ];then
+	if [ -r "${final}-insertions.txt" -a -r "${final}-deletions.txt" ];then
 		local options="-C $MIN_C -F $MIN_F -I $MIN_FI -D $MIN_FD -Q $MIN_AQ -T $MIN_TCC -M $MIN_CONF -S $SIG_LEVEL"
 		[ "$AUTO_F" -eq 1 ] && options+=" -A"
-		$spath/vcfGenerator.pl $options ${final}.fasta ${final}-allAlleles.txt ${final}-insertions.txt ${final}-deletions.txt > ${final}.vcf
+		"$spath"/vcfGenerator.pl $options "${final}.fasta" "${final}-allAlleles.txt" "${final}-insertions.txt" "${final}-deletions.txt" > "${final}.vcf"
 	fi
 
-	$SAMTOOLS view -bS ${final}.sam > ${final}.bam 2> /dev/null
-	$SAMTOOLS sort ${final}.bam $final > /dev/null 2>&1
-	$SAMTOOLS index ${final}.bam > /dev/null 2>&1
-	rmglob $assemp/F*-$gene.sam
-	time_stamp "finished $gene (F$last_iter)"
+	"$SAMTOOLS" view -bS "${final}.sam" > "${final}.bam" 2> /dev/null
+	"$SAMTOOLS" sort "${final}.bam" "$final" > /dev/null 2>&1
+	"$SAMTOOLS" index "${final}.bam" > /dev/null 2>&1
+	rmglob "$assemp"/F*-$gene.sam
+	return 0
 }
 
 function doPostProcessing() {
+	local -a pid=()
+
 	# if failed to assemble anything, skip post processing
 	[ -d "$ppath/other_data" ] && return 0
 
 	# Create directory for the phases
-	mkdir $ppath/intermediate
+	mkdir "$ppath"/intermediate
 
 	# INFLATE TO FASTQ
 	if [ "$ASSEM_REF" -eq "1" ];then
-		if test -n "$(shopt -s nullglob;echo $refp/R0-*.ref)";then
-			for ref in $refp/R0-*.ref;do
-				name=$(basename $ref .ref)
+		if test -n "$(shopt -s nullglob;echo "$refp"/R0-*.ref)";then
+			for ref in "$refp"/R0-*.ref;do
+				name=$(basename "$ref" .ref)
 				gene=${name#*-}
-				if test -n "$(shopt -s nullglob;echo $sortp/R*-$gene.fa)";then
-					cat $sortp/R*-$gene.fa > $assemp/$gene.fa
-					$spath/xflate.pl -I -Q -R $ppath/R0.xfl $assemp/$gene.fa > $assemp/$gene.fastq &
-					$spath/ordinalHeaders.pl -O $gene $ref > $assemp/F1-$gene.ref	
+				if test -n "$(shopt -s nullglob;echo "$sortp"/R*-$gene.fa)";then
+					cat "$sortp"/R*-$gene.fa > "$assemp"/$gene.fa
+					"$spath"/xflate.pl -I -Q -R "$ppath"/R0.xfl "$assemp"/$gene.fa > "$assemp"/$gene.fastq & pid+=($!)
+					"$spath"/ordinalHeaders.pl -O "$gene" "$ref" > "$assemp"/F1-$gene.ref	
 				fi
 			done
 		fi
 	else
-		if test -n "$(shopt -s nullglob;echo $refp/R[1-9].refs)";then
+		if test -n "$(shopt -s nullglob;echo "$refp"/R[1-9].refs)";then
 			# -G gets rid of alternative references
-			for name in $($spath/finalRefs.pl -G $refp/R[1-9].refs);do
+			for name in $("$spath"/finalRefs.pl -G "$refp"/R[1-9].refs);do
 				gene=${name#*-}
-				cat $sortp/R*-$gene.fa > $assemp/$gene.fa
-				$spath/xflate.pl -I -Q -R $ppath/R0.xfl $assemp/$gene.fa > $assemp/$gene.fastq &
-				head -n2 $refp/$name.ref > $assemp/F1-$gene.ref
+				cat "$sortp"/R*-$gene.fa > "$assemp"/$gene.fa
+				"$spath"/xflate.pl -I -Q -R "$ppath"/R0.xfl "$assemp"/$gene.fa > "$assemp"/$gene.fastq & pid+=($!)
+				head -n2 "$refp"/$name.ref > "$assemp"/F1-$gene.ref
 			done
 		fi
 	fi
-	wait
-	time_stamp 'converted back to fastq'
+	wait_check "${pid[@]}" && time_stamp 'converted back to fastq' || die 'fastq conversion failed'
 
 	# SAVE unmatched read patterns
-	cd $matchp
+	cd "$matchp"
 	local LAST_ROUND=$(($R<=MAX_ROUNDS?$R:$MAX_ROUNDS))
-	tar -cf - R${LAST_ROUND}.nomatch|$ZIP -4 - > $ppath/unmatched_read_patterns.tar.gz &
+	tar -cf - R${LAST_ROUND}.nomatch|"$ZIP" $Z_OPTS - > "$ppath"/unmatched_read_patterns.tar.gz &
 	cd - > /dev/null
 	if [ "$ALIGN_PROG" != "NONE" ];then
-		cd $alignp
-		tar -cf - R*.sto 2>/dev/null |$ZIP -4 - > storedCounts.tar.gz &
+		cd "$alignp"
+		tar -cf - R*.sto 2>/dev/null |"$ZIP" $Z_OPTS - > storedCounts.tar.gz &
 		cd - > /dev/null
 	fi
 	wait
@@ -1093,162 +1119,164 @@ function doPostProcessing() {
 
 	# CLEAN UP
 	if [ "${SECONDARY_SORT:-0}" -eq "1" -a "$SORT_PROG" == "LABEL" ];then 
-		rmglob $matchp/R?.match.*
+		rmglob "$matchp"/R?.match.*
 	fi
 
 	### READ COUNTS ###
-	echo -e "Record\tReads\tPatterns\tPairsAndWidows" >> $ppath/READ_COUNTS.txt
+	echo -e "Record\tReads\tPatterns\tPairsAndWidows" >> "$ppath"/READ_COUNTS.txt
 	if [ "$PAIRED" -eq "1" ];then
-		raw1=$(grep LEFT.log $ppath/QC_log.txt |$spath/sumField.pl -F 2)
-		raw2=$(grep RIGHT.log $ppath/QC_log.txt |$spath/sumField.pl -F 2)
-		echo -e "0-R1\t${raw1}\tNA\tNA" >> $ppath/READ_COUNTS.txt
-		echo -e "0-R2\t${raw2}\tNA\tNA" >> $ppath/READ_COUNTS.txt
+		raw1=$(grep LEFT.log "$ppath"/QC_log.txt |"$spath"/sumField.pl -F 2)
+		raw2=$(grep RIGHT.log "$ppath"/QC_log.txt |"$spath"/sumField.pl -F 2)
+		echo -e "0-R1\t${raw1}\tNA\tNA" >> "$ppath"/READ_COUNTS.txt
+		echo -e "0-R2\t${raw2}\tNA\tNA" >> "$ppath"/READ_COUNTS.txt
 	fi
-	raw1=$(cat $ppath/QC_log.txt|$spath/sumField.pl -F 2)
-	raw2=$(cat $ppath/QC_log.txt|$spath/sumField.pl -F 3)
+	raw1=$(cat "$ppath"/QC_log.txt|"$spath"/sumField.pl -F 2)
+	raw2=$(cat "$ppath"/QC_log.txt|"$spath"/sumField.pl -F 3)
 	raw3=$(( $raw1 - $raw2 ))
-	read raw pats <<<$(grep '>' $ppath/R0.fa|cut -f2 -d'%'|$spath/sumField.pl -S)
-	echo -e "1-initial\t${raw1}\tNA\tNA" >> $ppath/READ_COUNTS.txt
-	echo -e "2-failQC\t${raw3}\tNA\tNA" >> $ppath/READ_COUNTS.txt
-	echo -e "2-passQC\t${raw}\t${pats}\tNA" >> $ppath/READ_COUNTS.txt
+	read raw pats <<<$(grep '>' "$ppath"/R0.fa|cut -f2 -d'%'|"$spath"/sumField.pl -S)
+	echo -e "1-initial\t${raw1}\tNA\tNA" >> "$ppath"/READ_COUNTS.txt
+	echo -e "2-failQC\t${raw3}\tNA\tNA" >> "$ppath"/READ_COUNTS.txt
+	echo -e "2-passQC\t${raw}\t${pats}\tNA" >> "$ppath"/READ_COUNTS.txt
 	
-	read raw1 pats1 <<<$(grep '>' $matchp/*.chim|cut -f2 -d'%'|$spath/sumField.pl -S)
-	read raw2 pats2 <<<$(grep '>' $matchp/R${LAST_ROUND}.nomatch|cut -f2 -d'%'|$spath/sumField.pl -S)
-	echo -e "3-chimeric\t${raw1}\t${pats1}\tNA" >> $ppath/READ_COUNTS.txt
-	echo -e "3-nomatch\t${raw2}\t${pats2}\tNA" >> $ppath/READ_COUNTS.txt
+	read raw1 pats1 <<<$(grep '>' "$matchp"/*.chim|cut -f2 -d'%'|"$spath"/sumField.pl -S)
+	read raw2 pats2 <<<$(grep '>' "$matchp"/R${LAST_ROUND}.nomatch|cut -f2 -d'%'|"$spath"/sumField.pl -S)
+	echo -e "3-chimeric\t${raw1}\t${pats1}\tNA" >> "$ppath"/READ_COUNTS.txt
+	echo -e "3-nomatch\t${raw2}\t${pats2}\tNA" >> "$ppath"/READ_COUNTS.txt
 
-	if test -n "$(shopt -s nullglob;echo $sortp/*UNRECOGNIZABLE*)";then
-		read raw pats <<<$(grep '>' $sortp/*UNRECOGNIZABLE*|cut -f2 -d'%'|$spath/sumField.pl -S)
-		echo -e "3-unrecognizable\t${raw}\t${pats}\tNA" >> $ppath/READ_COUNTS.txt
+	if test -n "$(shopt -s nullglob;echo "$sortp"/*UNRECOGNIZABLE*)";then
+		read raw pats <<<$(grep '>' "$sortp"/*UNRECOGNIZABLE*|cut -f2 -d'%'|"$spath"/sumField.pl -S)
+		echo -e "3-unrecognizable\t${raw}\t${pats}\tNA" >> "$ppath"/READ_COUNTS.txt
 	fi
 	### END COUNTS ###
 
-	grep '>' $matchp/R?.{match,nomatch,chim} $ppath/R0.fa -c > $ppath/NR_COUNTS_log.txt
-	[ "$ALIGN_PROG" != "NONE" ] && rmglob $alignp/R*.sto &
-	rmglob $matchp/R*.{match,chim} &
-	rmglob $sortp/R*.fa $ppath/R0.fa &
+	grep '>' "$matchp"/R?.{match,nomatch,chim} "$ppath"/R0.fa -c > "$ppath"/NR_COUNTS_log.txt
+	[ "$ALIGN_PROG" != "NONE" ] && rmglob "$alignp"/R*.sto &
+	rmglob "$matchp"/R*.{match,chim} &
+	rmglob "$sortp"/R*.fa "$ppath"/R0.fa &
 	wait
 	
+	pid=()
 	# POLISH the final assembly & do variant calls/phasing
-	if test -n "$(shopt -s nullglob;echo $assemp/F1-*.ref)";then
-		for ref1 in $assemp/F1-*.ref;do
-			name=$(basename $ref1 .ref)
+	if test -n "$(shopt -s nullglob;echo "$assemp"/F1-*.ref)";then
+		for ref1 in "$assemp"/F1-*.ref;do
+			name=$(basename "$ref1" .ref)
 			gene=${name#*-}
 			if [ -s "$assemp/${gene}.fastq" ];then
-				ASSEMBLE_REPORT $gene &
+				ASSEMBLE_REPORT "$gene" & pid+=($!)
 			else
 				time_stamp "skipping $gene assembly, no fastq"
 			fi
 		done
-		wait
-		time_stamp 'mapped to references, BAM files created'
+#		wait_check "${pid[@]}" || die "final assembly failed" 
+		wait_check "${pid[@]}" || exit 0
+		time_stamp 'variants phased, BAM files created'
 
-		for i in $ppath/*bam;do
-			pairs=$($SAMTOOLS view -c $i)
-			gene=$(basename $i .bam)
-			read raw pats <<<$(grep '>' $assemp/${gene}.fa|cut -f2 -d'%'|$spath/sumField.pl -S)
-			echo -e "4-${gene}\t${raw}\t${pats}\t${pairs}" >> $ppath/READ_COUNTS.txt.tmp
-			echo ${i}:$pairs >> $ppath/READ_log.txt
+		for i in "$ppath"/*bam;do
+			pairs=$("$SAMTOOLS" view -c "$i")
+			gene=$(basename "$i" .bam)
+			read raw pats <<<$(grep '>' "$assemp"/${gene}.fa|cut -f2 -d'%'|"$spath"/sumField.pl -S)
+			echo -e "4-${gene}\t${raw}\t${pats}\t${pairs}" >> "$ppath"/READ_COUNTS.txt.tmp
+			echo ${i}:$pairs >> "$ppath"/READ_log.txt
 		done
 
-		cd $assemp
-		tar -cf - *.fastq|$ZIP -4 - > $assemp/reads.tar.gz
+		cd "$assemp"
+		tar -cf - *.fastq|"$ZIP" $Z_OPTS - > "$assemp"/reads.tar.gz
 		cd - > /dev/null
-		grep '>' $assemp/*.fa -Hc >> $ppath/NR_COUNTS_log.txt
-		rmglob $assemp/*.fastq $assemp/*.fa
+		grep '>' "$assemp"/*.fa -Hc >> "$ppath"/NR_COUNTS_log.txt
+		rmglob "$assemp"/*.fastq "$assemp"/*.fa
 
-		[ ! -d $ppath/amended_consensus ] && mkdir $ppath/amended_consensus
-		[ -n "$(shopt -s nullglob;echo $ppath/*.fa)" ] && mv $ppath/*.fa $ppath/amended_consensus
+		[ ! -d "$ppath"/amended_consensus ] && mkdir "$ppath"/amended_consensus
+		[ -n "$(shopt -s nullglob;echo "$ppath"/*.fa)" ] && mv "$ppath"/*.fa "$ppath"/amended_consensus
 		
-		[ ! -d $ppath/matrices ] && mkdir $ppath/matrices	
-		[ -n "$(shopt -s nullglob;echo $ppath/*.sqm)" ] && mv $ppath/*.sqm $ppath/matrices
+		[ ! -d "$ppath"/matrices ] && mkdir "$ppath"/matrices	
+		[ -n "$(shopt -s nullglob;echo "$ppath"/*.sqm)" ] && mv "$ppath"/*.sqm "$ppath"/matrices
 		
-		echo -e "Total Score\tAlignment" > $ppath/ASSEMBLY_log.txt
-		cat $assemp/*.log >> $ppath/ASSEMBLY_log.txt
-		rmglob $assemp/*.log $ppath/*.sam
+		echo -e "Total Score\tAlignment" > "$ppath"/ASSEMBLY_log.txt
+		cat "$assemp"/*.log >> "$ppath"/ASSEMBLY_log.txt
+		rmglob "$assemp"/*.log "$ppath"/*.sam
 	else
 		time_stamp "skipping final assembly, no reference files found"
-		touch $ppath/READ_COUNTS.txt.tmp
+		touch "$ppath"/READ_COUNTS.txt.tmp
 	fi
 
 	# handle logs
-	mkdir $ppath/logs
-	mv $ppath/*log.txt $ppath/logs
-	[ -r $rpath/.commit ] && LAST_COMMIT="$(cat $rpath/.commit)" || LAST_COMMIT="NOT_AVAILBLE"
-	source "$spath/run_info.sh"
-	source "$spath/run_config.sh"
+	mkdir "$ppath"/logs
+	mv "$ppath"/*log.txt "$ppath"/logs
+	[ -r "$rpath"/.commit ] && LAST_COMMIT=$(cat "$rpath"/.commit) || LAST_COMMIT="NOT_AVAILBLE"
+	source "$spath"/run_info.sh
+	source "$spath"/run_config.sh
 
 	# final order
-	mkdir $ppath/secondary
-	mv $ppath/unmatched_read_patterns* $ppath/secondary
+	mkdir "$ppath"/secondary
+	mv "$ppath"/unmatched_read_patterns* "$ppath"/secondary
 
 	# deposit secondary data
-	if test -n "$(shopt -s nullglob;echo $sortp/*.fa.2)";then
-		for i in $sortp/*.fa.2;do
-			mv $i $ppath/secondary/$(basename $i .2)
+	if test -n "$(shopt -s nullglob;echo "$sortp"/*.fa.2)";then
+		for i in "$sortp"/*.fa.2;do
+			mv $i "$ppath"/secondary/$(basename $i .2)
 		done
 	
 		# alternative counts
-		for gene in $($PARALLEL echo  {/.} ::: $ppath/secondary/*.fa|cut -f2- -d'-'|sort|uniq|grep -v UNRECOGNIZABLE);do
-			read raw pats <<<$(grep -h '>' $ppath/secondary/*-${gene}.fa|cut -f2 -d'%'|$spath/sumField.pl -S)
-			echo -e "5-$gene\t${raw}\t${pats}\tNA" >> $ppath/READ_COUNTS.txt.tmp
+		for gene in $("$PARALLEL" --nn -q echo  {/.} ::: "$ppath"/secondary/*.fa|cut -f2- -d'-'|sort|uniq|grep -v UNRECOGNIZABLE);do
+			read raw pats <<<$(grep -h '>' "$ppath"/secondary/*-${gene}.fa|cut -f2 -d'%'|"$spath"/sumField.pl -S)
+			echo -e "5-$gene\t${raw}\t${pats}\tNA" >> "$ppath"/READ_COUNTS.txt.tmp
 		done 
 	fi
 
-	if [ "$(grep '^4-' $ppath/READ_COUNTS.txt.tmp -c)" -gt "0" ];then
-		x=$(grep '^4-' $ppath/READ_COUNTS.txt.tmp|$spath/sumField.pl -F 2)
-		y=$(grep '^4-' $ppath/READ_COUNTS.txt.tmp|$spath/sumField.pl -F 3)
-		z=$(grep '^4-' $ppath/READ_COUNTS.txt.tmp|$spath/sumField.pl -F 4)
-		echo -e "3-match\t$x\t$y\t$z" >> $ppath/READ_COUNTS.txt
+	if [ "$(grep '^4-' "$ppath"/READ_COUNTS.txt.tmp -c)" -gt "0" ];then
+		x=$(grep '^4-' "$ppath"/READ_COUNTS.txt.tmp|"$spath"/sumField.pl -F 2)
+		y=$(grep '^4-' "$ppath"/READ_COUNTS.txt.tmp|"$spath"/sumField.pl -F 3)
+		z=$(grep '^4-' "$ppath"/READ_COUNTS.txt.tmp|"$spath"/sumField.pl -F 4)
+		echo -e "3-match\t$x\t$y\t$z" >> "$ppath"/READ_COUNTS.txt
 	fi
 
-	if [ "$(grep '^5-' $ppath/READ_COUNTS.txt.tmp -c)" -gt "0" ];then
-		x=$(grep '^5-' $ppath/READ_COUNTS.txt.tmp|$spath/sumField.pl -F 2)
-		y=$(grep '^5-' $ppath/READ_COUNTS.txt.tmp|$spath/sumField.pl -F 3)
-		echo -e "3-altmatch\t$x\t$y\tNA" >> $ppath/READ_COUNTS.txt
+	if [ "$(grep '^5-' "$ppath"/READ_COUNTS.txt.tmp -c)" -gt "0" ];then
+		x=$(grep '^5-' "$ppath"/READ_COUNTS.txt.tmp|"$spath"/sumField.pl -F 2)
+		y=$(grep '^5-' "$ppath"/READ_COUNTS.txt.tmp|"$spath"/sumField.pl -F 3)
+		echo -e "3-altmatch\t$x\t$y\tNA" >> "$ppath"/READ_COUNTS.txt
 	fi
 
 	# Check to see if a residual assembly may be possible, if so, store data
-	if [ "$(grep '3-match' $ppath/READ_COUNTS.txt -c)" -gt "0" -a "$(grep '3-nomatch' $ppath/READ_COUNTS.txt -c)" -gt "0" ];then
-		local cntmatch=$(grep '3-match' $ppath/READ_COUNTS.txt|cut -f3)
-		local altmatch=$(grep '3-altmatch' $ppath/READ_COUNTS.txt|cut -f3)
+	if [ "$(grep '3-match' "$ppath"/READ_COUNTS.txt -c)" -gt "0" -a "$(grep '3-nomatch' "$ppath"/READ_COUNTS.txt -c)" -gt "0" ];then
+		local cntmatch=$(grep '3-match' "$ppath"/READ_COUNTS.txt|cut -f3)
+		local altmatch=$(grep '3-altmatch' "$ppath"/READ_COUNTS.txt|cut -f3)
 		local factor=$( expr ${cntmatch:-1} / ${altmatch:-1} ) 
 		if [ "${factor:-0}" -lt "${RESIDUAL_ASSEMBLY_FACTOR:-400}" ];then
 			time_stamp "residual read pattern ratio non-trivial (${factor:-0}x < ${RESIDUAL_ASSEMBLY_FACTOR:-400}x)"
-			local alt_ppath=$original_path/residual_assemblies
-			mkdir $alt_ppath; createDirs $alt_ppath
-			ln $ppath/R0.xfl.bak $alt_ppath/R0.xfl
-			ln $ppath/logs/QC_log.txt $alt_ppath/QC_log.txt
-			ln $refp/R0.refs $alt_ppath/GENES/R0.refs
-			cp $matchp/R${LAST_ROUND}.nomatch $alt_ppath/R0.fa
-			catglob $ppath/secondary/R*.fa >> $alt_ppath/R0.fa
-			grep '3-chimeric' $ppath/READ_COUNTS.txt	>> $alt_ppath/READ_COUNTS.txt.prim
-			grep '3-match' $ppath/READ_COUNTS.txt | perl -pe '$_ =~ s/match/altmatch/' >> $alt_ppath/READ_COUNTS.txt.prim
+			local alt_ppath="$original_path"/residual_assemblies
+			mkdir "$alt_ppath"; createDirs "$alt_ppath"
+			ln "$ppath"/R0.xfl.bak "$alt_ppath"/R0.xfl
+			ln "$ppath"/logs/QC_log.txt "$alt_ppath"/QC_log.txt
+			ln "$refp"/R0.refs "$alt_ppath"/GENES/R0.refs
+			cp "$matchp"/R${LAST_ROUND}.nomatch "$alt_ppath"/R0.fa
+			catglob "$ppath"/secondary/R*.fa >> "$alt_ppath"/R0.fa
+			grep '3-chimeric' "$ppath"/READ_COUNTS.txt	>> "$alt_ppath"/READ_COUNTS.txt.prim
+			grep '3-match' "$ppath"/READ_COUNTS.txt | perl -pe '$_ =~ s/match/altmatch/' >> "$alt_ppath"/READ_COUNTS.txt.prim
 
 
-			[ ! -s "$alt_ppath/R0.fa" ] && rm -rf $alt_ppath && time_stamp "No data found for 'residual_assembles'"
+			[ ! -s "$alt_ppath/R0.fa" ] && rm -rf "$alt_ppath" && time_stamp "No data found for 'residual_assembles'"
 		fi
 	fi
 
 	# adjust counts, prim is from primary if this is secondary
-	[ -r "$ppath/READ_COUNTS.txt.prim" ] && cat $ppath/READ_COUNTS.txt.prim >> $ppath/READ_COUNTS.txt && rm $ppath/READ_COUNTS.txt.prim
-	[ -r "$ppath/READ_COUNTS.txt.tmp"  ] && cat $ppath/READ_COUNTS.txt.tmp  >> $ppath/READ_COUNTS.txt && rm $ppath/READ_COUNTS.txt.tmp
-	$RSCRIPT $spath/percentages.R $RUN $ppath/READ_COUNTS.txt $ppath/READ_PERCENTAGES.pdf $PAIRED > /dev/null 2>&1
+	[ -r "$ppath/READ_COUNTS.txt.prim" ] && cat "$ppath"/READ_COUNTS.txt.prim >> "$ppath"/READ_COUNTS.txt && rm "$ppath"/READ_COUNTS.txt.prim
+	[ -r "$ppath/READ_COUNTS.txt.tmp"  ] && cat "$ppath"/READ_COUNTS.txt.tmp  >> "$ppath"/READ_COUNTS.txt && rm "$ppath"/READ_COUNTS.txt.tmp
+	"$RSCRIPT" --vanilla "$spath"/percentages.R $RUN "$ppath"/READ_COUNTS.txt "$ppath"/READ_PERCENTAGES.pdf $PAIRED > /dev/null 2>&1
 
 	# save figures
-	[ ! -d $ppath/figures ] && mkdir $ppath/figures
-	[ -n "$(shopt -s nullglob;echo $ppath/*.pdf)" ] && mv $ppath/*.pdf $ppath/figures
+	[ ! -d "$ppath"/figures ] && mkdir "$ppath"/figures
+	[ -n "$(shopt -s nullglob;echo "$ppath"/*.pdf)" ] && mv "$ppath"/*.pdf "$ppath"/figures
 
 	# save tables
-	[ ! -d $ppath/tables ] && mkdir $ppath/tables
-	[ -n "$(shopt -s nullglob;echo $ppath/*.txt)" ] && mv $ppath/*.txt $ppath/tables
+	[ ! -d "$ppath"/tables ] && mkdir "$ppath"/tables
+	[ -n "$(shopt -s nullglob;echo "$ppath"/*.txt)" ] && mv "$ppath"/*.txt "$ppath"/tables
 
-	rmglob $ppath/R0.xfl $matchp/R*.nomatch $refp/R*.refs
-	mv $refp $ppath/intermediate/0-ITERATIVE-REFERENCES
-	mv $matchp $ppath/intermediate/1-MATCH_$MATCH_PROG
-	mv $sortp $ppath/intermediate/2-SORT_$SORT_PROG
-	mv $alignp $ppath/intermediate/3-ALIGN_$ALIGN_PROG
-	mv $assemp $ppath/intermediate/4-ASSEMBLE_$ASSEM_PROG
+	rmglob "$ppath"/R0.xfl "$matchp"/R*.nomatch "$refp"/R*.refs
+	mv "$refp" "$ppath"/intermediate/0-ITERATIVE-REFERENCES
+	mv "$matchp" "$ppath"/intermediate/1-MATCH_$MATCH_PROG
+	mv "$sortp" "$ppath"/intermediate/2-SORT_$SORT_PROG
+	mv "$alignp" "$ppath"/intermediate/3-ALIGN_$ALIGN_PROG
+	mv "$assemp" "$ppath"/intermediate/4-ASSEMBLE_$ASSEM_PROG
 }
 
 function setPrograms() {
@@ -1299,35 +1327,32 @@ time_stamp "started run '$RUN'"
 
 # optionally check for disk space
 if [ "${ALLOW_DISK_CHECK:-1}" -eq "1" ];then
-	MSG="$($spath/disk_check.pl $ppath $LEFT $RIGHT)"
+	MSG="$("$spath"/disk_check.pl "$ppath" $LEFT $RIGHT)"
 	STATUS=$?
 	if [ "$STATUS" -eq "0" ];then 
 		time_stamp "$MSG"
 	else 
-		[ "$STATUS" -eq "3" ] && time_stamp "$MSG, operations ABORTED!" || time_stamp "disk check failed, operations ABORTED!"
-		moveProject
-		time_stamp 'finished!'
-		exit 1
+		[ "$STATUS" -eq "3" ] && die "$MSG, operations ABORTED!" || die "disk check failed, operations ABORTED!"
 	fi
 fi
 
 if [ "$PAIRED" -eq "1" ];then
-	$spath/xflate.pl -C -Q -L INTER $ppath/R0.xfl \
-		<($CAT < $LEFT|$PARALLEL --pipe -L4 -j$DOUBLE_LOCAL_PROC $spath/fastQ_converter.pl $FASTQ_CONV_OPTS -G $ppath/LEFT.log -g {#}) \
-		<($CAT < $RIGHT|$PARALLEL --pipe -L4 -j$DOUBLE_LOCAL_PROC $spath/fastQ_converter.pl $FASTQ_CONV_OPTS -G $ppath/RIGHT.log -g {#}) \
-		> $ppath/R0.fa
-	cat $ppath/{LEFT,RIGHT}.log > $ppath/QC_log.txt && rmglob $ppath/{LEFT,RIGHT}.log
+	"$spath"/xflate.pl -C -Q -L INTER "$ppath"/R0.xfl \
+		<($CAT < $LEFT|"$PARALLEL" --nn --pipe -L4 -j$DOUBLE_LOCAL_PROC -q "$spath"/fastQ_converter.pl $FASTQ_CONV_OPTS -G "$ppath"/LEFT.log -g {#}) \
+		<($CAT < $RIGHT|"$PARALLEL" --nn --pipe -L4 -j$DOUBLE_LOCAL_PROC -q "$spath"/fastQ_converter.pl $FASTQ_CONV_OPTS -G "$ppath"/RIGHT.log -g {#}) \
+		> "$ppath"/R0.fa
+	cat "$ppath"/{LEFT,RIGHT}.log > "$ppath"/QC_log.txt && rmglob "$ppath"/{LEFT,RIGHT}.log
 	time_stamp 'pre-processed'
 else
-	$spath/xflate.pl -C -Q -L INTER $ppath/R0.xfl \
-		<($CAT < $LEFT|$PARALLEL --pipe -L4 -j$SINGLE_LOCAL_PROC $spath/fastQ_converter.pl $FASTQ_CONV_OPTS -G $ppath/QC_log.txt -g {#}) \
-		> $ppath/R0.fa
+	"$spath"/xflate.pl -C -Q -L INTER "$ppath"/R0.xfl \
+		<($CAT < $LEFT|"$PARALLEL" --nn --pipe -L4 -j$SINGLE_LOCAL_PROC -q "$spath"/fastQ_converter.pl $FASTQ_CONV_OPTS -G "$ppath"/QC_log.txt -g {#}) \
+		> "$ppath"/R0.fa
 	time_stamp 'pre-processed'
 fi
 
 [ "$NO_MERGE" -eq "1" ] && PAIRED=0
 
-if [ ! -s $ppath/R0.fa ];then
+if [ ! -s "$ppath"/R0.fa ];then
 	time_stamp "found no QC'd data, review QC_log.txt"
 	moveProject
 	time_stamp 'finished!'
@@ -1336,65 +1361,61 @@ fi
 
 setPrograms	# set the programs
 if [ "$NO_SORT_REFS" -eq "1" ];then
-	$spath/partitionByField.pl -H -X .ref $REF_SET $refp/R0-
-	cat $refp/R0-*.ref > $refp/R0.refs
+	"$spath"/partitionByField.pl -H -X .ref "$REF_SET" "$refp"/R0-
+	cat "$refp"/R0-*.ref > "$refp"/R0.refs
         time_stamp 'using supplied reference set as-is'
 elif [ "$ASSEM_REF" -eq "1" ];then
-	mkdir $sortp/R0
+	mkdir "$sortp"/R0
 	# Sort out the references
 	if [ "$SORT_PROG" == "LABEL" ];then
-		doLABEL $REF_SET $MODULE $LABEL_MODULE $sortp/R0 $LIMIT_LABEL
-		cat $sortp/R0/SORTED_*.tab > $sortp/R0/SORT_result.txt 2> /dev/null
+		doLABEL "$REF_SET" $MODULE $LABEL_MODULE "$sortp"/R0 $LIMIT_LABEL
+		cat "$sortp"/R0/SORTED_*.tab > "$sortp"/R0/SORT_result.txt 2> /dev/null
 	elif [ "$SORT_PROG" == "BLAT" ];then
 		if [ -r "$DEF_SET" ];then
-			doBLAT $DEF_SET $REF_SET R0 $MODULE $sortp/R0 $SORT_PROC $LIMIT_BLAT
-			cat $sortp/R0/R0-${MODULE}_????.class > $sortp/R0/SORT_result.txt
-			rmglob $sortp/R0/R0-${MODULE}_????.class
+			doBLAT "$DEF_SET" "$REF_SET" R0 $MODULE "$sortp"/R0 $SORT_PROC $LIMIT_BLAT
+			cat "$sortp"/R0/R0-${MODULE}_????.class > "$sortp"/R0/SORT_result.txt
+			rmglob "$sortp"/R0/R0-${MODULE}_????.class
 			if [ ! -s "$sortp/R0/SORT_result.txt" ];then
 				time_stamp "BLAT could not identify any references, trying LABEL."
-				doLABEL $REF_SET $MODULE $LABEL_MODULE $sortp/R0 $LIMIT_LABEL
-				cat $sortp/R0/SORTED_*.tab > $sortp/R0/SORT_result.txt 
-				if [ ! -s "$sortp/R0/SORT_result.txt" ];then
-					time_stamp "LABEL could not identify the custom reference either, exiting"
-					moveProject; exit 1
-				fi
+				doLABEL "$REF_SET" $MODULE $LABEL_MODULE "$sortp"/R0 $LIMIT_LABEL
+				cat "$sortp"/R0/SORTED_*.tab > "$sortp"/R0/SORT_result.txt 
+				[ ! -s "$sortp/R0/SORT_result.txt" ] && die 'LABEL could not identify the custom reference either, exiting'
 			fi
 		else
-			time_stamp "no default classification set found"
-			moveProject; exit 1
+			die 'no default classification set found'
 		fi
 	fi
 
 	options=""
 	[ "$SORT_PROG" == "BLAT" ] && options+=" -G"
 	[ "$BAN_GROUPS" != "" ] && options+=" -B $BAN_GROUPS"
-	$spath/parseSORTresults.pl $sortp/R0/SORT_result.txt $REF_SET $refp/R0 $options
-	cd $sortp/R0; tar  -cf - SORT_result.txt |$ZIP -4 - > $sortp/R0.tar.gz
-	cd - > /dev/null; rm -rf $sortp/R0
+	"$spath"/parseSORTresults.pl "$sortp"/R0/SORT_result.txt "$REF_SET" "$refp"/R0 $options
+	cd "$sortp"/R0; tar  -cf - SORT_result.txt |"$ZIP" $Z_OPTS - > "$sortp"/R0.tar.gz
+	cd - > /dev/null; rm -rf "$sortp"/R0
 
-	if test -n "$(shopt -s nullglob;echo $refp/R0-*.fa)";then
-		for fasta in $refp/R0-*.fa;do
-			name=$(basename $fasta .fa)
+	if test -n "$(shopt -s nullglob;echo "$refp"/R0-*.fa)";then
+		for fasta in "$refp"/R0-*.fa;do
+			name=$(basename "$fasta" .fa)
 			gene=${name#*-}
-			$spath/ordinalHeaders.pl -N $gene $fasta > $refp/${name}.ref
+			"$spath"/ordinalHeaders.pl -N "$gene" "$fasta" > "$refp"/${name}.ref
 		done
-		cat $refp/R0-*.ref > $refp/R0.refs; rmglob $refp/R0-*.fa; REF_SET=$refp/R0.refs
+		cat "$refp"/R0-*.ref > "$refp"/R0.refs; rmglob "$refp"/R0-*.fa; REF_SET="$refp"/R0.refs
 		time_stamp 'sorted user supplied reference set'
 	else
-		time_stamp "run aborted, sequences in $REF_SET not ${MODULE}-like"
+		time_stamp "run aborted, sequences in '$REF_SET' not ${MODULE}-like"
 		moveProject; time_stamp 'finished!'; exit
 	fi
 elif [ "$REF_SET" != "$refp/R0.refs" ];then
-	cp $REF_SET $refp/R0.refs && REF_SET=$refp/R0.refs
+	cp "$REF_SET" "$refp"/R0.refs && REF_SET="$refp"/R0.refs
 fi
 
 # Backup primary data and begin normal assembly
-ln $ppath/R0.fa $ppath/R0.fa.bak
-ln $ppath/R0.xfl $ppath/R0.xfl.bak
-QUERY_SET=$ppath/R0.fa
+ln "$ppath"/R0.fa "$ppath"/R0.fa.bak
+ln "$ppath"/R0.xfl "$ppath"/R0.xfl.bak
+QUERY_SET="$ppath"/R0.fa
 while [ $R -le $MAX_ROUNDS ];do
 	setPrograms
-	doRound $QUERY_SET R$R || break
+	doRound "$QUERY_SET" "R$R" || break
 	MIN_RC=1;MIN_RP=1
 
 	if [ -s "$QUERY_SET" ];then
@@ -1403,16 +1424,16 @@ while [ $R -le $MAX_ROUNDS ];do
 		break
 	fi
 done
-doPostProcessing
+doPostProcessing || die 'aborted'
 
 # Take data in the secondary folder, if it exists, and do another round of assembly
 if [ -s "$ppath/residual_assemblies/R0.fa" ];then
 	time_stamp "attempting RESIDUAL assembly"
-	ppath=$ppath/residual_assemblies
-	REF_SET=$ppath/GENES/R0.refs
-	QUERY_SET=$ppath/R0.fa
+	ppath="$ppath"/residual_assemblies
+	REF_SET="$ppath"/GENES/R0.refs
+	QUERY_SET="$ppath"/R0.fa
 	R=1;RUN="${original_run}-residual"
-	setDirs $ppath
+	setDirs "$ppath"
 	
 	SORT_GROUPS=""
 	RESIDUAL_ASSEMBLY_FACTOR=0;
@@ -1421,7 +1442,7 @@ if [ -s "$ppath/residual_assemblies/R0.fa" ];then
 
 	while [ "$R" -le "$MAX_ROUNDS" ];do
 		setPrograms
-		doRound $QUERY_SET R$R || break
+		doRound "$QUERY_SET" "R$R" || break
 		MIN_RC=1;MIN_RP=1
 
 		if [ -s "$QUERY_SET" ];then
@@ -1430,14 +1451,14 @@ if [ -s "$ppath/residual_assemblies/R0.fa" ];then
 			break
 		fi
 	done
-	doPostProcessing
+	doPostProcessing || die 'aborted'
 fi
 
 # Do secondary assembly if able
-if [ "${DO_SECONDARY:-0}" -eq "1" -a -n "$(shopt -s nullglob;echo $original_path/residual_assemblies/*.fasta)" ];then
+if [ "${DO_SECONDARY:-0}" -eq "1" -a -n "$(shopt -s nullglob;echo "$original_path"/residual_assemblies/*.fasta)" ];then
 	time_stamp "performing SECONDARY assembly"
-	ppath=$original_path/secondary_assembly;mkdir $ppath
-	createDirs $ppath && setDirs $ppath
+	ppath="$original_path"/secondary_assembly;mkdir "$ppath"
+	createDirs "$ppath" && setDirs "$ppath"
 	R=1;RUN="${original_run}-secondary"
 	
 	SORT_GROUPS="";RESIDUAL_ASSEMBLY_FACTOR=0;
@@ -1448,30 +1469,30 @@ if [ "${DO_SECONDARY:-0}" -eq "1" -a -n "$(shopt -s nullglob;echo $original_path
 	SORT_PROG=BLAT;SORT_PROGS=($SORT_PROG)
 	ALIGN_PROG=BLAT;ALIGN_PROGS=($ALIGN_PROG)
 	SKIP_E=1
-	REF_SET=$ppath/GENES/R0.refs
-	QUERY_SET=$ppath/R0.fa
+	REF_SET="$ppath"/GENES/R0.refs
+	QUERY_SET="$ppath"/R0.fa
 
-	ln $original_path/R0.fa.bak $ppath/R0.fa
-	ln $original_path/R0.xfl.bak $ppath/R0.xfl
-	ln $original_path/logs/QC_log.txt $ppath/QC_log.txt
+	ln "$original_path"/R0.fa.bak "$ppath"/R0.fa
+	ln "$original_path"/R0.xfl.bak "$ppath"/R0.xfl
+	ln "$original_path"/logs/QC_log.txt "$ppath"/QC_log.txt
 
-	catglob $original_path/*.fasta > $REF_SET
-	cd $ppath
-	for residual_fasta in $original_path/residual_assemblies/*.fasta;do 
-		gene=$(basename $residual_fasta .fasta)
+	catglob "$original_path"/*.fasta > "$REF_SET"
+	cd "$ppath"
+	for residual_fasta in "$original_path"/residual_assemblies/*.fasta;do 
+		gene=$(basename "$residual_fasta" .fasta)
 		if [ -r "$phmms/${gene}_hmm.mod" ];then
-			cat $residual_fasta <( $spath/ordinalHeaders.pl -O default <( $Lspath/selectSequences.pl $DEF_SET -I $gene ) ) > $ppath/${gene}.patch.fa 
-			$A2M ${gene}.patch -db $ppath/${gene}.patch.fa -modelfile $phmms/${gene}_hmm.mod > /dev/null 2>&1
-			$spath/makePatchworkConsensus.pl $ppath/${gene}.patch.a2m default -N $gene >> $REF_SET
+			cat "$residual_fasta" <( "$spath"/ordinalHeaders.pl -O default <( "$Lspath"/selectSequences.pl "$DEF_SET" -I "$gene" ) ) > "$ppath"/${gene}.patch.fa 
+			"$A2M" ${gene}.patch -db "$ppath"/${gene}.patch.fa -modelfile "$phmms"/${gene}_hmm.mod > /dev/null 2>&1
+			"$spath"/makePatchworkConsensus.pl "$ppath"/${gene}.patch.a2m default -N "$gene" >> "$REF_SET"
 		else
-			cat $residual_fasta >> $REF_SET
+			cat "$residual_fasta" >> "$REF_SET"
 		fi
 	done
-	rmglob $ppath/*.patch.*
+	rmglob "$ppath"/*.patch.*
 
 	while [ "$R" -le "$MAX_ROUNDS" ];do
 		setPrograms
-		doRound $QUERY_SET R$R || break
+		doRound "$QUERY_SET" "R$R" || break
 		MIN_RC=1;MIN_RP=1
 
 		if [ -s "$QUERY_SET" ];then

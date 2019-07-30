@@ -9,7 +9,7 @@ if ( scalar(@ARGV) != 3 ) {
 	die("Usage:\n\t$0 <REF> <SAM> <OUT>\n");
 }
 
-open(REF,'<',$ARGV[0]) or die("Cannot open REF $ARGV[0] for reading.\n");
+open(REF,'<',$ARGV[0]) or die("$0 ERROR: cannot open REF $ARGV[0] for reading.\n");
 $/ = ">";
 while($record = <REF>) {
 	chomp($record);
@@ -23,7 +23,7 @@ while($record = <REF>) {
 	last;
 }
 close(REF);
-if ( !defined($N) ) { die("ERROR: no reference found in $ARGV[0].\n"); }
+if ( !defined($N) ) { die("$0 ERROR: no reference found in $ARGV[0].\n"); }
 
 if ( $ignoreAnnotation && $REF_NAME =~ /^([^{]+)\{[^}]*}/  ) {
 	$REF_NAME = $1;
@@ -31,7 +31,7 @@ if ( $ignoreAnnotation && $REF_NAME =~ /^([^{]+)\{[^}]*}/  ) {
 
 $silenceBadIndels = defined($silenceBadIndels) ? 1 : 0;
 
-open(SAM,'<',$ARGV[1]) or die("Cannot open SAM $ARGV[1] for reading.\n");
+open(SAM,'<',$ARGV[1]) or die("$0 ERROR: cannot open SAM $ARGV[1] for reading.\n");
 $/ = "\n"; @table = ();
 while($line=<SAM>) {
 	chomp($line);

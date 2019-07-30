@@ -32,7 +32,7 @@ if ( !defined($denom) ) {
 
 if ( defined($referenceSeq) ) {
 	$/ = ">"; $keepDeleted = 1;
-	open(REF,'<',$referenceSeq) or die("Cannot open $referenceSeq for reading.\n");
+	open(REF,'<',$referenceSeq) or die("$0 ERROR: cannot open $referenceSeq for reading.\n");
 	while($record = <REF>) {
 		chomp($record);
 		@lines = split(/\r\n|\n|\r/, $record);
