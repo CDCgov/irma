@@ -163,7 +163,7 @@ else
 	elif [ "$MODULE" != "$CONFIG" ];then
 		echo "IRMA ERROR: Configuration '$MODULE_CONFIG' not found. Valid configs are:"
 		tmp=" "
-		for i in "$mpath"/config/*sh;do tmp="$tmp $(basename $i .sh)";done
+		for i in "$mpath"/config/*sh;do tmp+=" $(basename "$i" .sh)";done
 		echo $tmp
 		exit 0
 	fi
@@ -228,16 +228,16 @@ if [ ! -d "$ppath" ]; then
 	mkdir -p "$ppath"
 	if [ "$?" -ne "0" ];then
 		if [ "$ALLOW_TMP" -eq "1" -a "$GRID_ON" -eq "0" ];then
-			echo "$(basename $0) WARNING: cannot create directory '$ppath', trying: "$rpath"/ppath/${RUN}-${TOKEN}"
+			echo "IRMA WARNING: cannot create directory '$ppath', trying: "$rpath"/ppath/${RUN}-${TOKEN}"
 			ppath="$rpath"/ppath/${RUN}-${TOKEN}
 			mkdir -p "$ppath"
-			[ "$?" -ne "0" ] && echo "$(basename $0) ERROR: cannot create directory '$ppath', operations ABORTED!" && exit 1
+			[ "$?" -ne "0" ] && echo "IRMA ERROR: cannot create directory '$ppath', operations ABORTED!" && exit 1
 		else
-			echo "$(basename $0) ERROR: cannot create directory '$ppath', operations ABORTED!" && exit 1
+			echo "IRMA ERROR: cannot create directory '$ppath', operations ABORTED!" && exit 1
 		fi
 	fi
 else
-	echo "$(basename $0) ERROR: run '$RUN' exists, operations have been ABORTED!"
+	echo "IRMA ERROR: run '$RUN' exists, operations have been ABORTED!"
 	exit 1
 fi
 original_run=$RUN
@@ -311,11 +311,11 @@ function doLABEL() {
 	local workdir=$4	# workdir
 	local limit=$5		# grid work
 	local Earg=0
-	local n=$(grep '>' $queryDB -c)
+	local n=$(grep '>' "$queryDB" -c)
 	
 	[ "$n" -gt "$limit" -a "$GRID_ON" -eq "1" ] && Earg=2
 	if [ "$n" -gt "0" ]; then
-		$LABEL -E $Earg -W "$workdir" "$queryDB" $name $labelmodule > /dev/null 2>&1
+		"$LABEL" -E $Earg -W "$workdir" "$queryDB" $name $labelmodule > /dev/null 2>&1
 		mv "$workdir"/${name}/${name}_final.tab "$workdir"/SORTED_${name}.tab
 	fi
 }
@@ -330,7 +330,7 @@ function doBLAT() {
 	local limit=$7
 	local doGrid=0
 	local script="$workdir"/${prefix}-${name}-BLAT
-	local n=$(grep '>' $queryDB -c)
+	local n=$(grep '>' "$queryDB" -c)
 
 	if [ "$n" -gt "$limit" -a "$GRID_ON" -eq "1" ];then
 		doGrid=1
@@ -394,7 +394,6 @@ function doMATCH() {
 	local doGrid=0
 	local procs=0
 	local i=0
-	local -a pid=()
 
 	if [ "$MATCH_PROG" == "BLAT" ];then
 		doBLAT "$REF_SET" "$DB" $prefix $name "$matchp" $MATCH_PROC $LIMIT_BLAT || return 1
@@ -415,10 +414,10 @@ function doMATCH() {
 	if [ "${SECONDARY_SORT:-0}" -eq "1" -a "$SORT_PROG" == "LABEL" -a ! -z "$GENE_GROUP" ];then
 		for i in $(echo $GENE_GROUP|tr ',:' ' ');do
 			if test -n "$(shopt -s nullglob;echo "$matchp"/${prefix}-${name}_????.match.$i)";then
-				cat "$matchp"/${prefix}-${name}_????.match.$i > "$matchp"/${prefix}.match.$i && rm "$matchp"/${prefix}-${name}_????.match.$i & pid+=($!)
+				cat "$matchp"/${prefix}-${name}_????.match.$i > "$matchp"/${prefix}.match.$i && rm "$matchp"/${prefix}-${name}_????.match.$i &
 			fi
 		done
-		wait_check "${pid[@]}" || { time_stamp 'LABEL sort failed, ABORTING.'; return 1; }
+		wait
 	fi
 
 	# CLEAN UP	
@@ -493,7 +492,7 @@ function doSORT() {
 
 	x=$(grep UNRECOGNIZABLE "$sortp"/$prefix/SORT_result.txt -c)
 	y=$(wc -l < "$sortp"/$prefix/SORT_result.txt)
-	if [ $x -gt 0 -a $x -eq $y ];then
+	if [ "$x" -gt "0" -a "$x" -eq "$y" ];then
 		time_stamp "$prefix found no significant reads"
 		return 1
 	fi
@@ -533,7 +532,7 @@ function doSAM() {
 	local options=""
 	[ "$SKIP_E" -eq "1" ] && options+="-S"
 			
-cat >${script}.sh  <<EOL
+cat > "${script}.sh"  <<EOL
 #!/bin/bash
 LANG=$LANG
 shopt -u nocaseglob;shopt -u nocasematch
@@ -548,7 +547,7 @@ RUN="$workdir"/${prefix}-${name}_\$ID
 MOD="$mod"
 
 cd "$workdir"
-"$A2M" \$RUN -modelfile "\$MOD" -db "\$DB"
+"$A2M" "\$RUN" -modelfile "\$MOD" -db "\$DB"
 "$spath"/a2mToMatchStats.pl "\$RUN.a2m" "\$RUN.sto" $options
 EOL
 
@@ -587,10 +586,11 @@ function doALIGN() {
 			j=$(($R - 1))
 			if [ "$R" -gt 1 ];then
 				for i in $(seq $j);do
-					rmglob "$alignp"/R${i}-$name*.sto
+					#rmglob "$alignp"/R${i}-$name*.sto
 					doBLAT "$refp"/R${j}-$name.ref "$sortp"/R${i}-${name}.fa R$i "$name" "$alignp" $ALIGN_PROC $LIMIT_BLAT & pid+=($!)
 				done
 			fi
+exit
 		elif [ "$ALIGN_PROG" == "NONE" ];then
 			:	
 		else
@@ -623,7 +623,7 @@ function doALIGN() {
 function doRound() {
 	local DB=$1
 	local prefix=$2
-	local n=$(grep '>' $DB -c)
+	local n=$(grep '>' "$DB" -c)
 	local x=0
 	local y=0
 	local gene=""
@@ -638,7 +638,7 @@ function doRound() {
 		time_stamp "$prefix aborted, no matches found"
 		return 1
 	fi
-	
+
 	### SORT stage ###
 	DB="$matchp"/${prefix}.match
 	doSORT "$DB" "$prefix" || return 1
@@ -648,10 +648,10 @@ function doRound() {
 	if test -n "$(shopt -s nullglob;echo "$sortp"/$prefix-*.fa)";then
 		# for each current primary dataset
 		for i in "$sortp"/$prefix-*.fa;do
-			name=$(basename $i .fa)
+			name=$(basename "$i" .fa)
 			gene=${name#*-}
 			# if previously a secondary lineage, make the current primary a secondary
-			test -n "$(shopt -s nullglob;echo "$sortp"/R*-${gene}.fa.2)" && mv $i ${i}.2
+			test -n "$(shopt -s nullglob;echo "$sortp"/R*-${gene}.fa.2)" && mv "$i" "${i}.2"
 		done
 	fi
 
@@ -659,11 +659,11 @@ function doRound() {
 	if test -n "$(shopt -s nullglob;echo "$sortp"/$prefix-*.fa.2)";then
 		# for each current secondary dataset
 		for i in "$sortp"/$prefix-*.fa.2;do
-			name=$(basename $i .fa.2)
+			name=$(basename "$i" .fa.2)
 			gene=${name#*-}
 			# if previously a primary lineage, make the current secondary a primary
 			# used to be ".ref"
-			test -n "$(shopt -s nullglob;echo "$sortp"/R*-${gene}.fa)" && mv $i "$sortp"/$(basename $i .2)
+			test -n "$(shopt -s nullglob;echo "$sortp"/R*-${gene}.fa)" && mv "$i" "$sortp"/$(basename "$i" .2)
 		done
 	fi
 
@@ -671,7 +671,7 @@ function doRound() {
 	if [ "$ASSEM_REF" -eq "0" -a "$R" -eq "1" ];then
 		if test -n "$(shopt -s nullglob;echo "$sortp"/$prefix-*.fa)";then
 			for i in "$sortp"/$prefix-*.fa;do
-					name=$(basename $i .fa)
+					name=$(basename "$i" .fa)
 					gene=${name#*-}
 					"$Lspath"/fastaExtractor.pl "$refp"/R0.refs <(echo $gene) > "$refp"/R0-${gene}.ref
 			done
@@ -687,7 +687,7 @@ function doRound() {
 		if [ "$R" -eq 1 ];then
 			mkdir "$ppath"/low_abundance "$ppath"/other_data
 			for i in "$sortp"/*2;do
-				mv $i "$ppath"/low_abundance/$(basename $i .2)
+				mv "$i" "$ppath"/low_abundance/$(basename "$i" .2)
 			done
 
 			if test -n "$(shopt -s nullglob;echo "$ppath"/low_abundance/*UNRECOGNIZABLE*)";then
@@ -833,10 +833,10 @@ VPREFIX="$assemp"/V${iter}-${gene}-\$ID
 if [ "$PAIRED" -eq "1" ];then
 	MSAM="$assemp"/M${iter}-${gene}-\$ID.sam
 	MPREFIX="$assemp"/M${iter}-${gene}-\$ID
-	"$spath"/mergeSAMpairs.pl -S "$ref" "\$SAM" \$MPREFIX
-	"$spath"/varCallStats.pl "$ref" "\$MSAM" \$VPREFIX
+	"$spath"/mergeSAMpairs.pl -S "$ref" "\$SAM" "\$MPREFIX"
+	"$spath"/varCallStats.pl "$ref" "\$MSAM" "\$VPREFIX"
 else
-	"$spath"/varCallStats.pl "$ref" "\$SAM" \$VPREFIX
+	"$spath"/varCallStats.pl "$ref" "\$SAM" "\$VPREFIX"
 fi
 
 EOL
@@ -944,7 +944,7 @@ function REFINE_ASSEMBLY_CALL_VARIANTS() {
 		local ASSEM_SCORE="ASSEM_SCORE_SSW"
 	else
 		time_stamp "at $gene aborted, ASSEMBLE:$ASSEM_PROG not implemented"
-		if [ $R -gt 1 ];then
+		if [ "$R" -gt "1" ];then
 			doPostProcessing
 		fi
 		moveProject
@@ -970,7 +970,7 @@ function REFINE_ASSEMBLY_CALL_VARIANTS() {
 
 		# save last score & take current score
 		lastScore=$currentScore;currentScore=$($ASSEM_SCORE "$theSAM")
-		echo -e "$currentScore\t$theSAM" >> $log
+		echo -e "$currentScore\t$theSAM" >> "$log"
 
 		theStats=("$assemp"/F${iter}-$gene-*.sto)
 		if [ "$lastScore" -lt "$currentScore" ];then
@@ -1009,7 +1009,7 @@ function ASSEMBLE_REPORT() {
 	local gene=$1
 	local final="$ppath"/$gene
 	local fastq="$assemp"/$gene.fastq
-	local size=$(( $(wc -l < $fastq) / 4 ))
+	local size=$(( $(wc -l < "$fastq") / 4 ))
 	local doGrid=0
 	local procs=0
 	local last_iter=1
@@ -1167,8 +1167,7 @@ function doPostProcessing() {
 				time_stamp "skipping $gene assembly, no fastq"
 			fi
 		done
-#		wait_check "${pid[@]}" || die "final assembly failed" 
-		wait_check "${pid[@]}" || exit 0
+		wait_check "${pid[@]}" || die "final assembly failed" 
 		time_stamp 'variants phased, BAM files created'
 
 		for i in "$ppath"/*bam;do
