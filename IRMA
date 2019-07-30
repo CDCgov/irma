@@ -586,11 +586,10 @@ function doALIGN() {
 			j=$(($R - 1))
 			if [ "$R" -gt 1 ];then
 				for i in $(seq $j);do
-					#rmglob "$alignp"/R${i}-$name*.sto
+					rmglob "$alignp"/R${i}-$name*.sto
 					doBLAT "$refp"/R${j}-$name.ref "$sortp"/R${i}-${name}.fa R$i "$name" "$alignp" $ALIGN_PROC $LIMIT_BLAT & pid+=($!)
 				done
 			fi
-exit
 		elif [ "$ALIGN_PROG" == "NONE" ];then
 			:	
 		else
