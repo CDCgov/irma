@@ -1070,6 +1070,7 @@ function ASSEMBLE_REPORT() {
 
 function doPostProcessing() {
 	local -a pid=()
+	local i=""
 
 	# if failed to assemble anything, skip post processing
 	[ -d "$ppath/other_data" ] && return 0
@@ -1211,7 +1212,7 @@ function doPostProcessing() {
 	# deposit secondary data
 	if test -n "$(shopt -s nullglob;echo "$sortp"/*.fa.2)";then
 		for i in "$sortp"/*.fa.2;do
-			mv $i "$ppath"/secondary/$(basename $i .2)
+			mv "$i" "$ppath"/secondary/$(basename "$i" .2)
 		done
 	
 		# alternative counts
@@ -1480,7 +1481,9 @@ if [ "${DO_SECONDARY:-0}" -eq "1" -a -n "$(shopt -s nullglob;echo "$original_pat
 		gene=$(basename "$residual_fasta" .fasta)
 		if [ -r "$phmms/${gene}_hmm.mod" ];then
 			cat "$residual_fasta" <( "$spath"/ordinalHeaders.pl -O default <( "$Lspath"/selectSequences.pl "$DEF_SET" -I "$gene" ) ) > "$ppath"/${gene}.patch.fa 
-			"$A2M" ${gene}.patch -db "$ppath"/${gene}.patch.fa -modelfile "$phmms"/${gene}_hmm.mod > /dev/null 2>&1
+			cd "$ppath"
+			"$A2M" ${gene}.patch -db ${gene}.patch.fa -modelfile "$phmms"/${gene}_hmm.mod > /dev/null 2>&1
+			cd - > /dev/null
 			"$spath"/makePatchworkConsensus.pl "$ppath"/${gene}.patch.a2m default -N "$gene" >> "$REF_SET"
 		else
 			cat "$residual_fasta" >> "$REF_SET"

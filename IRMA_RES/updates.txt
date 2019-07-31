@@ -1,0 +1,40 @@
+v0.9.2 : 2019-07-31
+- For direct RNA sequencing, always convert Uracil to Thymine to avoid unexpected side-effects
+- Prevent whitespace in paths and inputs from crashing IRMA, improved error handling
+
+v0.9.1 : 2019-05-08
+- Added the "FLU_AD" module, capable of assembling influenza C and D in addition to A and B
+- Allow for more flexible LABEL module and SORT_GROUP specification; bug fixes
+
+v0.9.0 : 2019-03-20
+- Added new options for "residual" and "secondary" assembly (currently on type and subtype level). Please read more.
+- improved clean up code
+
+v0.8.4 : 2018-09-25
+- Fixed Perl regex deprecation issue
+
+v0.8.3 : 2018-09-18
+- Added variable "FUZZY_ADAPTER" (default ON) to trim library adapters with up to 1 mismatch
+
+v0.8.2 : 2018-07-09
+- Simplified temporary directory randomization TOKEN to Perl only
+
+v0.8.1 : 2018-06-05
+- Added variable "SILENCE_COMPLEX_INDELS" to silence reads with 4 or more indels within the final assembly
+
+v0.8.0 : 2018-03-23
+- Adds new variable "GRID_PATH" for custom grid working directory
+
+v0.7.2 : 2018-03-23
+- Fixes issues related to phase assignment, MATCH phase
+
+v0.7.1 : 2018-02-12
+- IRMA can run in /tmp even if noexec set
+
+v0.7.0 : 2018-02-02
+- Revised the EXPENR phase association measure to be more robust (LINK)
+- Added SNV phase numbers to the variants files; see new description
+
+v0.6.8 : 2017-04-27
+- Added disk space check based on fastq size to avoid running on a small disk
+- Added fail-over from /tmp to the project directory
