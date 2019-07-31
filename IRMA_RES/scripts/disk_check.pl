@@ -14,6 +14,7 @@ if ( -e $ppath ) {
 	$available = $available_k / 1024;		
 	$total_size = 0;
 	foreach $f ( @ARGV ) {
+		if ( $f =~ /^\s*$/ ) { next; }
 		if ( -e $f ) {
 			$total_size += ( stat($f) )[7];
 		} else {
