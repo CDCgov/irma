@@ -3,7 +3,7 @@ PROGRAM="Iterative Refinement Meta-Assembler (IRMA)"
 AUTHOR="Samuel S. Shepard"
 EMAIL="vfn4@cdc.gov"
 AFFIL="NCIRD/OID/CDC"
-DATE="30 JUL 2019"
+DATE="31 JUL 2019"
 VERSION="0.9.2"
 LICENSE="GPL version 3. This program comes with ABSOLUTELY NO WARRANTY. This is free software.
 You are welcome to redistribute it under certain conditions. See:  <http://www.gnu.org/licenses/>.
@@ -1325,7 +1325,7 @@ time_stamp "started run '$RUN'"
 
 # optionally check for disk space
 if [ "${ALLOW_DISK_CHECK:-1}" -eq "1" ];then
-	MSG="$("$spath"/disk_check.pl "$ppath" $LEFT $RIGHT)"
+	MSG="$("$spath"/disk_check.pl "$ppath" "$LEFT" "$RIGHT")"
 	STATUS=$?
 	if [ "$STATUS" -eq "0" ];then 
 		time_stamp "$MSG"
@@ -1336,14 +1336,14 @@ fi
 
 if [ "$PAIRED" -eq "1" ];then
 	"$spath"/xflate.pl -C -Q -L INTER "$ppath"/R0.xfl \
-		<($CAT < $LEFT|"$PARALLEL" --nn --pipe -L4 -j$DOUBLE_LOCAL_PROC -q "$spath"/fastQ_converter.pl $FASTQ_CONV_OPTS -G "$ppath"/LEFT.log -g {#}) \
-		<($CAT < $RIGHT|"$PARALLEL" --nn --pipe -L4 -j$DOUBLE_LOCAL_PROC -q "$spath"/fastQ_converter.pl $FASTQ_CONV_OPTS -G "$ppath"/RIGHT.log -g {#}) \
+		<($CAT < "$LEFT" |"$PARALLEL" --nn --pipe -L4 -j$DOUBLE_LOCAL_PROC -q "$spath"/fastQ_converter.pl $FASTQ_CONV_OPTS -G "$ppath"/LEFT.log -g {#}) \
+		<($CAT < "$RIGHT"|"$PARALLEL" --nn --pipe -L4 -j$DOUBLE_LOCAL_PROC -q "$spath"/fastQ_converter.pl $FASTQ_CONV_OPTS -G "$ppath"/RIGHT.log -g {#}) \
 		> "$ppath"/R0.fa
 	cat "$ppath"/{LEFT,RIGHT}.log > "$ppath"/QC_log.txt && rmglob "$ppath"/{LEFT,RIGHT}.log
 	time_stamp 'pre-processed'
 else
 	"$spath"/xflate.pl -C -Q -L INTER "$ppath"/R0.xfl \
-		<($CAT < $LEFT|"$PARALLEL" --nn --pipe -L4 -j$SINGLE_LOCAL_PROC -q "$spath"/fastQ_converter.pl $FASTQ_CONV_OPTS -G "$ppath"/QC_log.txt -g {#}) \
+		<($CAT < "$LEFT"|"$PARALLEL" --nn --pipe -L4 -j$SINGLE_LOCAL_PROC -q "$spath"/fastQ_converter.pl $FASTQ_CONV_OPTS -G "$ppath"/QC_log.txt -g {#}) \
 		> "$ppath"/R0.fa
 	time_stamp 'pre-processed'
 fi
