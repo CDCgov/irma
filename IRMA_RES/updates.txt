@@ -38,3 +38,36 @@ v0.7.0 : 2018-02-02
 v0.6.8 : 2017-04-27
 - Added disk space check based on fastq size to avoid running on a small disk
 - Added fail-over from /tmp to the project directory
+
+v0.6.7 : 2017-04-14
+- added parallelization for zipping files via pigz. If not compatible, defaults to gzip.
+- updated the Ebola and CoV modules to use MERGE_SECONDARY=1
+
+v0.6.6 : 2017-04-13
+- added "MERGE_SECONDARY" option, puts secondary data into the unmatched read pool for round 2. Recommended if lineage references are close, and for non-segmented viruses where co-infection is unlikely.
+- added "GENE_GROUP" variable for customizable two-stage sorting with BLAT performing rough sorting during MATCH step and before the SORT step. Example: influenza "LABEL-trio" in the paper
+
+v0.6.5 : 2016-12-02
+- added experimental configuration file "FLU-minion" for MinION R7/R9 chemistries
+- fixed VCF bug that prevented correct VCF creation
+
+v0.6.4 : 2016-11-04
+- added plurality consensus script to IRMA_RES/scripts folder to aid in new module creation
+
+v0.6.3 : 2016-08-12
+- added failovers to local node computation when grid computation doesn't work
+
+v0.6.2 : 2016-06-01
+- optimized indel calling algorithm for performance
+- added flexible segment numbering option for module init.sh (see SEG_NUMBERS in configuration, and SORT_GROUPS in primary vs. secondary)
+- added NO_SORT_REFS option for custom reference sorting into LABEL classes
+- added experimental MERS CoV module
+- changed NextTera adapter masking back to adapter clipping but without length penalization (see ADAPTER in configuration)
+- fixed bug with flexible parameter file naming
+
+v0.6.1 : 2016-04-01
+- added name + hashing to allow for multiple concurrent projects
+- tweaked reference elongation algorithm
+- changed ADAPTER clipping to masking
+
+v0.6.0 : 2016-03-09  (test release)
