@@ -1,4 +1,4 @@
-v0.9.2 : 2019-07-31
+v0.9.2 : 2019-08-15
 - For direct RNA sequencing, always convert Uracil to Thymine to avoid unexpected side-effects
 - Prevent whitespace in paths and inputs from crashing IRMA, improved error handling
 
