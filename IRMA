@@ -39,7 +39,7 @@ function time_stamp() {
 function rmglob () {
 	local glob=""
 	for glob in "$@";do
-		if test -n "$(shopt -s nullglob;echo $glob)";then
+		if [ -e "$glob" ];then
 			rm "$glob"
 		fi
 	done
@@ -48,7 +48,7 @@ function rmglob () {
 function catglob () {
 	local glob=""
 	for glob in "$@";do
-		if test -n "$(shopt -s nullglob;echo $glob)";then
+		if [ -r "$glob" ];then
 			cat "$glob"
 		fi
 	done
@@ -1340,7 +1340,7 @@ if [ "$PAIRED" -eq "1" ];then
 		<($CAT < "$LEFT" |"$PARALLEL" --nn --pipe -L4 -j$DOUBLE_LOCAL_PROC -q "$spath"/fastQ_converter.pl $FASTQ_CONV_OPTS -G "$ppath"/LEFT.log -g {#}) \
 		<($CAT < "$RIGHT"|"$PARALLEL" --nn --pipe -L4 -j$DOUBLE_LOCAL_PROC -q "$spath"/fastQ_converter.pl $FASTQ_CONV_OPTS -G "$ppath"/RIGHT.log -g {#}) \
 		> "$ppath"/R0.fa
-	cat "$ppath"/{LEFT,RIGHT}.log > "$ppath"/QC_log.txt && rmglob "$ppath"/{LEFT,RIGHT}.log
+	catglob "$ppath"/{LEFT,RIGHT}.log > "$ppath"/QC_log.txt && rmglob "$ppath"/{LEFT,RIGHT}.log
 	time_stamp 'pre-processed'
 else
 	"$spath"/xflate.pl -C -Q -L INTER "$ppath"/R0.xfl \
