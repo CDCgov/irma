@@ -1242,7 +1242,7 @@ function doPostProcessing() {
 		local factor=$( expr ${cntmatch:-1} / ${altmatch:-1} ) 
 		if [ "${factor:-0}" -lt "${RESIDUAL_ASSEMBLY_FACTOR:-400}" ];then
 			time_stamp "residual read pattern ratio non-trivial (${factor:-0}x < ${RESIDUAL_ASSEMBLY_FACTOR:-400}x)"
-			local alt_ppath="$original_path"/residual_assemblies
+			local alt_ppath="$original_path"/residual_assembly
 			mkdir "$alt_ppath"; createDirs "$alt_ppath"
 			ln "$ppath"/R0.xfl.bak "$alt_ppath"/R0.xfl
 			ln "$ppath"/logs/QC_log.txt "$alt_ppath"/QC_log.txt
@@ -1253,7 +1253,7 @@ function doPostProcessing() {
 			grep '3-match' "$ppath"/READ_COUNTS.txt | perl -pe '$_ =~ s/match/altmatch/' >> "$alt_ppath"/READ_COUNTS.txt.prim
 
 
-			[ ! -s "$alt_ppath/R0.fa" ] && rm -rf "$alt_ppath" && time_stamp "No data found for 'residual_assembles'"
+			[ ! -s "$alt_ppath/R0.fa" ] && rm -rf "$alt_ppath" && time_stamp "No data found for 'residual_assembly'"
 		fi
 	fi
 
@@ -1426,9 +1426,9 @@ done
 doPostProcessing || die 'aborted'
 
 # Take data in the secondary folder, if it exists, and do another round of assembly
-if [ -s "$ppath/residual_assemblies/R0.fa" ];then
+if [ -s "$ppath/residual_assembly/R0.fa" ];then
 	time_stamp "attempting RESIDUAL assembly"
-	ppath="$ppath"/residual_assemblies
+	ppath="$ppath"/residual_assembly
 	REF_SET="$ppath"/GENES/R0.refs
 	QUERY_SET="$ppath"/R0.fa
 	R=1;RUN="${original_run}-residual"
@@ -1454,7 +1454,7 @@ if [ -s "$ppath/residual_assemblies/R0.fa" ];then
 fi
 
 # Do secondary assembly if able
-if [ "${DO_SECONDARY:-0}" -eq "1" -a -n "$(shopt -s nullglob;echo "$original_path"/residual_assemblies/*.fasta)" ];then
+if [ "${DO_SECONDARY:-0}" -eq "1" -a -n "$(shopt -s nullglob;echo "$original_path"/residual_assembly/*.fasta)" ];then
 	time_stamp "performing SECONDARY assembly"
 	ppath="$original_path"/secondary_assembly;mkdir "$ppath"
 	createDirs "$ppath" && setDirs "$ppath"
@@ -1477,7 +1477,7 @@ if [ "${DO_SECONDARY:-0}" -eq "1" -a -n "$(shopt -s nullglob;echo "$original_pat
 
 	catglob "$original_path"/*.fasta > "$REF_SET"
 	cd "$ppath"
-	for residual_fasta in "$original_path"/residual_assemblies/*.fasta;do 
+	for residual_fasta in "$original_path"/residual_assembly/*.fasta;do 
 		gene=$(basename "$residual_fasta" .fasta)
 		if [ -r "$phmms/${gene}_hmm.mod" ];then
 			cat "$residual_fasta" <( "$spath"/ordinalHeaders.pl -O default <( "$Lspath"/selectSequences.pl "$DEF_SET" -I "$gene" ) ) > "$ppath"/${gene}.patch.fa 
