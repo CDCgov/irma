@@ -170,7 +170,7 @@ sub recordStats($$@) {
 	# repair as necessary
 	$trailerLen = length($trailer);
 	$leaderLen = length($leader);
-	if ( $leaderLen && $sequence =~ /^([-]{1,7})[ACTGN]/ ) {
+	if ( $leaderLen && $sequence =~ /^([-]{1,9})[ACTGN]/ ) {
 		$gap = length($1);
 		if ( $leaderLen >= $gap ) {
 			substr($sequence,0,$gap) = uc(substr($leader,-$gap));
@@ -178,7 +178,7 @@ sub recordStats($$@) {
 		}
 	}
 
-	if ( $trailerLen > 0 && $sequence =~ /[ACTGN]([-]{1,7})$/ ) {
+	if ( $trailerLen > 0 && $sequence =~ /[ACTGN]([-]{1,9})$/ ) {
 		$gap = length($1);
 		if ( $trailerLen >= $gap ) {
 			substr($sequence,$-[1],$gap) = uc(substr($trailer,0,$gap));
