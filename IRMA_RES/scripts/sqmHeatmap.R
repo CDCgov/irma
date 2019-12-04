@@ -19,5 +19,5 @@ rownames(mat)=sqm[,1]
 colnames(mat)=sqm[,1]
 pdf(pdfFile,width=8.5,height=8.5)
 title=paste("Variant site clusters,",basename(args[1]))
-heatmap(mat,symm=TRUE,revC=TRUE,main=title,margins=c(10,10))
+heatmap(mat,symm=TRUE,revC=TRUE,main=title,margins=c(10,10),col=heat.colors(200))
 cat("Saved '",pdfFile,"'\n",sep="")
