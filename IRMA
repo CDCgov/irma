@@ -1053,6 +1053,7 @@ function ASSEMBLE_REPORT() {
 	local options="-C $MIN_C -N $RUN -F $MIN_AMBIG"
 	[ "$SEG_NUMBERS" != "" ] && options+=" -S $SEG_NUMBERS"
 	[ "$SORT_GROUPS" == "" -a "${NONSEGMENTED:-1}" -eq "0" ] && options+=" -H"
+	[ "$MIN_CONS_SUPPORT" != "" ] && options+=" -c ${final}-coverage.txt --min-consensus-support ${MIN_CONS_SUPPORT:-1}"
 	"$spath"/amendConsensus.pl -P "$ppath" "${final}.fasta" "${final}-variants.txt" $options
 
 	if [ -r "${final}-insertions.txt" -a -r "${final}-deletions.txt" ];then

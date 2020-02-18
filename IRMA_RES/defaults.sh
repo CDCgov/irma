@@ -84,6 +84,7 @@ MIN_AQ=24		# minimum average variant quality, does not apply to deletions
 MIN_TCC=100		# minimum non-ambiguous column coverage
 MIN_CONF=0.80		# minimum confidence not machine error
 PHASE_DISTANCE=""	# threshold used for EXPENRD to assign phases, leave blank for default
+MIN_CONS_SUPPORT=""	# used to amend final consensus as 'N' if support fails
 
 # CONFIDENCE INTERVALS
 SIG_LEVEL=0.999		# significance test level for variant calling (.90,.95,.99,.999). 

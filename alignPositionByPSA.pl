@@ -1,4 +1,7 @@
 #!/usr/bin/env perl
+# alignPositionByPSA
+# Samuel Shepard - 2018.10
+# Version 1.0
 
 use Getopt::Long;
 GetOptions(	'no-header|H' => \$skipHeader,
@@ -13,7 +16,7 @@ GetOptions(	'no-header|H' => \$skipHeader,
 	);
 
 if ( scalar(@ARGV) != 2 ) {
-	$message = "Usage:\n\tperl $0 <pairwiseAlignment> <table> [options]\n";
+	$message = "Usage:\n\tperl $0 <pairwiseAlignment.fasta> <table> [options]\n";
 	$message .= "\t\t-H|--no-header\t\t\tDo not print input table header line. (first line)\n";
 	$message .= "\t\t-F|--table-field <INT>\t\tField number in table (1-base) containing positional information. DEFAULT = 1\n";
 	$message .= "\t\t-D|--table-delim <CHA>\t\tField delimiter for table. DEFAULT = <TAB>\n";

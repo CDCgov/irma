@@ -18,7 +18,8 @@ GetOptions(
 		'insertion-file|i=s'=> \$insFile,
 		'rewrite-coverage|c=s' => \$covgRewrite,
 		'replace-not-ambiguate|R' => \$replaceNotEncode,
-		'belong-to-phase|B=i' => \$replaceWithPhase
+		'belong-to-phase|B=i' => \$replaceWithPhase,
+		'min-consensus-support' => \$minConsensusSupport
 	);
 
 if ( scalar(@ARGV) != 2 ) {
@@ -57,6 +58,10 @@ if ( !defined($minFreqDel) ) {
 
 if ( !defined($minTotal) || $minTotal < 0 ) {
 	$minTotal = 100;
+}
+
+if ( !defined($minConsensusSupport) || $minConsensusSupport < 0 ) {
+	$minConsensusSupport = 1;
 }
 
 # mappings of nucleotides
@@ -184,23 +189,6 @@ if ( defined($insFile) ) {
 	close(IN);
 }
 
-# amended consensus is written to a file
-open(OUT,'>',$prefix.'/'.$outHdr.'.fa') or die("$0 ERROR: cannot open $outHdr.fa for writing.\n");
-print OUT '>',$outHdr,"\n";
-for $p (0..$#seq) {
-	if ( $seq[$p] ne '-' && $seq[$p] ne '.' ) {
-		print OUT $seq[$p];
-	}
-
-	if ( defined($insertions{$p}) ) {
-		print OUT lc($insertions{$p}[0]);
-	}
-}
-print OUT "\n";
-close(OUT);
-
-
-
 if ( $covgRewrite ) {
 	$/ = "\n";
 	open(IN,'<',$covgRewrite) or die("$0 ERROR: cannot open $covgRewrite.\n");
@@ -210,7 +198,17 @@ if ( $covgRewrite ) {
 	open(OUT,'>',$prefix.'/'.$outHdr.'-coverage.txt') or die("$0 ERROR: cannot open $outHdr-coverage.txt.\n");
 	print OUT $header,"\n";
 
-	$iPos = 1; $iCon = 3; $cursor = 1; $offset = 0;
+	$iPos = 1; $iDepth = 2; $iCon = 3; $cursor = 1; $offset = 0;
+	foreach $line ( @coverages ) {
+		@fields = split("\t",$line);
+		if ( $fields[$iCon] < $minConsensusSupport ) {
+			my $idx = $fields[$iPos] - 1;
+			if ( 0 <= $idx && $idx <= $#seq && $fields[$iCon] ne '.' ) {
+				$seq[$idx] = 'N';
+			}
+		}
+	}
+
 	foreach $line ( @coverages ) {
 		@fields = split("\t",$line);
 
@@ -226,7 +224,6 @@ if ( $covgRewrite ) {
 			$cursor++;
 		}
 
-
 		# Add insertions		
 		if ( defined($insertions{$p}) ) {
 			@insertedBases = split('', $insertions{$p}[0] );
@@ -239,6 +236,20 @@ if ( $covgRewrite ) {
 	close(OUT);	
 }
 
+# amended consensus is written to a file
+open(OUT,'>',$prefix.'/'.$outHdr.'.fa') or die("$0 ERROR: cannot open $outHdr.fa for writing.\n");
+print OUT '>',$outHdr,"\n";
+for $p (0..$#seq) {
+	if ( $seq[$p] ne '-' && $seq[$p] ne '.' ) {
+		print OUT $seq[$p];
+	}
+
+	if ( defined($insertions{$p}) ) {
+		print OUT lc($insertions{$p}[0]);
+	}
+}
+print OUT "\n";
+close(OUT);
 
 # function ENCODE
 # Accepts string of alleles.
