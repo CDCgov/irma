@@ -201,7 +201,7 @@ if ( $covgRewrite ) {
 	$iPos = 1; $iDepth = 2; $iCon = 3; $cursor = 1; $offset = 0;
 	foreach $line ( @coverages ) {
 		@fields = split("\t",$line);
-		if ( $fields[$iCon] < $minConsensusSupport ) {
+		if ( $fields[$iDepth] < $minConsensusSupport ) {
 			my $idx = $fields[$iPos] - 1;
 			if ( 0 <= $idx && $idx <= $#seq && $fields[$iCon] ne '.' ) {
 				$seq[$idx] = 'N';
