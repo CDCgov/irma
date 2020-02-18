@@ -201,12 +201,6 @@ if ( $covgRewrite ) {
 	$iPos = 1; $iDepth = 2; $iCon = 3; $cursor = 1; $offset = 0;
 	foreach $line ( @coverages ) {
 		@fields = split("\t",$line);
-		if ( $fields[$iDepth] < $minConsensusSupport ) {
-			my $idx = $fields[$iPos] - 1;
-			if ( 0 <= $idx && $idx <= $#seq && $fields[$iCon] ne '.' ) {
-				$seq[$idx] = 'N';
-			}
-		}
 	}
 
 	foreach $line ( @coverages ) {
@@ -216,6 +210,13 @@ if ( $covgRewrite ) {
 			next;
 		} else {
 			$p = $fields[$iPos]-1;
+		}
+
+		if ( $fields[$iDepth] < $minConsensusSupport ) {
+			if ( 0 <= $p && $p <= $#seq ) {
+				$seq[$p] = 'N';
+				$fields[$iCon] = 'N';
+			}
 		}
 
 		if ( $fields[$iCon] ne '-' && $seq[$p] ne '-' ) {
