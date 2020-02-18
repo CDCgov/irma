@@ -19,7 +19,7 @@ GetOptions(
 		'rewrite-coverage|c=s' => \$covgRewrite,
 		'replace-not-ambiguate|R' => \$replaceNotEncode,
 		'belong-to-phase|B=i' => \$replaceWithPhase,
-		'min-consensus-support' => \$minConsensusSupport
+		'min-consensus-support=i' => \$minConsensusSupport
 	);
 
 if ( scalar(@ARGV) != 2 ) {
