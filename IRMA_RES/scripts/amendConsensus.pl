@@ -19,7 +19,8 @@ GetOptions(
 		'rewrite-coverage|c=s' => \$covgRewrite,
 		'replace-not-ambiguate|R' => \$replaceNotEncode,
 		'belong-to-phase|B=i' => \$replaceWithPhase,
-		'min-consensus-support=i' => \$minConsensusSupport
+		'min-consensus-support=i' => \$minConsensusSupport,
+		'replace-coverage-file' => \$replaceCoverageFile
 	);
 
 if ( scalar(@ARGV) != 2 ) {
@@ -35,6 +36,8 @@ if ( scalar(@ARGV) != 2 ) {
 	$message .= "\t\t-S|--seg\t\t\tConvert the seg name to number and add to ISA.\n";
 	$message .= "\t\t-P|--prefix <STR>\t\tOutput prefix for file.\n";
 	$message .= "\t\t-T|--min-total-depth <INT>\tMinimum non-ambiguous column coverage. Default = 2.\n";
+	$message .= "\t\t--min-consensus-support <INT>\tMinimum total depth per site to call plurality, otherwise 'N'.\n";
+	$message .= "\t\t--replace-coverage-file\t\tImplied by min-consensus-support, replaces file exactly.\n";
 	die($message."\n");
 }
 
@@ -62,6 +65,8 @@ if ( !defined($minTotal) || $minTotal < 0 ) {
 
 if ( !defined($minConsensusSupport) || $minConsensusSupport < 0 ) {
 	$minConsensusSupport = 1;
+} else {
+	$replaceCoverageFile = 1;
 }
 
 # mappings of nucleotides
@@ -195,7 +200,11 @@ if ( $covgRewrite ) {
 	$header = <IN>; chomp($header);
 	@coverages = <IN>; chomp(@coverages); close(IN);
 
-	open(OUT,'>',$prefix.'/'.$outHdr.'-coverage.txt') or die("$0 ERROR: cannot open $outHdr-coverage.txt.\n");
+	my $coverage_filename = $prefix.'/'.$outHdr.'-coverage.txt';
+	if ( defined($replaceCoverageFile) ) {
+		$coverage_filename = $covgRewrite;
+	}
+	open(OUT,'>',$coverage_filename) or die("$0 ERROR: cannot open $outHdr-coverage.txt.\n");
 	print OUT $header,"\n";
 
 	$iPos = 1; $iDepth = 2; $iCon = 3; $cursor = 1; $offset = 0;
