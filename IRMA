@@ -3,8 +3,8 @@ PROGRAM="Iterative Refinement Meta-Assembler (IRMA)"
 AUTHOR="Samuel S. Shepard"
 EMAIL="vfn4@cdc.gov"
 AFFIL="NCIRD/OID/CDC"
-DATE="04 DEC 2019"
-VERSION="0.9.4"
+DATE="02 MAR 2020"
+VERSION="0.9.5"
 LICENSE="GPL version 3. This program comes with ABSOLUTELY NO WARRANTY. This is free software.
 You are welcome to redistribute it under certain conditions. See:  <http://www.gnu.org/licenses/>.
 Components of this pipeline have non-commercial restrictions. See: IRMA_RES/scripts/packaged-citations-licenses"
