@@ -1,5 +1,12 @@
 IRMA Changelog
 
+v0.9.5 : 2020-03-02
+- Added SARS-CoV-2 to the experimental CoV module
+- Added MIN_CONS_SUPPORT to control total ambiguation ('N') of the amended consensus based on support.
+
+v0.9.4 : 2019-12-04
+- Heatmap defaults are now statically determined for consistency with later version of R (3.6+)
+
 v0.9.3 : 2019-09-12
 - Increased local alignment end repair (read-gathering phase) from 7 to 9 bases (SAM/BLAT).
 
