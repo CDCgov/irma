@@ -78,6 +78,7 @@ SSW_M=$SSW_M			# smith-waterman match score
 SSW_X=$SSW_X			# smith-waterman mismatch penalty
 SSW_O=$SSW_O		# smith-waterman gap open penalty
 SSW_E=$SSW_E			# smith-waterman gap extension penalty
+MIN_CONS_SUPPORT=${MIN_CONS_SUPPORT:-0}	# minimum consensus support for amended consensus
 
 ### VARIANT CALLING ###
 # HEURISTICS
