@@ -8,7 +8,7 @@ PARAM_FILE_DATE="2016-10-25"
 QUAL_THRESHOLD=0			# average or median threshold for QUALITY reads
 MIN_LEN=150				# minimum read length for QUALITY reads
 INS_T=0.75				# threshold for insertion refinement
-DEL_T=0.75				# threshold for deletion refinement
+DEL_T=1.00				# threshold for deletion refinement : 1 => turn OFF deletion editing
 MIN_RP=3				# minimum read pattern count to continue
 MIN_RC=3				# minimum read count to continue
 
@@ -23,4 +23,4 @@ SSW_X=3			# smith-waterman mismatch penalty
 SSW_O=6			# smith-waterman gap open penalty
 SSW_E=1			# smith-waterman gap extension penalty
 
-MIN_CONS_SUPPORT=5	# minimum consensus support
+MIN_CONS_SUPPORT=20	# minimum consensus support (supported needed by DVD)
