@@ -1,6 +1,6 @@
 
 
-cat <<EOF > "$ppath"/logs/FLU-$RUN.sh
+cat <<EOF > "$ppath"/logs/${MODULE}-$RUN.sh
 ### BACKGROUND INFO ###
 # $PROGRAM, v$VERSION, $DATE
 # $AUTHOR ($AFFIL), $EMAIL
