@@ -21,8 +21,8 @@ MERGE_SECONDARY=1
 ## MATCH STEP
 MATCH_PROC=64		# grid maximum processes for the MATCH
 MATCH_PROG="BLAT"	# match (all or any match) program [BLAT]
-MIN_RP=15		# minimum read pattern count to continue
-MIN_RC=15		# minimum read count to continue
+MIN_RP=1		# minimum read pattern count to continue
+MIN_RC=1		# minimum read count to continue
 
 ## SORT STEP
 SORT_GROUPS="__ALL__"
@@ -34,7 +34,7 @@ SECONDARY_SORT=0	# LABEL sorting fast-mode
 MERGE_SECONDARY=1
 
 ## ALIGN STEP ##
-ALIGN_PROG="BLAT"	# rough assembly / alignment to working reference [SAM,BLAT]
+ALIGN_PROG="SAM BLAT"	# rough assembly / alignment to working reference [SAM,BLAT]
 ALIGN_PROC=64		# grid maximum processes for the rough align
 
 ### FINISHING ASSEMBLY ###
