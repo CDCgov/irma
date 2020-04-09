@@ -7,7 +7,7 @@ PARAM_FILE_DATE="2020-04"
 # CONSENSUS REFINEMENT & READ SELECTION
 INS_T=0.25				# threshold for insertion refinement
 DEL_T=0.75				# threshold for deletion refinement
-SKIP_E=0				# skip reference elongation
+SKIP_E=1				# skip reference elongation
 MIN_LEN=75				# relaxed threshold for UTR elongation with SAM
 MAX_ROUNDS=5				# diminishing returns fo later rounds, but leave no read behind
 
