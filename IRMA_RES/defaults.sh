@@ -54,7 +54,8 @@ LABEL_SECONDARY_MODULES=""	# secondary LABEL sort
 
 ## ALIGN STEP ##
 ALIGN_PROG="SAM"	# rough assembly / alignment to working reference [SAM,BLAT]
-ALIGN_PROC=20		# grid maximum processes for the rough align
+ALIGN_PROC=20		# grid maximum processes for the rough align'
+DEL_TYPE=""		# how to handle deletions in the rough alignment: NNN, REF, or DEL (blank = OLD DEFAULTS)
 
 ### FINISHING ASSEMBLY ###
 MAX_ITER_ASSEM=5	# max assembly iteration [5]

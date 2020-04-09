@@ -34,16 +34,17 @@ SECONDARY_SORT=0	# LABEL sorting fast-mode
 MERGE_SECONDARY=1
 
 ## ALIGN STEP ##
-ALIGN_PROG="SAM BLAT"	# rough assembly / alignment to working reference [SAM,BLAT]
+ALIGN_PROG="BLAT"	# rough assembly / alignment to working reference [SAM,BLAT]
 ALIGN_PROC=64		# grid maximum processes for the rough align
+DEL_TYPE="NNN"		# how to handle deletions in the rough alignment: NNN, REF, or DEL (blank = OLD DEFAULTS)
 
 ### FINISHING ASSEMBLY ###
 ASSEM_PROG="SSW"	# assembly program [SSW]
 ASSEM_PROC=64		# grid maximum processes for assembly
 INS_T=0.25		# minimum frquenncy threshold for insertion refinement
-DEL_T=0.60		# minimum frequency threshold for deletion refinement 
+DEL_T=0.75		# minimum frequency threshold for deletion refinement 
 MIN_AMBIG=0.25		# minimum called SNV frequency for mixed base in amended consensus folder
-
+ALIGN_AMENDED=1		# align the amended consensus to the HMM profile
 
 ### VARIANT CALLING ###
 # HEURISTICS
@@ -58,3 +59,4 @@ MIN_CONF=0.80		# minimum confidence not machine error
 
 # CONFIDENCE INTERVALS
 SIG_LEVEL=0.999		# significance test level for variant calling (.90,.95,.99,.999). 
+

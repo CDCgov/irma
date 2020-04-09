@@ -2,12 +2,14 @@
 PARAM_FILE_NAME="fast"
 PARAM_FILE_AUTHOR="S. Shepard"
 PARAM_FILE_VERSION="1.0"
-PARAM_FILE_DATE="2016-02-27"
+PARAM_FILE_DATE="2020-04"
 
 # READ GATHERING & ASSEMBLY
 NO_MERGE=1		# no read pair merging
 MAX_ROUNDS=1		# max read gather rounds
-MAX_ITER_SSW=1		# max SSW iterations to perform
+MAX_ITER_ASSEM=2	# max SSW iterations to perform
+
+GRID_ON=1		# needs "qsub" and a NFS install of IRMA
 
 # STAGES
 MATCH_PROG="BLAT"

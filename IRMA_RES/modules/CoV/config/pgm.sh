@@ -2,7 +2,7 @@
 PARAM_FILE_NAME="pgm"
 PARAM_FILE_AUTHOR="S. Shepard"
 PARAM_FILE_VERSION="1.0"
-PARAM_FILE_DATE="2016-02-27"
+PARAM_FILE_DATE="2016-02"
 
 GRID_ON=1
 
@@ -12,5 +12,3 @@ MIN_LEN=50				# minimum read length for QUALITY reads
 
 MIN_FI=0.02				# minimum insertion variant frequency
 MIN_FD=0.03				# minimum deletion variant frequency
-
-

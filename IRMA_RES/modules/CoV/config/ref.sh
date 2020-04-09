@@ -2,7 +2,7 @@
 PARAM_FILE_NAME="ref"
 PARAM_FILE_AUTHOR="S. Shepard"
 PARAM_FILE_VERSION="1.0"
-PARAM_FILE_DATE="2016-02-27"
+PARAM_FILE_DATE="2016-02"
 
 # Use this for files you put in the reference folder
 CUSTOM_REF_FILE="your_file_in_reference_folder.fasta"	# custom ref file
