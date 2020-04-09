@@ -75,27 +75,27 @@ if ( $inflate ) {
 				if ( $fastQ ) {
 					if ( defined($headersByCluster{$cluster}) ) {
 						foreach $hdr ( @{$headersByCluster{$cluster}} ) {
-							print $hdr,"\n",$sequence,"\n+\n",$qualityByHeader{$hdr},"\n";
+							print STDOUT $hdr,"\n",$sequence,"\n+\n",$qualityByHeader{$hdr},"\n";
 						}
 					} else {
 						$quality = '?' x length($sequence);
-						print '>',$header,"\n",$sequence,"\n+\n",$quality,"\n";
+						print STDOUT '@',$header,"\n",$sequence,"\n+\n",$quality,"\n";
 					}
 				} else {
 					if ( defined($headersByCluster{$cluster}) ) {
 						foreach $hdr ( @{$headersByCluster{$cluster}} ) {
-							print '>',$hdr,"\n",$sequence,"\n";
+							print STDOUT '>',$hdr,"\n",$sequence,"\n";
 						}
 					} else {
-						print '>',$header,"\n",$sequence,"\n";
+						print STDOUT '>',$header,"\n",$sequence,"\n";
 					}
 				}
 			} else {
 				if ( $fastQ ) {
 					$quality = '?' x length($sequence);
-					print '>',$header,"\n",$sequence,"\n+\n",$quality,"\n";
+					print STDOUT '@',$header,"\n",$sequence,"\n+\n",$quality,"\n";
 				} else {
-					print $header,"\n",$sequence,"\n";
+					print STDOUT '>',$header,"\n",$sequence,"\n";
 				}
 			}
 		}
@@ -155,11 +155,11 @@ if ( $inflate ) {
 		$clusterSize=scalar(@{$clustersBySequence{$seq}});
 		if ( $clusterAll || $clusterSize > 1 || $clustersBySequence{$seq}[0] =~ /^C\d+?%/ ) {
 			print TABLE "C${i}%",$clusterSize,'%',$label;
-			if ( $clustersBySequence{$seq}[0] =~ /{(.+?)}/ ) {
+			if ( $clustersBySequence{$seq}[0] =~ /\{(.+?)\}/ ) {
 				$annot = $1;	
-				print '>C',$i,'%',$clusterSize,"%$label{$annot}\n",$seq,"\n";
+				print STDOUT '>C',$i,'%',$clusterSize,"%$label\{$annot\}\n",$seq,"\n";
 			} else {
-				print '>C',$i,'%',$clusterSize,"%$label\n",$seq,"\n";
+				print STDOUT '>C',$i,'%',$clusterSize,"%$label\n",$seq,"\n";
 			}
 
 			if ( $fastQ ) {
@@ -174,7 +174,7 @@ if ( $inflate ) {
 			print TABLE "\n";
 			$i++;
 		} else {
-			print '>',$clustersBySequence{$seq}[0],"\n",$seq,"\n";
+			print STDOUT '>',$clustersBySequence{$seq}[0],"\n",$seq,"\n";
 		}
 	}
 	close(TABLE);

@@ -4,7 +4,7 @@ AUTHOR="Samuel S. Shepard"
 EMAIL="vfn4@cdc.gov"
 AFFIL="NCIRD/OID/CDC"
 DATE="02 MAR 2020"
-VERSION="0.9.5"
+VERSION="0.9.5-alpha"
 LICENSE="GPL version 3. This program comes with ABSOLUTELY NO WARRANTY. This is free software.
 You are welcome to redistribute it under certain conditions. See:  <http://www.gnu.org/licenses/>.
 Components of this pipeline have non-commercial restrictions. See: IRMA_RES/scripts/packaged-citations-licenses"
@@ -109,6 +109,7 @@ PARALLEL="$spath"/parallel
 SAMTOOLS="$spath"/samtools_$OS
 BLAT="$spath"/blat_$OS
 SSW="$spath"/ssw_$OS
+MM2="$spath"/minimap2_$OS
 A2M="$Lspath"/align2model_$OS
 RSCRIPT="$(which Rscript)"
 BASH=bash
@@ -205,6 +206,7 @@ fi
 declare -a MATCH_PROGS=($MATCH_PROG)
 declare -a SORT_PROGS=($SORT_PROG)
 declare -a ALIGN_PROGS=($ALIGN_PROG)
+declare -a DEL_TYPES=($DEL_TYPE)
 	
 # check for skip align step
 if [ "$MAX_ROUNDS" -eq "1" -a "$ASSEM_REF" -eq "1" ];then
@@ -264,6 +266,7 @@ setDirs "$ppath"
 
 # global program options
 SSW_OPTS="-x $SSW_X -m $SSW_M -o $SSW_O -e $SSW_E"
+MM2_OPTS="-A ${MM2_A:-$SSW_M} -B ${MM2_B:-$SSW_X} -O ${MM2_O:-$SSW_O} -E ${MM2_E:-$SSW_E}"
 BLAT_OPTS="-oneOff=1 -minIdentity=${BLAT_IDENTITY:-80} -tileSize=10"
 
 # FASTQ converter/QC options
@@ -571,7 +574,7 @@ function doALIGN() {
 	local prefix=$1
 	local queryDB=""
 	local i=0
-	local j=0
+	local last_r=$(($R - 1))
 	local name=""
 	local gene=""
 	local -a pid=()
@@ -583,11 +586,10 @@ function doALIGN() {
 		if [ "$ALIGN_PROG" == "SAM" ];then
 			doSAM "$queryDB" "$prefix" "$name" "$alignp" $ALIGN_PROC $LIMIT_SAM & pid+=($!)
 		elif [ "$ALIGN_PROG" == "BLAT" ];then
-			j=$(($R - 1))
 			if [ "$R" -gt 1 ];then
-				for i in $(seq $j);do
+				for i in $(seq $last_r);do
 					rmglob "$alignp"/R${i}-$name*.sto
-					doBLAT "$refp"/R${j}-$name.ref "$sortp"/R${i}-${name}.fa R$i "$name" "$alignp" $ALIGN_PROC $LIMIT_BLAT & pid+=($!)
+					doBLAT "$refp"/R${last_r}-$name.ref "$sortp"/R${i}-${name}.fa R$i "$name" "$alignp" $ALIGN_PROC $LIMIT_BLAT & pid+=($!)
 				done
 			fi
 		elif [ "$ALIGN_PROG" == "NONE" ];then
@@ -602,14 +604,24 @@ function doALIGN() {
 	# CREATE NEW REFERENCES
 	pid=()
 	local options="-C $MIN_CA -F $MIN_FA"
-	[ "$ALIGN_PROG" == "BLAT" ] && options+=" -A"
+	local delete_options=""
 	[ "$SKIP_E" -eq "1" ] && options+=" -S" 
 	[ "$DENOM" != "" ] && options+=" -O $DENOM"
+	time_stamp "R$R DEL_TYPE=${DEL_TYPE:-default}"
 	if [ "$ALIGN_PROG" != "NONE" ];then
 		for i in "$sortp"/$prefix-*.fa;do
 			name=$(basename "$i" .fa)
 			gene=${name#*-}
-			"$spath"/combineALIGNstats.pl -N $gene $options "$alignp"/R*-${gene}_????.sto > "$refp"/$name.ref & pid+=($!)
+			if [ "${DEL_TYPE:-DEL}" == "REF"  ];then
+				# how does this interact with elongate?
+				delete_options=" -K "
+				delete_options+="$refp"/R${last_r}-${gene}.ref
+			elif [ "${DEL_TYPE:-DEL}" == "NNN" ];then
+				delete_options=" -A"
+			else
+				delete_options=""
+			fi
+			"$spath"/combineALIGNstats.pl -N $gene $options $delete_options "$alignp"/R*-${gene}_????.sto > "$refp"/$name.ref & pid+=($!)
 
 			# consider placing burden on the function itself to do the cleanup
 			[ "$ALIGN_PROG" == "BLAT" -a "$R" -gt 1 ] && rmglob "$alignp"/R*-${gene}_????.{match,nomatch,chim,fasta,class,blat}
@@ -780,6 +792,62 @@ EOL
 	rm "${script}.sh"
 }
 
+function ASSEM_RUN_MM2() {
+	local iter=$1
+	local gene=$2
+	local ref=$3
+	local procs=$4
+	local doGrid=$5
+	local script="$assemp"/F${iter}-${gene}
+
+	local options=""
+	[ "$ASSEM_REF" -eq "1" ] && options+=" -G"
+	[ "${SILENCE_COMPLEX_INDELS:-0}" -eq "1" ] && options+=" -S"
+
+	local threads=1
+	# if executing locally on one file, use multiple threads
+	if [ "$doGrid" -eq "0" -a "$procs" -eq "1" ];then
+		threads=$SINGLE_LOCAL_PROC
+	fi
+	
+
+###
+cat > "${script}.sh"  <<EOL
+#!/bin/bash
+LANG=$LANG
+shopt -u nocaseglob;shopt -u nocasematch
+
+if [ "\$#" -eq "1" ];then
+	ID=\$(printf %04d \$1)
+else
+	ID=\$(printf %04d \$SGE_TASK_ID)
+fi
+FASTQ="$assemp"/${gene}_\$ID.fastq
+SAM="$assemp"/F${iter}-${gene}-\$ID.sam
+STAT="$assemp"/F${iter}-${gene}-\$ID.sto
+
+"$MM2" -a --secondary=no -t $threads $MM2_OPTS "$ref" "\$FASTQ" > "\$SAM" 2> /dev/null
+"$spath"/winnowSAM.pl -F 14 -I "\$SAM"
+"$spath"/samStats.pl $options "$ref" "\$SAM" "\$STAT"
+EOL
+###
+
+	# ASSEMBLE on grid vs local
+	chmod 755 "${script}.sh"
+	if [ "$doGrid" -eq "1" ];then
+		qsub $IRMA_QUEUE -t 1-$procs:1 -N F${iter}-$gene -sync y -wd "$assemp" -j y -o "${script}.o" "${script}.sh" > /dev/null 2>&1
+		if [ "$?" -ne "0" ];then
+			time_stamp "qsub of 'F${iter}-$gene' failed. Switching to master node."
+			"$PARALLEL" --nn --workdir "$ppath" -j $SINGLE_LOCAL_PROC -q $BASH "${script}.sh" {} ::: $(seq $procs)
+		else
+			rm "${script}.o"
+		fi
+	else
+		"$PARALLEL" --nn --workdir "$ppath" -j $procs -q $BASH "${script}.sh" {} ::: $(seq $procs)
+	fi
+	"$spath"/catSAMfiles.pl "$assemp"/F${iter}-${gene}-*.sam > "$assemp"/F${iter}-$gene.sam
+	rm "${script}.sh"
+}
 
 #-------------------------------------------#
 #--- Scoring assembly function   -----------#
@@ -787,6 +855,12 @@ EOL
 function ASSEM_SCORE_SSW() {
 	local SAM=$1
 	"$spath"/scoreSAM.pl "$SAM"
+}
+
+
+function ASSEM_SCORE_MM2() {
+	local SAM=$1
+	"$spath"/scoreSAM.pl -F 14 "$SAM"
 }
 #############################################
 #############################################
@@ -941,14 +1015,11 @@ function REFINE_ASSEMBLY_CALL_VARIANTS() {
 	if [ "$ASSEM_PROG" == "SSW" ];then
 		local ASSEM_FUNCTION="ASSEM_RUN_SSW"
 		local ASSEM_SCORE="ASSEM_SCORE_SSW"
+	elif [ "$ASSEM_PROG" == "MINIMAP2" ];then
+		local ASSEM_FUNCTION="ASSEM_RUN_MM2"
+		local ASSEM_SCORE="ASSEM_SCORE_MM2"
 	else
-		time_stamp "at $gene aborted, ASSEMBLE:$ASSEM_PROG not implemented"
-		if [ "$R" -gt "1" ];then
-			doPostProcessing
-		fi
-		moveProject
-		time_stamp 'finished!'
-		exit
+		return 1
 	fi
 
 	# DEFINE local variables
@@ -1019,7 +1090,8 @@ function ASSEMBLE_REPORT() {
 		doGrid=1
 	else
 		doGrid=0
-		if [ $size -gt $SINGLE_LOCAL_PROC ];then
+		#if [ "$size" -gt "$SINGLE_LOCAL_PROC" -a "$ASSEM_PROG" != "MINIMAP2" ];then
+		if [ "$size" -gt "$SINGLE_LOCAL_PROC" ];then
 			procs=$SINGLE_LOCAL_PROC
 		else
 			procs=1
@@ -1055,6 +1127,15 @@ function ASSEMBLE_REPORT() {
 	[ "$SORT_GROUPS" == "" -a "${NONSEGMENTED:-1}" -eq "0" ] && options+=" -H"
 	[ "$MIN_CONS_SUPPORT" != "" ] && options+=" -c ${final}-coverage.txt --min-consensus-support ${MIN_CONS_SUPPORT:-1}"
 	"$spath"/amendConsensus.pl -P "$ppath" "${final}.fasta" "${final}-variants.txt" $options
+	if [ "${ALIGN_AMENDED:-0}" -eq "1" -a -s "$phmms"/${gene}_hmm.mod ];then
+			local a2m_file=$("$spath"/amendConsensus.pl "${final}.fasta" "${final}-variants.txt" $options --print-name)
+			if [ "$a2m_file" != "" ];then	
+				cd "$ppath"
+				"$A2M" $a2m_file -db ${a2m_file}.fa -modelfile "$phmms"/${gene}_hmm.mod -sw 0 > /dev/null 2>&1
+				cd - > /dev/null
+			fi
+			
+	fi
 
 	if [ -r "${final}-insertions.txt" -a -r "${final}-deletions.txt" ];then
 		local options="-C $MIN_C -F $MIN_F -I $MIN_FI -D $MIN_FD -Q $MIN_AQ -T $MIN_TCC -M $MIN_CONF -S $SIG_LEVEL"
@@ -1159,6 +1240,7 @@ function doPostProcessing() {
 	pid=()
 	# POLISH the final assembly & do variant calls/phasing
 	if test -n "$(shopt -s nullglob;echo "$assemp"/F1-*.ref)";then
+		time_stamp "performing final assembly with $ASSEM_PROG"
 		for ref1 in "$assemp"/F1-*.ref;do
 			name=$(basename "$ref1" .ref)
 			gene=${name#*-}
@@ -1187,6 +1269,7 @@ function doPostProcessing() {
 
 		[ ! -d "$ppath"/amended_consensus ] && mkdir "$ppath"/amended_consensus
 		[ -n "$(shopt -s nullglob;echo "$ppath"/*.fa)" ] && mv "$ppath"/*.fa "$ppath"/amended_consensus
+		[ -n "$(shopt -s nullglob;echo "$ppath"/*.a2m)" ] && mv "$ppath"/*.a2m "$ppath"/amended_consensus
 		
 		[ ! -d "$ppath"/matrices ] && mkdir "$ppath"/matrices	
 		[ -n "$(shopt -s nullglob;echo "$ppath"/*.sqm)" ] && mv "$ppath"/*.sqm "$ppath"/matrices
@@ -1319,6 +1402,31 @@ function setPrograms() {
 		ALIGN_PROG="BLAT"
 		ALIGN_PROGS[$i]="BLAT"
 	fi
+
+	if [ "$ASSEM_PROG" == "MINIMAP2" ];then
+		if [ "$( perl -se '$t=shift;print ($t != 1.0 ? 1 : 0)' ${MIN_FA:-0} )" -eq "1" ];then
+			time_stamp "$ASSEM_PROG may not be used with alternative consensus. Turning it off."
+			MIN_FA=1.0
+		fi
+	fi
+
+	if [ -z "${DEL_TYPES[0]}" ];then
+		if [ "$ALIGN_PROG" == "BLAT" ];then
+			DEL_TYPE="NNN"
+	#	elif [ "$( perl -se '$t=shift;print ($t >= 1.0 ? 1 : 0)' ${DEL_T:-0.50} )" -eq "1" ];then
+	#		DEL_TYPE="REF"
+		else
+			DEL_TYPE="DEL"
+		fi
+	elif [ -z "${DEL_TYPES[$i]}" ];then
+		DEL_TYPE=${DEL_TYPES[${#DEL_TYPES[@]}-1]}
+	elif [[ "${DEL_TYPES[$i]}" =~ ^(NNN|REF|DEL)$ ]];then
+		DEL_TYPE=${DEL_TYPES[$i]}
+	else
+		DEL_TYPE="NNN"
+		DEL_TYPES[$i]="NNN"
+		time_stamp "deletion type '${DEL_TYPES[$i]}' requested but not found. Trying $DEL_TYPE"
+	fi
 }
 
 
@@ -1350,7 +1458,11 @@ else
 	time_stamp 'pre-processed'
 fi
 
-[ "$NO_MERGE" -eq "1" ] && PAIRED=0
+# Turn off paired-end read merging.
+if [ "$PAIRED" -eq "1" -a "$NO_MERGE" -eq "1" ];then
+	time_stamp "WARNING, setting NO_MERGE for PE reads. Coverage depth will appear inflated."
+	PAIRED=0
+fi
 
 if [ ! -s "$ppath"/R0.fa ];then
 	time_stamp "found no QC'd data, review QC_log.txt"
@@ -1360,6 +1472,13 @@ if [ ! -s "$ppath"/R0.fa ];then
 fi
 
 setPrograms	# set the programs
+
+# Guard the final assembler program
+if [ "$ASSEM_PROG" != "SSW" -a "$ASSEM_PROG" != "MINIMAP2" ];then
+	time_stamp "final assembly program '$ASSEM_PROG' requested but not found. Using SSW"
+	ASSEM_PROG="SSW"
+fi
+
 if [ "$NO_SORT_REFS" -eq "1" ];then
 	"$spath"/partitionByField.pl -H -X .ref "$REF_SET" "$refp"/R0-
 	cat "$refp"/R0-*.ref > "$refp"/R0.refs
@@ -1483,7 +1602,7 @@ if [ "${DO_SECONDARY:-0}" -eq "1" -a -n "$(shopt -s nullglob;echo "$original_pat
 		if [ -r "$phmms/${gene}_hmm.mod" ];then
 			cat "$residual_fasta" <( "$spath"/ordinalHeaders.pl -O default <( "$Lspath"/selectSequences.pl "$DEF_SET" -I "$gene" ) ) > "$ppath"/${gene}.patch.fa 
 			cd "$ppath"
-			"$A2M" ${gene}.patch -db ${gene}.patch.fa -modelfile "$phmms"/${gene}_hmm.mod > /dev/null 2>&1
+			"$A2M" ${gene}.patch -db ${gene}.patch.fa -modelfile "$phmms"/${gene}_hmm.mod -sw 0 > /dev/null 2>&1
 			cd - > /dev/null
 			"$spath"/makePatchworkConsensus.pl "$ppath"/${gene}.patch.a2m default -N "$gene" >> "$REF_SET"
 		else

@@ -21,10 +21,11 @@ else
 	ALIGN_OPTS=""
 fi
 
+ASSEM_OPTS=""
 if [ "$ASSEM_PROG" == "SSW" ];then
 	ASSEM_OPTS=" ($SSW_OPTS)"
-else
-	ASSEM_OPTS=""
+elif [ "$ASSEM_PROG" == "MINIMAP2" ];then
+	ASSEM_OPTS=" ($MM2_OPTS)"
 fi
 
 if [ "${PAIRED:-0}" -eq "1" ];then
@@ -47,10 +48,12 @@ parameter_file_version	PARAM_FILE_VERSION	$PARAM_FILE_VERSION
 match_last_program	MATCH_PROG	$MATCH_PROG$MATCH_OPTS
 align_last_program	ALIGN_PROG	$ALIGN_PROG$ALIGN_OPTS
 sort_last_program	SORT_PROG	$SORT_PROG$SORT_OPTS
+align_last_deletion_type	DEL_TYPE	${DEL_TYPE:-DEL}
 assemble_last_program	ASSEM_PROG	$ASSEM_PROG$ASSEM_OPTS
 match_programs	MATCH_PROGS	${MATCH_PROGS[@]}
 sort_programs	SORT_PROGS	${SORT_PROGS[@]}
 align_programs	ALIGN_PROGS	${ALIGN_PROGS[@]}
+deletion_types	DEL_TYPES	${DEL_TYPES[@]}
 blat_identity	BLAT_IDENTITY ${BLAT_IDENTITY:-80}
 profiles	phmms	$phmms
 do_not_merge_read_pairs	NO_MERGE	$NO_MERGE

@@ -64,6 +64,7 @@ GENE_GROUP="$GENE_GROUP"
 ## ALIGN STEP ##
 ALIGN_PROG="${ALIGN_PROGS[@]}"	# rough assembly / alignment to working reference [SAM,BLAT]
 ALIGN_PROC=$ALIGN_PROC		# grid maximum processes for the rough align
+DEL_TYPE="${DEL_TYPES[@]}"	# rough assembly deletion handling: NNN, REF, or DEL
 
 ### FINISHING ASSEMBLY ###
 MAX_ITER_ASSEM=$MAX_ITER_ASSEM	# max assembly iteration [5]
@@ -76,8 +77,12 @@ SILENCE_COMPLEX_INDELS=${SILENCE_COMPLEX_INDELS:-0}	# silences reads with comple
 MIN_AMBIG=$MIN_AMBIG		# minimum called SNV frequency for mixed base in amended consensus folder
 SSW_M=$SSW_M			# smith-waterman match score
 SSW_X=$SSW_X			# smith-waterman mismatch penalty
-SSW_O=$SSW_O		# smith-waterman gap open penalty
+SSW_O=$SSW_O			# smith-waterman gap open penalty
 SSW_E=$SSW_E			# smith-waterman gap extension penalty
+MM2_A=${MM2_A:-$SSW_M}		# minimap2 match
+MM2_B=${MM2_B:-$SSW_X}		# minimap2 mismatch
+MM2_O=${MM2_O:-$SSW_O}		# minimap2 gap open
+MM2_E=${MM2_E:-$SSW_E}		# minimap2 gap extend
 MIN_CONS_SUPPORT=${MIN_CONS_SUPPORT:-0}	# minimum consensus support for amended consensus
 
 ### VARIANT CALLING ###

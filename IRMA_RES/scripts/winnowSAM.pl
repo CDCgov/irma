@@ -4,12 +4,21 @@
 
 use Getopt::Long;
 GetOptions(
-		'use-matches|M' => \$useMatches, 'in-place|I' => \$inPlace, 'interleaved-pairs|P' => \$interleavedPairs
+		'use-matches|M' => \$useMatches, 'in-place|I' => \$inPlace, 'interleaved-pairs|P' => \$interleavedPairs,
+		'score-field|F=i' => \$scoreField
 	);
 
 if ( scalar(@ARGV) != 1 ) {
 	$message = "Usage:\n\tperl $0 <sam>\n";
 	die($message."\n");
+}
+
+if ( !defined($scoreField) || $scoreField < 0 ) {
+	$scoreField = 0;
+} else {
+	if ( $scoreField >= 12 ) {
+		$scoreField -= 12;
+	}
 }
 
 
@@ -40,7 +49,8 @@ while($line = <SAM>) {
 
 	
 	chomp($line);
-	($qname,$flag,$rn,$pos,$mapq,$cigar,$mrnm,$mpos,$isize,$seq,$qual,$AS) = split("\t",$line);
+	my ($qname,$flag,$rn,$pos,$mapq,$cigar,$mrnm,$mpos,$isize,$seq,$qual,@extra_fields) = split("\t",$line);
+	my $AS = $extra_fields[$scoreField];	
 
 	if ( $interleavedPairs ) {
 		$qname = $qname . '_' . ($pair%2);

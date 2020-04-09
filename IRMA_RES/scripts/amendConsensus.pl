@@ -20,7 +20,8 @@ GetOptions(
 		'replace-not-ambiguate|R' => \$replaceNotEncode,
 		'belong-to-phase|B=i' => \$replaceWithPhase,
 		'min-consensus-support=i' => \$minConsensusSupport,
-		'replace-coverage-file' => \$replaceCoverageFile
+		'replace-coverage-file' => \$replaceCoverageFile,
+		'print-name' => \$printFinalName
 	);
 
 if ( scalar(@ARGV) != 2 ) {
@@ -145,6 +146,12 @@ if ( defined($convertSeg) ) {
 if ( defined($faHeaderSuffix) && defined($name) ) {
 	$outHdr .= '-'.$faHeader;
 } 
+
+# exit early
+if ( defined($printFinalName) ) {
+	print STDOUT $outHdr;
+	exit(0);
+}
 
 # encode variants that are valid
 foreach $pos ( keys(%validPos) ) {
