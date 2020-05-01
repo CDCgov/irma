@@ -1469,7 +1469,7 @@ function setPrograms() {
 time_stamp "started run '$RUN'"
 
 # optionally check for disk space
-if [ "${ALLOW_DISK_CHECK:-1}" -eq "1" -a "$CAT" = "ZCAT" ];then
+if [ "${ALLOW_DISK_CHECK:-1}" -eq "1" -a "$CAT" = "zcat" ];then
 	MSG="$("$spath"/disk_check.pl "$ppath" "$LEFT" "$RIGHT")"
 	STATUS=$?
 	if [ "$STATUS" -eq "0" ];then 
