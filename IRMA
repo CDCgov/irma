@@ -109,7 +109,6 @@ if [ "$(basename $RUN)" != "$RUN" ];then
 	RUN=$(basename $RUN)
 fi 
 
-
 # make sure output directory is valid
 if [ ! -w "$destination_directory" ];then 
 	abort "output directory not writable: $destination_directory"
@@ -318,7 +317,7 @@ original_path="$ppath"
 original_run=$RUN
 function moveProject() {
 	local x=2
-	local mvpath=$destination_directory/$original_run
+	local mvpath="$destination_directory"/$original_run
 	[ -r "$original_path/R0.fa.bak" ] && rm "$original_path"/R0.fa.bak
 	[ -r "$original_path/R0.xfl.bak" ] && rm "$original_path"/R0.xfl.bak
 
