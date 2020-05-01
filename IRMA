@@ -36,6 +36,12 @@ function time_stamp() {
 	echo -e "[$t]\tIRMA/$MODULE_CONFIG $1"
 }
 
+function abort() {
+	time_stamp "ERROR: $1"
+	time_stamp "ABORTED run: $RUN"
+	exit 1
+}
+
 function rmglob () {
 	local glob=""
 	for glob in "$@";do
@@ -77,12 +83,42 @@ fi
 R=1			# current round
 LANG=POSIX		# collation
 owd=$(pwd)
+destination_directory="$owd"
 bpath=
 if [ "$bpath" == "" ]; then
 	bpath=$( cd -P "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 fi
 rpath="$bpath"/IRMA_RES	# IRMA resources
 spath="$rpath"/scripts	# IRMA specific scripts/binaries
+
+# process optional output diretory
+if [ "$(basename $RUN)" != "$RUN" ];then
+	if [ "${RUN:0:1}" == "/" ];then
+		destination_directory=$(dirname $RUN)
+	else
+		destination_directory="$owd"/"$(dirname $RUN)"
+	fi
+
+	if [ ! -d "$destination_directory" ];then
+		time_stamp "output directory does not exist, creating: $destination_directory"
+		mkdir -p "$destination_directory" 2>/dev/null \
+			&& time_stamp "output directory created" \
+			|| { time_stamp "creation failed, using default"; destination_directory="$owd"; }
+	fi
+
+	RUN=$(basename $RUN)
+fi 
+
+
+# make sure output directory is valid
+if [ ! -w "$destination_directory" ];then 
+	abort "output directory not writable: $destination_directory"
+fi
+
+# test input files
+[ ! -s "$LEFT" ] && abort "file '$LEFT' empty or unreadable"
+[ "$RIGHT" != "" -a ! -s "$RIGHT" ] && abort "file '$RIGHT' empty or unreadable"
+[ "$RIGHT" == "$LEFT" ] && abort "both read pairs point to the same file '$LEFT'"
 
 
 # FNC - CHECK PROGRAM #
@@ -149,7 +185,7 @@ DEF_SET="$mpath"/reference/consensus.fasta
 if [ -r "$rpath"/defaults.sh ];then
 	source "$rpath"/defaults.sh
 else
-	time_stamp "Missing defaults. ABORTING. Please restore from $rpath/.defaults.sh.bak" 
+	abort "Missing defaults, please restore from $rpath/.defaults.sh.bak" 
 fi
 
 # init variables from config files
@@ -233,14 +269,13 @@ if [ ! -d "$ppath" ]; then
 			echo "IRMA WARNING: cannot create directory '$ppath', trying: "$rpath"/ppath/${RUN}-${TOKEN}"
 			ppath="$rpath"/ppath/${RUN}-${TOKEN}
 			mkdir -p "$ppath"
-			[ "$?" -ne "0" ] && echo "IRMA ERROR: cannot create directory '$ppath', operations ABORTED!" && exit 1
+			[ "$?" -ne "0" ] && abort "cannot create directory '$ppath'"
 		else
-			echo "IRMA ERROR: cannot create directory '$ppath', operations ABORTED!" && exit 1
+			abort "cannot create directory '$ppath'"
 		fi
 	fi
 else
-	echo "IRMA ERROR: run '$RUN' exists, operations have been ABORTED!"
-	exit 1
+	abort "run already exists"
 fi
 original_run=$RUN
 
@@ -283,7 +318,7 @@ original_path="$ppath"
 original_run=$RUN
 function moveProject() {
 	local x=2
-	local mvpath=$owd/$original_run
+	local mvpath=$destination_directory/$original_run
 	[ -r "$original_path/R0.fa.bak" ] && rm "$original_path"/R0.fa.bak
 	[ -r "$original_path/R0.xfl.bak" ] && rm "$original_path"/R0.xfl.bak
 
@@ -301,11 +336,11 @@ function moveProject() {
 }
 
 function die() {
-	local msg=$1
 	time_stamp "ERROR: $1"
 	moveProject
 	exit 1
 }
+
 
 function doLABEL() {
 	local queryDB=$1	# FASTA
@@ -1440,7 +1475,7 @@ if [ "${ALLOW_DISK_CHECK:-1}" -eq "1" -a "$CAT" = "ZCAT" ];then
 	if [ "$STATUS" -eq "0" ];then 
 		time_stamp "$MSG"
 	else 
-		[ "$STATUS" -eq "3" ] && die "$MSG, operations ABORTED!" || die "disk check failed, operations ABORTED!"
+		[ "$STATUS" -eq "3" ] && abort "$MSG" || abort "disk check failed!"
 	fi
 fi
 
