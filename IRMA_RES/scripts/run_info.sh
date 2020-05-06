@@ -42,7 +42,7 @@ sample	RUN	$RUN
 paired_end_reads	PAIRED	$PAIRED
 data	$INPUT_READ_DATA
 module_name	MODULE	$MODULE
-module_param_call	MODULE_CONFIG $MODULE_CONFIG
+module_param_call	MODULE_CONFIG	$MODULE_CONFIG
 parameter_file_name	PARAM_FILE_NAME	$PARAM_FILE_NAME
 parameter_file_version	PARAM_FILE_VERSION	$PARAM_FILE_VERSION
 match_last_program	MATCH_PROG	$MATCH_PROG$MATCH_OPTS
@@ -91,4 +91,5 @@ minimum_variant_depth	MIN_TCC	$MIN_TCC
 minimum_confidence_not_sequencer_error	MIN_CONF	$MIN_CONF
 merge_secondary_data	MERGE_SECONDARY	$MERGE_SECONDARY
 do_secondary_assembly	DO_SECONDARY ${DO_SECONDARY:-0}
+final_assembly_to_reference_seed	ASSEM_REF	${ASSEM_REF:-0}
 EOF
