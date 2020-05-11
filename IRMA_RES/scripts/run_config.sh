@@ -83,7 +83,8 @@ MM2_A=${MM2_A:-$SSW_M}		# minimap2 match
 MM2_B=${MM2_B:-$SSW_X}		# minimap2 mismatch
 MM2_O=${MM2_O:-$SSW_O}		# minimap2 gap open
 MM2_E=${MM2_E:-$SSW_E}		# minimap2 gap extend
-MIN_CONS_SUPPORT=${MIN_CONS_SUPPORT:-0}	# minimum consensus support for amended consensus
+MIN_CONS_SUPPORT=${MIN_CONS_SUPPORT:-1}	# minimum consensus support for amended consensus
+MIN_CONS_QUALITY=${MIN_CONS_QUALITY:-0}	# minimum consensus average quality for amended consensus
 
 ### VARIANT CALLING ###
 # HEURISTICS
