@@ -2,12 +2,13 @@ IRMA Changelog
 
 v0.9.5 : 2020-04-09
 - Added SARS-CoV-2 to the experimental CoV module
-- Added MIN_CONS_SUPPORT to control total ambiguation ('N') of the amended consensus based on support.
+- Added MIN_CONS_SUPPORT to control total ambiguation ('N') of the amended consensus based on the plurality allele count.
+- Added MIN_CONS_QUALITY to control total ambiguation ('N') of the amended consensus based on the plurality allele average quality.
 - Added more control for deletion editing (see DEL_TYPE)
 - Added amended_consensus HMM alignment option (global alignment)
-- Added experimental support for minimap2 for the final assembly (ASSEM_PROG="MINIMAP2"). Helpful for long genomes + reads that Smith-Waterman can't handle so well.
-- Fixed bug with annotated (curly brackets) fastq
+- Added experimental support for minimap2 for the final assembly (ASSEM_PROG="MINIMAP2"). Helpful for long genomes + reads that Smith-Waterman can't handle so well. Split chains not yet supported.
 - Added output directory (relative to working directory or absolute path) specification in the RUN argument.
+- Fixed bug with annotated (curly brackets) fastq
 
 v0.9.4 : 2019-12-04
 - Heatmap defaults are now statically determined for consistency with later version of R (3.6+)
