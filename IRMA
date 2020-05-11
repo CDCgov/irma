@@ -3,8 +3,8 @@ PROGRAM="Iterative Refinement Meta-Assembler (IRMA)"
 AUTHOR="Samuel S. Shepard"
 EMAIL="vfn4@cdc.gov"
 AFFIL="NCIRD/OID/CDC"
-DATE="09 APR 2020"
-VERSION="0.9.5-alpha"
+DATE="11 MAY 2020"
+VERSION="0.9.5-beta"
 LICENSE="GPL version 3. This program comes with ABSOLUTELY NO WARRANTY. This is free software.
 You are welcome to redistribute it under certain conditions. See:  <http://www.gnu.org/licenses/>.
 Components of this pipeline have non-commercial restrictions. See: IRMA_RES/scripts/packaged-citations-licenses"
@@ -1159,7 +1159,11 @@ function ASSEMBLE_REPORT() {
 	local options="-C $MIN_C -N $RUN -F $MIN_AMBIG"
 	[ "$SEG_NUMBERS" != "" ] && options+=" -S $SEG_NUMBERS"
 	[ "$SORT_GROUPS" == "" -a "${NONSEGMENTED:-1}" -eq "0" ] && options+=" -H"
-	[ "$MIN_CONS_SUPPORT" != "" ] && options+=" -c ${final}-coverage.txt --min-consensus-support ${MIN_CONS_SUPPORT:-1}"
+	if [ "$MIN_CONS_SUPPORT" != "" -o "$MIN_CONS_QUALITY" != "" ];then
+		 options+=" -c ${final}-coverage.txt"
+		[ "$MIN_CONS_SUPPORT" != "" ] && options+=" --min-consensus-support ${MIN_CONS_SUPPORT:-1}"
+		[ "$MIN_CONS_QUALITY" != "" ] && options+=" --min-consensus-quality ${MIN_CONS_QUALITY:-0}"
+	fi
 	"$spath"/amendConsensus.pl -P "$ppath" "${final}.fasta" "${final}-variants.txt" $options
 	if [ "${ALIGN_AMENDED:-0}" -eq "1" -a -s "$phmms"/${gene}_hmm.mod ];then
 			local a2m_file=$("$spath"/amendConsensus.pl "${final}.fasta" "${final}-variants.txt" $options --print-name)
@@ -1466,6 +1470,7 @@ function setPrograms() {
 
 ### START ####
 time_stamp "started run '$RUN'"
+[ -r "$mpath/primers" ] && time_stamp "NOTE: primer-trimmed reads expected as input for amplicon sequencing"
 
 # optionally check for disk space
 if [ "${ALLOW_DISK_CHECK:-1}" -eq "1" -a "$CAT" = "zcat" ];then

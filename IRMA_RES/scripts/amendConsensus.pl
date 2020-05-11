@@ -20,6 +20,7 @@ GetOptions(
 		'replace-not-ambiguate|R' => \$replaceNotEncode,
 		'belong-to-phase|B=i' => \$replaceWithPhase,
 		'min-consensus-support=i' => \$minConsensusSupport,
+		'min-consensus-quality=f' => \$minConsensusQuality,
 		'replace-coverage-file' => \$replaceCoverageFile,
 		'print-name' => \$printFinalName
 	);
@@ -37,7 +38,8 @@ if ( scalar(@ARGV) != 2 ) {
 	$message .= "\t\t-S|--seg\t\t\tConvert the seg name to number and add to ISA.\n";
 	$message .= "\t\t-P|--prefix <STR>\t\tOutput prefix for file.\n";
 	$message .= "\t\t-T|--min-total-depth <INT>\tMinimum non-ambiguous column coverage. Default = 2.\n";
-	$message .= "\t\t--min-consensus-support <INT>\tMinimum total depth per site to call plurality, otherwise 'N'.\n";
+	$message .= "\t\t--min-consensus-support <INT>\tMinimum plurality count to call consensus, otherwise 'N'.\n";
+	$message .= "\t\t--min-consensus-quality <FLT>\tMinimum plurality average quality to call consensus, otherwise 'N'.\n";
 	$message .= "\t\t--replace-coverage-file\t\tImplied by min-consensus-support, replaces file exactly.\n";
 	die($message."\n");
 }
@@ -214,7 +216,7 @@ if ( $covgRewrite ) {
 	open(OUT,'>',$coverage_filename) or die("$0 ERROR: cannot open $outHdr-coverage.txt.\n");
 	print OUT $header,"\n";
 
-	$iPos = 1; $iDepth = 2; $iCon = 3; $cursor = 1; $offset = 0;
+	$iPos = 1; $iDepth = 6; $iCon = 3; $iQuality = 7; $cursor = 1; $offset = 0;
 	foreach $line ( @coverages ) {
 		@fields = split("\t",$line);
 	}
@@ -228,7 +230,7 @@ if ( $covgRewrite ) {
 			$p = $fields[$iPos]-1;
 		}
 
-		if ( $fields[$iDepth] < $minConsensusSupport ) {
+		if ( $fields[$iDepth] < $minConsensusSupport || $fields[$iQuality] < $minConsensusQuality ) {
 			if ( 0 <= $p && $p <= $#seq ) {
 				$seq[$p] = 'N';
 				$fields[$iCon] = 'N';

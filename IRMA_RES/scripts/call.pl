@@ -305,7 +305,7 @@ print VARS "\t",'Consensus_Frequency',"\t",'Minority_Frequency';
 print VARS "\t",'Consensus_Average_Quality',"\t",'Minority_Average_Quality';
 print VARS "\t",'ConfidenceNotMacErr',"\t",'PairedUB',"\t",'QualityUB',"\n";
 
-print COVG "Reference_Name\tPosition\tCoverage Depth\tConsensus\tDeletions\tAmbiguous\n";
+print COVG "Reference_Name\tPosition\tCoverage Depth\tConsensus\tDeletions\tAmbiguous\tConsensus_Count\tConsensus_Average_Quality\n";
 print CONS '>',$REF_NAME,"\n";
 
 $hFreq = 0; @alphabet = split('','ACGT-');
@@ -336,6 +336,12 @@ for($p=0;$p<$REF_LEN;$p++) {
 	$total -= $cTable[$p]{'N'};
 	$totals[$p] = $total;
 
+	print CONS $consensus;
+	$consensusSeq .= $consensus;
+
+	if ( $total != 0 ) { $conFreq = $conCount / $total; } else { $conFreq = 0; }
+	if ( $conCount != 0 ) { $conQuality = ($qTable[$p]{$consensus} - $conCount*33)/$conCount; } else { $conQuality = $minQuality; }
+
 	if ( defined($cTable[$p]{'-'}) ) {
 		print COVG $REF_NAME,"\t",($p+1),"\t",($total-$cTable[$p]{'-'}),"\t",$consensus,"\t",$cTable[$p]{'-'};
 	} else {
@@ -343,15 +349,11 @@ for($p=0;$p<$REF_LEN;$p++) {
 	}
 
 	if ( ! defined($cTable[$p]{'N'}) ) {
-		print COVG "\t",0,"\n";
+		print COVG "\t",0;
 	} else {
-		print COVG "\t",$cTable[$p]{'N'},"\n";
+		print COVG "\t",$cTable[$p]{'N'};
 	}
-	print CONS $consensus;
-	$consensusSeq .= $consensus;
-
-	if ( $total != 0 ) { $conFreq = $conCount / $total; } else { $conFreq = 0; }
-	if ( $conCount != 0 ) { $conQuality = ($qTable[$p]{$consensus} - $conCount*33)/$conCount; } else { $conQuality = $minQuality; }
+	print COVG "\t",$conCount,"\t",$conQuality,"\n";
 
 	if ( $doCallTable ) {
 		if ( !defined($variants{$p}) ) { next; }
