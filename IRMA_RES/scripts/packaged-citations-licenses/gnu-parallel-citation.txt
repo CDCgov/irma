@@ -1,23 +1,21 @@
 When using programs that use GNU Parallel to process data for publication please cite:
 
-@article{Tange2011a,
- title = {GNU Parallel - The Command-Line Power Tool},
- author = {O. Tange},
- address = {Frederiksberg, Denmark},
- journal = {;login: The USENIX Magazine},
- month = {Feb},
- number = {1},
- volume = {36},
- url = {http://www.gnu.org/s/parallel},
- year = {2011},
- pages = {42-47}
+@book{tange_ole_2018_1146014,
+      author       = {Tange, Ole},
+      title        = {GNU Parallel 2018},
+      publisher    = {Ole Tange},
+      month        = Mar,
+      year         = 2018,
+      ISBN         = {9781387509881},
+      doi          = {10.5281/zenodo.1146014},
+      url          = {https://doi.org/10.5281/zenodo.1146014}
 }
 
-(Feel free to use \nocite{Tange2011a})
+(Feel free to use \nocite{tange_ole_2018_1146014})
 
 Or:
 
-  O. Tange (2011): GNU Parallel - The Command-Line Power Tool, 
-  ;login: The USENIX Magazine, February 2011:42-47.
+  O. Tange (2018): GNU Parallel 2018, Mar 2018, ISBN 9781387509881,
+  DOI https://doi.org/10.5281/zenodo.11460
 
 This helps funding further development.
