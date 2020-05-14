@@ -1559,6 +1559,7 @@ elif [ "$ASSEM_REF" -eq "1" ];then
 			gene=${name#*-}
 			"$spath"/ordinalHeaders.pl -N "$gene" "$fasta" > "$refp"/${name}.ref
 		done
+		cat "$refp"/R0-*.ref > "$refp"/R0.refs; rmglob "$refp"/R0-*.fa; REF_SET="$refp"/R0.refs
 		time_stamp 'sorted user supplied reference set'
 	else
 		time_stamp "run aborted, sequences in '$REF_SET' not ${MODULE}-like"
@@ -1668,4 +1669,3 @@ moveProject
 time_stamp 'finished!'
 exit 0
 ### END ### 
-#!/bin/bash
