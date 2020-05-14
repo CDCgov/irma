@@ -353,7 +353,9 @@ function doLABEL() {
 	[ "$n" -gt "$limit" -a "$GRID_ON" -eq "1" ] && Earg=2
 	if [ "$n" -gt "0" ]; then
 		"$LABEL" -E $Earg -W "$workdir" "$queryDB" $name $labelmodule > /dev/null 2>&1
-		mv "$workdir"/${name}/${name}_final.tab "$workdir"/SORTED_${name}.tab
+		if [ -r "$workdir/${name}/${name}_final.tab" ];then
+			mv "$workdir"/${name}/${name}_final.tab "$workdir"/SORTED_${name}.tab
+		fi
 	fi
 }
 
@@ -538,7 +540,7 @@ function doSORT() {
 	[ "$SORT_PROG" == "BLAT" ] && options+=" -G"
 	[ "$SORT_GROUPS" != "" ] && options+=" -P $SORT_GROUPS"
 	[ "$BAN_GROUPS" != "" ] && options+=" -B $BAN_GROUPS"
-	"$spath"/parseSORTresults.pl "$sortp"/$prefix/SORT_result.txt "$matchp"/$prefix.match "$sortp"/$prefix $options
+	"$spath"/parseSORTresults.pl "$sortp"/$prefix/SORT_result.txt "$matchp"/$prefix.match "$sortp"/$prefix $options || return 1
 
 	# CLEAN UP
 	cd "$sortp"/$prefix; tar  -cf - SORT_result.txt |"$ZIP" $Z_OPTS - > "$sortp"/$prefix.tar.gz
@@ -1557,7 +1559,6 @@ elif [ "$ASSEM_REF" -eq "1" ];then
 			gene=${name#*-}
 			"$spath"/ordinalHeaders.pl -N "$gene" "$fasta" > "$refp"/${name}.ref
 		done
-		cat "$refp"/R0-*.ref > "$refp"/R0.refs; rmglob "$refp"/R0-*.fa; REF_SET="$refp"/R0.refs
 		time_stamp 'sorted user supplied reference set'
 	else
 		time_stamp "run aborted, sequences in '$REF_SET' not ${MODULE}-like"
@@ -1667,3 +1668,4 @@ moveProject
 time_stamp 'finished!'
 exit 0
 ### END ### 
+#!/bin/bash

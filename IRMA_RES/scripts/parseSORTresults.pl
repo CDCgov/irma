@@ -15,10 +15,14 @@ if ( scalar(@ARGV) != 3 ) {
 if ( !defined($minimumRcount)  || $minimumRcount < 1 )  { $minimumRcount  = 1; }
 if ( !defined($minimumRPcount) || $minimumRPcount < 1 ) { $minimumRPcount = 1; }
 
-%counts = (); $/ = "\n";
+my %counts = (); 
+my %IDs = ();
+my %rCounts = ();
+$/ = "\n";
 open(IN,'<',$ARGV[0]) or die("Cannot open $ARGV[0] for reading.\n");
 while($line=<IN>) {
 	chomp($line);
+	if ( length($line) == 0 ) { next; }
 	($ID,$target,$score) = split("\t",$line);
 	if ( $ignoreAnnotations && $target =~ /^([^{]+)\{[^}]*}$/ ) { $target = $1; }
 
@@ -36,7 +40,7 @@ foreach $target ( %counts ) {
 }
 
 # choose primary or secondary between groups
-open(OUT,'>',$ARGV[2].'.txt') or die("Cannot open $ARGV[0].txt\n");
+open(OUT,'>',$ARGV[2].'.txt') or die("Cannot open $ARGV[2].txt\n");
 @genes = sort { $counts{$b} <=> $counts{$a} } keys(%counts);
 foreach $gene ( @genes ) {
 	print OUT $gene,"\t",$counts{$gene},"\t",$rCounts{$gene},"\n";
@@ -93,7 +97,7 @@ if ( defined($patternList) && length($patternList) > 0) {
 }
 
 # Set up handles for primary and secondary data	
-%handles = ();
+my %handles = ();
 foreach $gene ( @genes ) {
 	# primary
 	if ( $valid{$gene} > 0 ) {
@@ -103,6 +107,10 @@ foreach $gene ( @genes ) {
 		$file = $ARGV[2].'-'.$gene.'.fa.2';
 	}
 	open($handles{$gene},'>',$file) or die("Cannot open $file for writing.\n");
+}
+
+if ( scalar(@genes) == 0 ) {
+	die("$0 ERROR: no classification output found! Aborting.\n");
 }
 
 open(IN,'<',$ARGV[1]) or die("Cannot open $ARGV[1] for reading.\n"); $/ = '>';
