@@ -173,20 +173,23 @@ while($hdr=<>) {
 			$seq = substr($seq,$+[0]);	
 			$quality = substr($quality,$+[0]);
 		} elsif ( $fuzzyAdapter ) {
+			my $findFuzzyFWD = 1;
 			foreach $tmp ( @fuzzyAdaptersREV ) {
 				if ( $seq =~ /$tmp/i ) {
 					$seq = substr($seq,0,$-[0]);
 					$quality = substr($quality,0,$-[0]);
-					@fuzzyAdaptersFWD = ();
+					$findFuzzyFWD = 0;
 					last;
 				}
 			}
 
-			foreach $tmp ( @fuzzyAdaptersFWD ) {
-				if ( $seq =~ /$tmp/i ) {
-					$seq = substr($seq,$+[0]);	
-					$quality = substr($quality,$+[0]);
-					last;
+			if ( $findFuzzyFWD ) {
+				foreach $tmp ( @fuzzyAdaptersFWD ) {
+					if ( $seq =~ /$tmp/i ) {
+						$seq = substr($seq,$+[0]);	
+						$quality = substr($quality,$+[0]);
+						last;
+					}
 				}
 			}
 		}
@@ -196,20 +199,21 @@ while($hdr=<>) {
 		} elsif ( $seq =~ /$forwardAdapter/i ) {
 			$seq =~ s/$forwardAdapter/$adapterMask/i;
 		} elsif ( $fuzzyAdapter ) {
+			my $findFuzzyFWD = 1;
 			foreach $tmp ( @fuzzyAdaptersREV ) {
 				if ( $seq =~ /$tmp/i ) {
-					$seq = substr($seq,0,$-[0]);
-					$quality = substr($quality,0,$-[0]);
-					@fuzzyAdaptersFWD = ();
+					$seq =~ s/$tmp/$adapterMask/i;
+					$findFuzzyFWD = 0;
 					last;
 				}
 			}
 
-			foreach $tmp ( @fuzzyAdaptersFWD ) {
-				if ( $seq =~ /$tmp/i ) {
-					$seq = substr($seq,$+[0]);	
-					$quality = substr($quality,$+[0]);
-					last;
+			if ( $findFuzzyFWD ) {
+				foreach $tmp ( @fuzzyAdaptersFWD ) {
+					if ( $seq =~ /$tmp/i ) {
+						$seq =~ s/$tmp/$adapterMask/i;
+						last;
+					}
 				}
 			}
 		}
