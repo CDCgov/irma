@@ -5,7 +5,6 @@ PARAM_FILE_VERSION="1.0"
 PARAM_FILE_DATE="2020-04"
 
 # READ GATHERING & ASSEMBLY
-NO_MERGE=1		# no read pair merging
 MAX_ROUNDS=1		# max read gather rounds
 MAX_ITER_ASSEM=2	# max SSW iterations to perform
 

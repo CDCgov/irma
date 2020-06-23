@@ -15,6 +15,7 @@ MAX_ROUNDS=5				# diminishing returns fo later rounds, but leave no read behind
 GRID_ON=1		# needs "qsub" and a NFS install of IRMA
 
 # STAGES
+DEL_TYPE="REF"
 MATCH_PROG="BLAT"
 SORT_PROG="BLAT"
 ALIGN_PROG="SAM"

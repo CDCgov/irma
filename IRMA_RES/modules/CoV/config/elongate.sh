@@ -14,7 +14,7 @@ MIN_LEN=75				# relaxed threshold for UTR elongation with SAM
 MAX_ROUNDS=5				# more rounds than default needed for elongation
 
 # STAGES
-DEL_TYPE="NNN"
+DEL_TYPE="REF NNN"
 MATCH_PROG="BLAT"
 SORT_PROG="BLAT"
 ALIGN_PROG="SAM BLAT"
