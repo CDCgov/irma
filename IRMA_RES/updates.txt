@@ -9,7 +9,7 @@ v0.9.5 : 2020-07-07
 - Added experimental support for minimap2 for the final assembly (ASSEM_PROG="MINIMAP2"). Helpful for long genomes + reads that Smith-Waterman can't handle so well. Split chains not yet supported.
 - Added output directory (relative to working directory or absolute path) specification in the RUN argument.
 - Updated version of GNU Parallel to 20200422 (more stable)
-- Fixed bug with annotated (curly brackets) fastq and fuzzy adapter trimming in rare cases
+- Fixed bug with annotated (curly brackets) fastq and fuzzy adapter trimming in rare cases. Other bug fixes and stability improvements.
 
 v0.9.4 : 2019-12-04
 - Heatmap defaults are now statically determined for consistency with later version of R (3.6+)
