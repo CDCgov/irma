@@ -189,7 +189,7 @@ while($line=<IN>) {
 	($Reference_Name,$Position,$Allele,$Count,$Total,$Frequency,$Average_Quality,$ConfidenceNotMacErr,$PairedUB,$QualityUB,$Allele_Type) = @fields;
 	
 	if ( defined($autoFreq) ) {
-		if ( $ConfidenceNotMacErr == 0 ) {
+		if ( $ConfidenceNotMacErr == 0 && $Allele ne '-' ) {
 			if ( $Frequency > $heurFreq ) {
 				$heurFreq = $Frequency;
 			}
