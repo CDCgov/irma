@@ -23,5 +23,3 @@ SSW_M=2			# smith-waterman match score
 SSW_X=3			# smith-waterman mismatch penalty
 SSW_O=6			# smith-waterman gap open penalty
 SSW_E=1			# smith-waterman gap extension penalty
-
-MIN_CONS_SUPPORT=20	# minimum consensus support to call consensus, otherwise 'N' in amended consensus

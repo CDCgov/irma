@@ -1,7 +1,7 @@
 IRMA Changelog
 
-v0.9.5 : 2020-07-07
-- Added SARS-CoV-2 to the experimental CoV module
+v0.9.5 : 2020-08-06
+- Added SARS-CoV-2 to the experimental CoV module and performed optimization for MiSeq 2x150 PE reads.
 - Added MIN_CONS_SUPPORT to control total ambiguation ('N') of the amended consensus based on the plurality allele count.
 - Added MIN_CONS_QUALITY to control total ambiguation ('N') of the amended consensus based on the plurality allele average quality.
 - Added more control for deletion editing (see DEL_TYPE)
@@ -9,7 +9,8 @@ v0.9.5 : 2020-07-07
 - Added experimental support for minimap2 for the final assembly (ASSEM_PROG="MINIMAP2"). Helpful for long genomes + reads that Smith-Waterman can't handle so well. Split chains not yet supported.
 - Added output directory (relative to working directory or absolute path) specification in the RUN argument.
 - Updated version of GNU Parallel to 20200422 (more stable)
-- Fixed bug with annotated (curly brackets) fastq and fuzzy adapter trimming in rare cases. Other bug fixes and stability improvements.
+- Fixed bug with annotated (curly brackets) fastq, fuzzy adapter trimming in rare cases, and an issue affecting VCF file underreporting when AUTO_F=1 (variant tables remain correct).
+- Other bug fixes and stability improvements.
 
 v0.9.4 : 2019-12-04
 - Heatmap defaults are now statically determined for consistency with later version of R (3.6+)

@@ -23,5 +23,3 @@ MM2_A=2			# minimap2 match score
 MM2_B=3			# minimap2 mismatch penalty
 MM2_O=6			# minimap2 gap open penalty
 MM2_E=1			# minimap2 gap extension penalty
-
-MIN_CONS_SUPPORT=20	# minimum consensus support to call consensus, otherwise 'N' in amended consensus

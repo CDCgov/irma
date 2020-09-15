@@ -68,6 +68,8 @@ INS_T=0.25		# minimum frquenncy threshold for insertion refinement
 DEL_T=0.60		# minimum frequency threshold for deletion refinement 
 SILENCE_COMPLEX_INDELS=0	# silences reads with complex indels (having 4 indels with at least one greater than 9)
 MIN_AMBIG=0.25		# minimum called SNV frequency for mixed base in amended consensus folder
+MIN_CONS_SUPPORT=""	# consensus allele minimum count, used to amend final consensus as 'N' if support fails. Blank is off.
+MIN_CONS_QUALITY=""	# consensus allele minimum average quality, used to amend final consensus as 'N' if threshold fails. Blank is off.
 SSW_M=2			# smith-waterman match score
 SSW_X=5			# smith-waterman mismatch penalty
 SSW_O=10		# smith-waterman gap open penalty
@@ -85,7 +87,6 @@ MIN_AQ=24		# minimum average variant quality, does not apply to deletions
 MIN_TCC=100		# minimum non-ambiguous column coverage
 MIN_CONF=0.80		# minimum confidence not machine error
 PHASE_DISTANCE=""	# threshold used for EXPENRD to assign phases, leave blank for default
-MIN_CONS_SUPPORT=""	# used to amend final consensus as 'N' if support fails
 
 # CONFIDENCE INTERVALS
 SIG_LEVEL=0.999		# significance test level for variant calling (.90,.95,.99,.999). 

@@ -3,7 +3,7 @@ PROGRAM="Iterative Refinement Meta-Assembler (IRMA)"
 AUTHOR="Samuel S. Shepard"
 EMAIL="vfn4@cdc.gov"
 AFFIL="NCIRD/OID/CDC"
-DATE="07 JUNE 2020"
+DATE="06 JULY 2020"
 VERSION="0.9.5-beta"
 LICENSE="GPL version 3. This program comes with ABSOLUTELY NO WARRANTY. This is free software.
 You are welcome to redistribute it under certain conditions. See:  <http://www.gnu.org/licenses/>.
@@ -25,8 +25,8 @@ else
 	echo -e "$PROGRAM, v$VERSION ($DATE)"
 	echo -e "$AUTHOR ($AFFIL), $EMAIL\n"
 	echo -e "$LICENSE\n\nUSAGE:"
-	echo -e "(PAIRED-END):\t$(basename $0) <MODULE|MODULE-CONFIG> <R1.fastq.gz|R1.fastq> <R2.fastq.gz|R2.fastq> <sample_name>"
-	echo -e "(SINGLE-END):\t$(basename $0) <MODULE|MODULE-CONFIG> <fastq|fastq.gz> <sample_name>\n"
+	echo -e "(PAIRED-END):\t$(basename $0) <MODULE|MODULE-CONFIG> <R1.fastq.gz|R1.fastq> <R2.fastq.gz|R2.fastq> [path/to/]<sample_name>"
+	echo -e "(SINGLE-END):\t$(basename $0) <MODULE|MODULE-CONFIG> <fastq|fastq.gz> [path/to/]<sample_name>\n"
 	exit 1
 fi
 

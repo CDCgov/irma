@@ -14,7 +14,7 @@ REF_SET=$DEF_SET	# Same as the "consensus.fasta" in the reference folder for the
 ### READ GATHERING ###
 MAX_ROUNDS=5		# round of read gathering
 USE_MEDIAN=1		# use the median quality or the average [1,0]
-QUAL_THRESHOLD=30	# minimum read statistic
+QUAL_THRESHOLD=27	# minimum read statistic. May wish to set lower for 2x300 reads.
 MIN_LEN=125		# minimum read length
 MERGE_SECONDARY=1
 
@@ -45,6 +45,8 @@ INS_T=0.25		# minimum frquenncy threshold for insertion refinement
 DEL_T=0.75		# minimum frequency threshold for deletion refinement 
 MIN_AMBIG=0.20		# minimum called SNV frequency for mixed base in amended consensus folder
 ALIGN_AMENDED=1		# align the amended consensus to the HMM profile
+MIN_CONS_SUPPORT=3	# consensus allele minimum count
+MIN_CONS_QUALITY=10	# consensus allele minimum average quality
 
 ### VARIANT CALLING ###
 # HEURISTICS
