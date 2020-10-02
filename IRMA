@@ -1060,7 +1060,7 @@ function REFINE_ASSEMBLY_CALL_VARIANTS() {
 
 	# DEFINE local variables
 	local log="$assemp"/$gene.log
-	local COMBINE_SAM_OPTS="-N $gene -I $INS_T -D $DEL_T -A $MIN_FA -C $MIN_CA"
+	local COMBINE_SAM_OPTS="-N $gene -I $INS_T -D $DEL_T -A $MIN_FA -C $MIN_CA -i ${INS_T_DEPTH:-1} -d ${DEL_T_DEPTH:-1}"
 	local theRef="";local -a theStats=();local newRef=""
 	local theBAM="";local theSAM=""
 	local lastScore=0;local currentScore=0;local iter=1
