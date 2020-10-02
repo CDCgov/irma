@@ -1,9 +1,11 @@
 IRMA Changelog
 
-v0.9.5 : 2020-08-06
+v0.9.5 : 2020-10-02
 - Added SARS-CoV-2 to the experimental CoV module and performed optimization for MiSeq 2x150 PE reads.
 - Added MIN_CONS_SUPPORT to control total ambiguation ('N') of the amended consensus based on the plurality allele count.
 - Added MIN_CONS_QUALITY to control total ambiguation ('N') of the amended consensus based on the plurality allele average quality.
+- Added INS_T_DEPTH, the minimum insertion coverage depth, that allows insertion editing given INS_T (frequency minimum) isalso satisfied.
+- Added DEL_T_DEPTH, the minimum deletion coverage depth, that allows deletion editing given DEL_T (frequency minimum) is also satisfied. The deletion must also be the plurality allele.
 - Added more control for deletion editing (see DEL_TYPE)
 - Added amended_consensus HMM alignment option (global alignment)
 - Added experimental support for minimap2 for the final assembly (ASSEM_PROG="MINIMAP2"). Helpful for long genomes + reads that Smith-Waterman can't handle so well. Split chains not yet supported.

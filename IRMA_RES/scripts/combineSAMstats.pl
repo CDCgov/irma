@@ -1,26 +1,34 @@
 #!/usr/bin/env perl
 # combineSAMstats.pl
-# Sam Shepard - 9.2014
+# Sam Shepard - 2020.10
 
 use Storable;
 use POSIX;
 use Getopt::Long;
+Getopt::Long::Configure('no_ignore_case');
 GetOptions(
 		'name|N=s' => \$name,
 		'insertion-threshold|I=f' => \$insertionThreshold,
 		'deletion-threshold|D=f' => \$deletionThreshold,
-		'store-stats|S=s' => \$storeStats,
+		'insertion-depth-threshold|i=i' => \$insertionDepthThreshold,
+		'deletion-depth-threshold|d=i' => \$deletionDepthThreshold,
 		'alternative-threshold|A=f' => \$alternativeThreshold,
-		'alternative-count|C=i' => \$alternativeCount
+		'alternative-count|C=i' => \$alternativeCount,
+		'store-stats|S=s' => \$storeStats,
+		'mark-deletions|M' => \$markDeletions
 	);
 
 if ( scalar(@ARGV) < 2 ) {
 	$message = "Usage:\t$0 [options] <REF> <STAT1> <...>\n";
-	$message .= "\t\t-I|--insertion-threshold <#>\tInsertion frequency where consensus is altered. Default = 0.15 or 15%.\n";
-	$message .= "\t\t-I|--deletion-threshold <#>\tDeletion frequency where consensus is altered. Default = 0.75 or 75%.\n";
-	$message .= "\t\t-A|--alternative-threshold <#>\tFrequency where alternative reference allele is changed. Default is off.\n";
-	$message .= "\t\t-C|--alternative-count <#>\tVariant count where alternative reference allele is changed. Default is off.\n";
-	$message .= "\t\t-N|--name <STR>\t\t\tName of consensus sequence.\n";
+	$message .= "\t\t-N|--name <STR>\t\t\t\tName of consensus sequence.\n";
+	$message .= "\t\t-I|--insertion-threshold <#>\t\tInsertion frequency where consensus is altered. Default = 0.15 or 15%.\n";
+	$message .= "\t\t-D|--deletion-threshold <#>\t\tDeletion frequency where consensus is altered. Default = 0.75 or 75%.\n";
+	$message .= "\t\t-i|--insertion-depth-threshold <#>\tInsertion coverage depth where consensus is edit (given frequency). Default = 1.\n";
+	$message .= "\t\t-d|--deletion-depth-threshold <#>\tDeletion coverage depth where consensus is edited (given frequency). Default = 1.\n";
+	$message .= "\t\t-A|--alternative-threshold <#>\t\tFrequency where alternative reference allele is changed. Default is off.\n";
+	$message .= "\t\t-C|--alternative-count <#>\t\tVariant count where alternative reference allele is changed. Default is off.\n";
+	$message .= "\t\t-S|--store-stats <FILE>\t\t\tSave aggregate stats to a .sto file.\n";
+	$message .= "\t\t-M|--mark-deletions\t\t\tOutput '-' for deletions in the consensus instead ommitting the deleted states.\n";
 	die($message."\n");
 }
 
@@ -40,25 +48,30 @@ while($record = <REF>) {
 close(REF);
 if ( !defined($N) ) { die("$0 ERROR: no reference found in $ARGV[0].\n"); }
 
-if ( !defined($insertionThreshold) ) {
-	$insertionThreshold = 0.15;
-}
+# Insert if >= thresholds
+# Given as >= T AND >= C
+if ( !defined($insertionThreshold) ) 		{ $insertionThreshold = 0.15; }
+if ( !defined($insertionDepthThreshold) ) 	{ $insertionDepthThreshold = 1; }
 
-if ( !defined($deletionThreshold) ) {
-	$deletionThreshold = 0.75;
-}
+# Delete if >= thresholds
+# Given as < T OR < C implies >= T AND >= C
+if ( !defined($deletionThreshold) ) 		{ $deletionThreshold = 0.75; }
+if ( !defined($deletionDepthThreshold) ) 	{ $deletionDepthThreshold = 1; }
 
-if ( !defined($alternativeThreshold) ) {
-	$alternativeThreshold = 2;
-}
+# Alternative if >= T AND C
+# Given as < T OR < C implies >= T AND >= C
+if ( !defined($alternativeThreshold) ) 		{ $alternativeThreshold = 2; }
+if ( !defined($alternativeCount) ) 		{ $alternativeCount = LONG_MAX; }
 
-if ( !defined($alternativeCount) ) {
-	$alternativeCount = LONG_MAX;
-}
+# Flags
+$markDeletions = defined($markDeletions) ? 1 : 0; 
+$storeStats = defined($storeStats) ? 1 : 0;
 
+# Aggregate data
 @bigTable = ();
 @statRef = ();
 %insTable = ();
+
 for($i=1;$i<scalar(@ARGV);$i++) {
 	@statRef = @{retrieve($ARGV[$i])};
 	for $p ( 0 .. ($N-1) ) {
@@ -121,10 +134,12 @@ for $p ( 0 .. ($N-1) ) {
 		} else {
 			$alternative .= $cons[$p];
 		}
+	# Plurality consensus is '-'
 	} else {
 		$freq = $bigTable[$p]{$cons[$p]} / $totals[$p];
 		@alleles = keys(%{$bigTable[$p]});
-		if ( $freq < $deletionThreshold && scalar(@alleles) > 1 ) {
+		# Ignore deletion if below threshold and there exists another allele
+		if ( ($bigTable[$p]{$cons[$p]} < $deletionDepthThreshold || $freq < $deletionThreshold) && scalar(@alleles) > 1 ) {
 			@sortedAlleles = sort { $bigTable[$p]{$b} <=> $bigTable[$p]{$a} } @alleles;
 			$consensus .= $sortedAlleles[1];
 			# alternative non-gap
@@ -140,6 +155,13 @@ for $p ( 0 .. ($N-1) ) {
 			} else {
 				$alternative .= $sortedAlleles[1];
 			}
+		# >= Thresholds for deletion OR just the deletion allele is found
+		# Skip unless we are to mark the deletion
+		} elsif ( $markDeletions ) {
+			# Consensus is a deletion. 
+			# Note: the alternative consensus cannot differ in length, so the alternative allele is not evaluated.
+			$consensus	.= $cons[$p];
+			$alternative 	.= $cons[$p];
 		}
 	}
 
@@ -152,9 +174,9 @@ for $p ( 0 .. ($N-1) ) {
 		}
 
 		$freq = $insTable{$p}{$sortedIns[0]} / $avgTotal;
-		if ( $freq >= $insertionThreshold ) {
-			$consensus .= lc($sortedIns[0]);
-			$alternative .= lc($sortedIns[0]);
+		if ( $freq >= $insertionThreshold && $insTable{$p}{$sortedIns[0]} > $insertionDepthThreshold ) {
+			$consensus 	.= lc($sortedIns[0]);
+			$alternative 	.= lc($sortedIns[0]);
 		}
 	}
 }

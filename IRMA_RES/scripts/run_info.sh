@@ -78,6 +78,8 @@ minimum_reads_residual	MIN_RC_RESIDUAL	${MIN_RC_RESIDUAL:-150}
 match_to_altmatch_ratio	RESIDUAL_ASSEMBLY_FACTOR	${RESIDUAL_ASSEMBLY_FACTOR:-400}
 minimum_insertion_edit_threshold	INS_T	$INS_T
 minimum_deletion_edit_threshold	DEL_T	$DEL_T
+minimum_insertion_edit_depth	INS_T_DEPTH	$INS_T_DEPTH
+minimum_deletion_edit_depth	DEL_T_DEPTH	$DEL_T_DEPTH
 silence_complex_indels_for_editing	SILENCE_COMPLEX_INDELS ${SILENCE_COMPLEX_INDELS:-0}
 minimum_frequency_for_mixed_consensus_call	MIN_AMBIG	$MIN_AMBIG
 minimum_consensus_support	MIN_CONS_SUPPORT	${MIN_CONS_SUPPORT:-1}
