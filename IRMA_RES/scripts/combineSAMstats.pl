@@ -174,7 +174,7 @@ for $p ( 0 .. ($N-1) ) {
 		}
 
 		$freq = $insTable{$p}{$sortedIns[0]} / $avgTotal;
-		if ( $freq >= $insertionThreshold && $insTable{$p}{$sortedIns[0]} > $insertionDepthThreshold ) {
+		if ( $freq >= $insertionThreshold && $insTable{$p}{$sortedIns[0]} >= $insertionDepthThreshold ) {
 			$consensus 	.= lc($sortedIns[0]);
 			$alternative 	.= lc($sortedIns[0]);
 		}
