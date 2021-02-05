@@ -84,7 +84,7 @@ R=1			# current round
 LANG=POSIX		# collation
 owd=$(pwd)
 destination_directory="$owd"
-bpath=
+bpath='/scicomp/home-pure/sars2seq/bin/irma'
 if [ "$bpath" == "" ]; then
 	bpath=$( cd -P "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 fi
@@ -163,6 +163,7 @@ fi
 # check for module
 MODULE=$(echo ${MODULE_CONFIG}|cut -f1 -d'-')
 if [ ! -d "$rpath/modules/$MODULE" ];then
+	echo \"\$rpath\/modules\/\$MODULE\" = "$rpath/modules/$MODULE"
 	echo "IRMA ERROR: $MODULE not found."
 	exit 1
 else

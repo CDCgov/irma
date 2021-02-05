@@ -1,7 +1,7 @@
 ### PERFORMANCE ###
 GRID_ON=0		# grid computation on [1,0] for on or off
-SINGLE_LOCAL_PROC=32	# local maximum processes
-DOUBLE_LOCAL_PROC=16	# local maximum processes (double this number)
+SINGLE_LOCAL_PROC=${NSLOTS:-32}	# local maximum processes
+DOUBLE_LOCAL_PROC=$((SINGLE_LOCAL_PROC / 2))	# local maximum processes (double this number)
 ALLOW_TMP=1		# if GRID_ON=0, try to use /tmp for working directory
 TMP=/tmp		# the scratch/tmpfs for working on the assemblies
 
@@ -15,7 +15,7 @@ REF_SET=$DEF_SET	# Same as the "consensus.fasta" in the reference folder for the
 MAX_ROUNDS=5		# round of read gathering
 USE_MEDIAN=1		# use the median quality or the average [1,0]
 QUAL_THRESHOLD=27	# minimum read statistic. May wish to set lower for 2x300 reads.
-MIN_LEN=125		# minimum read length
+MIN_LEN=90		# minimum read length
 MERGE_SECONDARY=1
 
 ## MATCH STEP
@@ -43,11 +43,9 @@ ASSEM_PROG="SSW"	# assembly program [SSW]
 ASSEM_PROC=64		# grid maximum processes for assembly
 INS_T=0.25		# minimum frquenncy threshold for insertion refinement
 DEL_T=0.75		# minimum frequency threshold for deletion refinement 
-INS_T_DEPTH=10		# minimum coverage depth for insertion refinement
-DEL_T_DEPTH=10		# minimum coverage depth for deletion refinement 
 MIN_AMBIG=0.20		# minimum called SNV frequency for mixed base in amended consensus folder
 ALIGN_AMENDED=1		# align the amended consensus to the HMM profile
-MIN_CONS_SUPPORT=3	# consensus allele minimum count
+MIN_CONS_SUPPORT=50	# consensus allele minimum count
 MIN_CONS_QUALITY=10	# consensus allele minimum average quality
 
 ### VARIANT CALLING ###
