@@ -1,8 +1,8 @@
 # HEADER
 PARAM_FILE_NAME="CoV MinION Long Reads"
 PARAM_FILE_AUTHOR="S. Shepard"
-PARAM_FILE_VERSION="1.0"
-PARAM_FILE_DATE="2020-04"
+PARAM_FILE_VERSION="2.0"
+PARAM_FILE_DATE="2021-01"
 
 # CONSENSUS REFINEMENT & READ SELECTION
 QUAL_THRESHOLD=0			# average or median threshold for QUALITY reads
@@ -17,9 +17,10 @@ MIN_AQ=8			# minimum average variant quality, does not apply to deletions
 
 DEL_TYPE="REF"		# rough alignment keeps reference
 ALIGN_PROG="SAM"	# rough alignment with HMM
-ASSEM_PROG="MINIMAP2"	# final assembly with MINIMAP2
+ASSEM_PROG="SSW"	# final assembly with MINIMAP2
+MIN_CONS_SUPPORT=5
 
-MM2_A=2			# minimap2 match score
-MM2_B=3			# minimap2 mismatch penalty
-MM2_O=6			# minimap2 gap open penalty
-MM2_E=1			# minimap2 gap extension penalty
+#MM2_A=2			# minimap2 match score
+#MM2_B=3			# minimap2 mismatch penalty
+#MM2_O=6			# minimap2 gap open penalty
+#MM2_E=1			# minimap2 gap extension penalty
