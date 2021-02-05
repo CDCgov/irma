@@ -47,7 +47,7 @@ INS_T_DEPTH=10		# minimum coverage depth for insertion refinement
 DEL_T_DEPTH=10		# minimum coverage depth for deletion refinement (in addition to plurality and frequency)
 MIN_AMBIG=0.20		# minimum called SNV frequency for mixed base in amended consensus folder
 ALIGN_AMENDED=1		# align the amended consensus to the HMM profile
-MIN_CONS_SUPPORT=50	# consensus allele minimum count
+MIN_CONS_SUPPORT=25	# consensus allele minimum count
 MIN_CONS_QUALITY=10	# consensus allele minimum average quality
 
 ### VARIANT CALLING ###
