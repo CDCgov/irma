@@ -120,7 +120,7 @@ for($i=0;$i<scalar(@ARGV);$i++) {
 if ( $debug ) {
 	foreach $p ( sort { $a <=> $b } keys(%count5) ) {
 		print STDERR sprintf("%5d::",$p);
-		foreach $base ( sort { $count5{$p}{$b} <=> $count5{$p}{$a} } keys(%{$count5{$p}}) ) {
+		foreach $base ( sort { $count5{$p}{$b} <=> $count5{$p}{$a} || $a cmp $b } keys(%{$count5{$p}}) ) {
 			print STDERR "\t",$base,":",$count5{$p}{$base};
 		}
 		print STDERR "\n";
@@ -129,7 +129,7 @@ if ( $debug ) {
 	print STDERR "5'\n";
 	for $p ( 0 .. (scalar(@count)-1) ) {
 		print STDERR sprintf("%5d::",$p);
-		foreach $base ( sort { $count[$p]{$b} <=> $count[$p]{$a} } keys(%{$count[$p]}) ) {
+		foreach $base ( sort { $count[$p]{$b} <=> $count[$p]{$a} || $a cmp $b } keys(%{$count[$p]}) ) {
 			print STDERR "\t",$base,":",$count[$p]{$base};
 		}
 		print STDERR "\n";
@@ -138,7 +138,7 @@ if ( $debug ) {
 	print STDERR "3'\n";
 	foreach $p ( sort { $a <=> $b } keys(%count3) ) {
 		print STDERR sprintf("+%4d::",$p);
-		foreach $base ( sort { $count3{$p}{$b} <=> $count3{$p}{$a} } keys(%{$count3{$p}}) ) {
+		foreach $base ( sort { $count3{$p}{$b} <=> $count3{$p}{$a} || $a cmp $b } keys(%{$count3{$p}}) ) {
 			print STDERR "\t",$base,":",$count3{$p}{$base};
 		}
 		print STDERR "\n";
