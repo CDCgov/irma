@@ -11,7 +11,6 @@ GetOptions(	'no-gap-allele|G' => \$noGap,
 		'min-quality|Q=i' => \$minQuality,
 		'min-total-col-coverage|T=i' => \$minTotal,
 		'print-all-sites|P' => \$printAllAlleles,
-		'name|N' => \$name,
 		'conf-not-mac-err|M=f' => \$minConf,
 		'sig-level|S=f' => \$sigLevel,
 		'paired-error|E=s' => \$pairedStats,
@@ -214,10 +213,7 @@ if ( defined($callTable) ) {
 	}
 }
 
-$REisBase = qr/[ATCG]/;
-$REgetMolID = qr/^(.+?)[_ ]([12]):.+/;
-
-%seqByRname = ();
+# Consider implementing multiple references
 $/ = ">";
 open(REF,'<',$ARGV[0]) or die("Cannot open $ARGV[0] for reading.\n");
 while($record = <REF>) {
@@ -234,7 +230,7 @@ while($record = <REF>) {
 close(REF);
 if ( !defined($REF_LEN) ) { die("No reference found.\n"); }
 
-$DE = $PE = $IE = 0;
+my ($DE, $PE, $IE, $is_paired) = (0,0,0,0);
 if ( defined($pairedStats) ) {
 	$/ = "\n";
 	%pStats = ();
@@ -248,6 +244,7 @@ if ( defined($pairedStats) ) {
 	$DE = $pStats{$REF_NAME}{'MinimumDeletionErrorRate'};
 	$PE = $pStats{$REF_NAME}{'ExpectedErrorRate'};
 	$IE = $pStats{$REF_NAME}{'MinimumInsertionErrorRate'};
+	$is_paired = 1;
 }
 
 %icTable = ();

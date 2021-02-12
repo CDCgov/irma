@@ -1,17 +1,20 @@
 IRMA Changelog
 
-v0.9.5 : 2020-10-02
+v1.0.0 : 2021-02-16 (many thanks for suggestions and feedback to T. Stark, K. Lacek, B. Rambo-Martin, C. Paden, and J. Tognarelli)
 - Added SARS-CoV-2 to the experimental CoV module and performed optimization for MiSeq 2x150 PE reads.
+- Added ENFORCE_CLIPPED_LENGTH to enforce minimum read length during QC post IRMA adapter trimmed Illumina PE reads.
+- Added MIN_BLAT_MATCH to filter the BLAT matches during read gathering to the minimum length. Default progrm settings result in about 30bp even if set lower.
 - Added MIN_CONS_SUPPORT to control total ambiguation ('N') of the amended consensus based on the plurality allele count.
 - Added MIN_CONS_QUALITY to control total ambiguation ('N') of the amended consensus based on the plurality allele average quality.
 - Added INS_T_DEPTH, the minimum insertion coverage depth, that allows insertion editing given INS_T (frequency minimum) isalso satisfied.
 - Added DEL_T_DEPTH, the minimum deletion coverage depth, that allows deletion editing given DEL_T (frequency minimum) is also satisfied. The deletion must also be the plurality allele.
 - Added more control for deletion editing (see DEL_TYPE)
-- Added amended_consensus HMM alignment option (global alignment)
+- Added ALIGN_AMENDED option to do a global sequence of the amended consensus using the HMM profile.
 - Added experimental support for minimap2 for the final assembly (ASSEM_PROG="MINIMAP2"). Helpful for long genomes + reads that Smith-Waterman can't handle so well. Split chains not yet supported.
 - Added output directory (relative to working directory or absolute path) specification in the RUN argument.
 - Updated version of GNU Parallel to 20200422 (more stable)
 - Fixed bug with annotated (curly brackets) fastq, fuzzy adapter trimming in rare cases, and an issue affecting VCF file underreporting when AUTO_F=1 (variant tables remain correct).
+- Fixed bug that could affect the performance and accuracy of BLAT alignment (though retroactively corrected in following rounds of read-gathering)
 - Other bug fixes and stability improvements.
 
 v0.9.4 : 2019-12-04

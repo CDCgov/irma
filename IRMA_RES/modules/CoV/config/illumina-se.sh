@@ -11,11 +11,11 @@ SORT_PROC=48            # currently not used
 ALIGN_PROC=48           # grid maximum processes for the rough align
 ASSEM_PROC=48           # grid maximum processes for assembly
 
-
-
 MIN_LEN=15
-
+MIN_BLAT_MATCH=0
 DEL_T=0.75
+DEL_T_DEPTH=3
+INS_T_DEPTH=3
 
 DEL_TYPE="REF"
 ASSEM_REF=1
@@ -24,6 +24,3 @@ ASSEM_PROG="SSW"
 MAX_ROUNDS=5
 
 MAX_ITER_ASSEM=2
-
-
-

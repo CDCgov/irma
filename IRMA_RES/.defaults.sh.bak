@@ -29,8 +29,9 @@ INCL_CHIM=0		# includes chimera or not [0,1]
 			# transposase adapter, clips 5' of the adapter on the forward strand and 3' on the reverse strand
 			# applicable to NextTera pair-end reads 
 ADAPTER="AGATGTGTATAAGAGACAG"
-FUZZY_ADAPTER=1		# Allow 1 adapter mismatch
-MERGE_SECONDARY=0	# Merge secondary data after the first round to the unmatched pool. Useful if co-infections are not expected.
+FUZZY_ADAPTER=1			# Allow 1 adapter mismatch
+ENFORCE_CLIPPED_LENGTH=1	# Reads are filtered for minimum length post adapter trimming.	
+MERGE_SECONDARY=0		# Merge secondary data after the first round to the unmatched pool. Useful if co-infections are not expected.
 RESIDUAL_ASSEMBLY_FACTOR=0	# The ratio of match read patterns to altmatch is measured, and if it's less than factor, residual assembly is performed. Set 0 for off.
 
 ## MATCH STEP
@@ -38,6 +39,7 @@ MATCH_PROC=20		# grid maximum processes for the MATCH
 MATCH_PROG="BLAT"	# match (all or any match) program [BLAT]
 MIN_RP=15		# minimum read pattern count to continue
 MIN_RC=15		# minimum read count to continue
+MIN_BLAT_MATCH=0	# minimum blat match, default settings within the program practically limit to 30 bp, only useful if set higher.
 
 ## SORT STEP 
 SORT_PROG="BLAT"		# [LABEL,BLAT]
@@ -77,6 +79,8 @@ SSW_X=5			# smith-waterman mismatch penalty
 SSW_O=10		# smith-waterman gap open penalty
 SSW_E=1			# smith-waterman gap extension penalty
 SEG_NUMBERS=""		# amended consensus suffix for segments (if applicable). list separated by commas and key-value separated by colon.
+ALIGN_AMENDED=0		# do global alignment of the amended consensus to the HMM profile
+PADDED_CONSENSUS=0	# attempt to pad amended_consensus with Ns for amplicaton dropout: requires ALIGN_AMENDED=1 and ASSEM_REF=1
 
 ### VARIANT CALLING ###
 # HEURISTICS

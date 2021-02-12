@@ -12,13 +12,14 @@ INS_T=0.25				# threshold for insertion refinement
 DEL_T=0.5				# threshold for deletion refinement
 MIN_RP=1				# minimum read pattern count to continue
 MIN_RC=1				# minimum read count to continue
-MIN_CONS_SUPPORT=3      # minimum consensus alleles to not ambiguate
+MIN_CONS_SUPPORT=3      		# minimum consensus alleles to not ambiguate
 
 #ALIGNMENT STEP
 ALIGN_PROG="SAM"
 
 # FINISHING ASSEMBLY
 ASSEM_PROG="MINIMAP2"
+ASSEM_REF=1
 
 # match, mismatch, gap open, gap extend
 MM2_A=2

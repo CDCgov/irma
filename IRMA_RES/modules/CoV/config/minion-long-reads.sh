@@ -18,4 +18,5 @@ MIN_AQ=8			# minimum average variant quality, does not apply to deletions
 DEL_TYPE="REF"		# rough alignment keeps reference
 ALIGN_PROG="SAM"	# rough alignment with HMM
 ASSEM_PROG="SSW"	# final assembly with MINIMAP2
-MIN_CONS_SUPPORT=5
+MIN_CONS_SUPPORT=3
+ASSEM_REF=1

@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 # Sam Shepard - fastQ_converter - 1.2014
-
+use warnings;
 use Getopt::Long;
 Getopt::Long::Configure('no_ignore_case');
 GetOptions(	'read-quality|T=i'=> \$qualityThreshold,
@@ -20,7 +20,8 @@ GetOptions(	'read-quality|T=i'=> \$qualityThreshold,
 		'mask-adapter|m=s' => \$maskAdapter,
 		'clip-adapter|c=s' => \$clipAdapter,
 		'fuzzy-adapter|Z' => \$fuzzyAdapter,
-		'uracil-to-thymine|U' => \$uracilToThymine
+		'uracil-to-thymine|U' => \$uracilToThymine,
+		'enforce-clipped-length|E' => \$clippedMinLength
 	);
 
 
@@ -41,10 +42,12 @@ if ( -t STDIN && scalar(@ARGV) != 1 ) {
 	$message .= "\t\t-m|--mask-adapter <STR>\t\t\tMask adapter.\n";
 	$message .= "\t\t-Z|--fuzzy-adapter\t\t\tAllow one mismatch.\n";
 	$message .= "\t\t-U|--uracil-to-thymine\t\t\tCovert uracil to thymine.\n";
+	$message .= "\t\t-E|--enforce-clipped-length\t\tThe minimum length threshold (-L) is enforced when adapter clipped (-c).\n";
 	die($message."\n");
 }
 
 $uracilToThymine = defined($uracilToThymine) ? 1 : 0;
+$clippedMinLength = defined($clippedMinLength) ? 1 : 0;
 
 if ( defined($clipAdapter) ) {
 	$forwardAdapter = $clipAdapter;
@@ -192,6 +195,10 @@ while($hdr=<>) {
 					}
 				}
 			}
+		}
+
+		if ( $clippedMinLength &&  length($seq) < $minLength ) {
+			next;
 		}
 	} elsif ( $maskAdapter ) {
 		if ( $seq  =~ /$reverseAdapter/i ) {

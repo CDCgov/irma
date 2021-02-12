@@ -12,10 +12,11 @@ SKIP_E=1		# skip reference elongation
 REF_SET=$DEF_SET	# Same as the "consensus.fasta" in the reference folder for the module.
 
 ### READ GATHERING ###
-MAX_ROUNDS=5		# round of read gathering
-USE_MEDIAN=1		# use the median quality or the average [1,0]
-QUAL_THRESHOLD=30	# minimum read statistic
-MIN_LEN=125		# minimum read length
+MAX_ROUNDS=5			# round of read gathering
+USE_MEDIAN=1			# use the median quality or the average [1,0]
+QUAL_THRESHOLD=30		# minimum read statistic
+MIN_LEN=125			# minimum read length
+ENFORCE_CLIPPED_LENGTH=0	# Off. Reads are filtered for minimum length post adapter trimming.	
 
 ## MATCH STEP
 MATCH_PROC=20		# grid maximum processes for the MATCH

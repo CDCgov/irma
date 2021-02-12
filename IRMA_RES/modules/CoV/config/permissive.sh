@@ -15,6 +15,7 @@ ALIGN_PROG="BLAT"
 ASSEM_PROG="SSW"
 MAX_ROUNDS=5
 
+MIN_BLAT_MATCH=0
 QUAL_THRESHOLD=10			# average or median threshold for QUALITY reads
 MIN_LEN=50				# minimum read length for QUALITY reads
 MIN_RP=1				# minimum read pattern count to continue

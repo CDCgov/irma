@@ -10,7 +10,8 @@ GetOptions(	'separate-ha-na-og|T' => \$triplet,
 		'include-chimera|I' => \$includeChimera,
 		'align-to-ref|A' => \$alignSequences,
 		'skip-elongation|S' => \$skipExtension,
-		'prefix|P=s' => \$prefix
+		'prefix|P=s' => \$prefix,
+		'min-match-length|L=i' => \$minMatchLength
 		);
 
 if ( scalar(@ARGV) != 2 ) {
@@ -22,7 +23,17 @@ if ( scalar(@ARGV) != 2 ) {
 	$message .= "\t\t-A|--align-to-ref\t\tAlign data to ref using BLAT matches.\n";
 	$message .= "\t\t-S|--skip-elongation\t\tSkip the elongation of the reference to find 5prime and 3prime regions.\n";
 	$message .= "\t\t-P|--prefix <STR>\t\tPrefix to store gene-wise stats.\n";
+	$message .= "\t\t-L|--min-match-length <INT>\t\tMinimum match length after accounting for Chimera.\n";
 	die($message."\n");
+}
+
+# Post chimera match length, gets returned to UNMATCHED reads
+if ( defined($minMatchLength) && int($minMatchLength) > 0 ) {
+	$minMatchLength = int($minMatchLength);
+	$filterMatchLength = 1;
+} else {
+	$minMatchLength = 0;
+	$filterMatchLength = 0;
 }
 
 $elongateReference = defined($skipExtension) ? 0 : 1;
@@ -63,6 +74,16 @@ sub rc($) {
 	return $sequence;
 }
 
+sub getLength($) {
+	my @v = split("\t",$_[0]);
+	my @bLengths = split(',',$v[18]);
+	my $sum = 0;
+	foreach my $l ( @bLengths ) {
+		$sum += $l;
+	}
+
+	return $sum;
+}
 
 sub alignedBLAT($$$) {
 	my @v = split("\t",$_[0]);
@@ -334,6 +355,11 @@ while( $record = <IN> ) {
 				($strand,$matchLine,$score,$sg) = (@{$maxGene{$q}{$gene}});
 				$seq2 = $strand eq '+' ? $sequence : rc($sequence);
 				$tag = $strand eq '+' ? '' : '{c}';
+
+				if ( $filterMatchLength && getLength($matchLine) < $minMatchLength ) {
+					print NOMATCH '>',$header,"\n",$sequence,"\n";
+					next;	
+				}
 
 				if ( defined($alignSequences) ) { recordStats(\%alignStats,$gene, alignedBLAT($matchLine,$seq2,$gene) ); }
 				if ( $classify ) { print CLASS $header,$tag,"\t",$gene,"\t",$score,"\n"; }

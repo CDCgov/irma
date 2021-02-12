@@ -9,3 +9,4 @@ QUAL_THRESHOLD=15			# average or median threshold for QUALITY reads
 MIN_LEN=75				# minimum read length for QUALITY reads
 MIN_RP=1				# minimum read pattern count to continue
 MIN_RC=1				# minimum read count to continue
+MIN_BLAT_MATCH=0

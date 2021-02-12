@@ -15,7 +15,7 @@ REF_SET=$DEF_SET	# Same as the "consensus.fasta" in the reference folder for the
 MAX_ROUNDS=5		# round of read gathering
 USE_MEDIAN=1		# use the median quality or the average [1,0]
 QUAL_THRESHOLD=27	# minimum read statistic. May wish to set lower for 2x300 reads.
-MIN_LEN=90		# minimum read length
+MIN_LEN=80		# minimum read length
 MERGE_SECONDARY=1
 
 ## MATCH STEP
@@ -23,6 +23,7 @@ MATCH_PROC=64		# grid maximum processes for the MATCH
 MATCH_PROG="BLAT"	# match (all or any match) program [BLAT]
 MIN_RP=1		# minimum read pattern count to continue
 MIN_RC=1		# minimum read count to continue
+MIN_BLAT_MATCH=65	# minimum blat match, default settings within the program practically limit to 30 bp, only useful if set higher.
 
 ## SORT STEP
 SORT_GROUPS="__ALL__"
@@ -47,7 +48,8 @@ INS_T_DEPTH=10		# minimum coverage depth for insertion refinement
 DEL_T_DEPTH=10		# minimum coverage depth for deletion refinement (in addition to plurality and frequency)
 MIN_AMBIG=0.20		# minimum called SNV frequency for mixed base in amended consensus folder
 ALIGN_AMENDED=1		# align the amended consensus to the HMM profile
-MIN_CONS_SUPPORT=25	# consensus allele minimum count
+PADDED_CONSENSUS=1	# attempt to pad amended_consensus with Ns for amplicaton dropout: requires ALIGN_AMENDED=1 and ASSEM_REF=1
+MIN_CONS_SUPPORT=10	# consensus allele minimum count
 MIN_CONS_QUALITY=10	# consensus allele minimum average quality
 
 ### VARIANT CALLING ###

@@ -16,6 +16,7 @@ SIG_LEVEL=0.95				# significance test level for variant calling (.90,.95,.99,.99
 # CONSENSUS REFINEMENT & READ SELECTION
 QUAL_THRESHOLD=10			# average or median threshold
 MIN_LEN=50				# minimum read length for QUALITY reads
+MIN_BLAT_MATCH=0
 MIN_RP=1				# minimum read pattern count
 MIN_RC=1				# minimum read count
 INS_T=0.50				# threshold for insertion refinement of references

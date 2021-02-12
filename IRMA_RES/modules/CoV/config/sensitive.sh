@@ -8,7 +8,7 @@ PARAM_FILE_DATE="2020-04"
 INS_T=0.25				# threshold for insertion refinement
 DEL_T=0.75				# threshold for deletion refinement
 SKIP_E=1				# skip reference elongation
-MIN_LEN=75				# relaxed threshold for UTR elongation with SAM
+MIN_LEN=70				# relaxed threshold for UTR elongation with SAM
 MAX_ROUNDS=5				# diminishing returns fo later rounds, but leave no read behind
 
 # DEFAULT settings but with SGE/OGE/UGE execution turned on.

@@ -2,9 +2,9 @@
 PROGRAM="Iterative Refinement Meta-Assembler (IRMA)"
 AUTHOR="Samuel S. Shepard"
 EMAIL="vfn4@cdc.gov"
-AFFIL="NCIRD/OID/CDC"
-DATE="02 OCT 2020"
-VERSION="0.9.5-beta"
+AFFIL="CDC/DDID/NCIRD/ID"
+DATE="16 FEB 2021"
+VERSION="1.0.0"
 LICENSE="GPL version 3. This program comes with ABSOLUTELY NO WARRANTY. This is free software.
 You are welcome to redistribute it under certain conditions. See:  <http://www.gnu.org/licenses/>.
 Components of this pipeline have non-commercial restrictions. See: IRMA_RES/scripts/packaged-citations-licenses"
@@ -307,8 +307,10 @@ BLAT_OPTS="-oneOff=1 -minIdentity=${BLAT_IDENTITY:-80} -tileSize=10"
 FASTQ_CONV_OPTS="-U -Q -M -T $QUAL_THRESHOLD -L $MIN_LEN"
 if [ "$PAIRED" -eq "1" -a "$ADAPTER" != "" ];then
 	FASTQ_CONV_OPTS+=" -c $ADAPTER"
+	[ "${ENFORCE_CLIPPED_LENGTH:-1}" -eq "1" ] && FASTQ_CONV_OPTS+=" -E"
 	[ "${FUZZY_ADAPTER:-1}" -eq "1" ] && FASTQ_CONV_OPTS+=" -Z"
 fi
+
 export IRMA_QUEUE
 
 #####################
@@ -367,6 +369,7 @@ function doBLAT() {
 	local workdir=$5
 	local procs=$6
 	local limit=$7
+	local match_length=${8:-0}
 	local doGrid=0
 	local script="$workdir"/${prefix}-${name}-BLAT
 	local n=$(grep '>' "$queryDB" -c)
@@ -389,8 +392,9 @@ function doBLAT() {
 	elif [ "$SORT_PROG" == "LABEL" -a "${SECONDARY_SORT:-0}" -eq "1" ];then 
 		[ -z "${GENE_GROUP}" ] && options="-T" || options="-G $GENE_GROUP"
 	fi
-	[ "$INCL_CHIM" -eq "1" ] && options+=" -I"
-	[ "$SKIP_E" -eq "1" ] && options+=" -S"
+	[ "$INCL_CHIM" -eq "1" ] 	&& options+=" -I"
+	[ "$SKIP_E" -eq "1" ] 		&& options+=" -S"
+	[ "$match_length" -gt "0" ] 	&& options+=" -L $match_length"
 
 ###
 cat > "${script}.sh" <<EOL
@@ -435,7 +439,7 @@ function doMATCH() {
 	local i=0
 
 	if [ "$MATCH_PROG" == "BLAT" ];then
-		doBLAT "$REF_SET" "$DB" $prefix $name "$matchp" $MATCH_PROC $LIMIT_BLAT || return 1
+		doBLAT "$REF_SET" "$DB" $prefix $name "$matchp" $MATCH_PROC $LIMIT_BLAT ${MIN_BLAT_MATCH:-0} || return 1
 		match_ext="blat"
 	else
 		time_stamp "$prefix aborted, MATCH:$MATCH_PROG not implemented"
@@ -667,6 +671,7 @@ function doALIGN() {
 	return 0
 }
 
+# Read gathering phase
 function doRound() {
 	local DB=$1
 	local prefix=$2
@@ -1173,6 +1178,9 @@ function ASSEMBLE_REPORT() {
 				cd "$ppath"
 				"$A2M" $a2m_file -db ${a2m_file}.fa -modelfile "$phmms"/${gene}_hmm.mod -sw 0 > /dev/null 2>&1
 				cd - > /dev/null
+				if [ "$ASSEM_REF" -eq "1" -a "${PADDED_CONSENSUS:-1}" -eq "1" ];then
+					"$spath"/amplicon_dropout_pad.pl -D "$ppath"/${a2m_file}.a2m "$assemp"/F1-${gene}.sam > "$ppath"/${a2m_file}.padded.fa
+				fi
 			fi
 			
 	fi
@@ -1611,6 +1619,7 @@ if [ -s "$ppath/residual_assembly/R0.fa" ];then
 			break
 		fi
 	done
+
 	doPostProcessing || die 'aborted'
 fi
 

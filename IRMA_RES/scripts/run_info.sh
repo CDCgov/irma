@@ -55,6 +55,7 @@ sort_programs	SORT_PROGS	${SORT_PROGS[@]}
 align_programs	ALIGN_PROGS	${ALIGN_PROGS[@]}
 deletion_types	DEL_TYPES	${DEL_TYPES[@]}
 blat_identity	BLAT_IDENTITY ${BLAT_IDENTITY:-80}
+minimum_blat_match_length	MIN_BLAT_MATCH	${MIN_BLAT_MATCH:-0}
 profiles	phmms	$phmms
 do_not_merge_read_pairs	NO_MERGE	$NO_MERGE
 starting_reference	REF_SET	$REF1_SET
@@ -68,6 +69,8 @@ read_statistic	USE_MEDIAN	$USE_MEDIAN
 minimum_statistic_quality	QUAL_THRESHOLD	$QUAL_THRESHOLD
 minimum_read_length	MIN_LEN	$MIN_LEN
 adapter_trim_read_motif	ADAPTER	${ADAPTER}
+adapter_allow_one_mismatch	FUZZY_ADAPTER	${FUZZY_ADAPTER:-1}
+enforce_clipped_length	ENFORCE_CLIPPED_LENGTH	${ENFORCE_CLIPPED_LENGTH:-1}
 interval_significance_level	SIG_LEVEL	$SIG_LEVEL
 maximum_read_gathering_rounds	MAX_ROUNDS	$MAX_ROUNDS
 read_fasta_input	FASTA	$FASTA

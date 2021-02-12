@@ -40,6 +40,8 @@ INCL_CHIM=$INCL_CHIM		# includes chimera or not [0,1]
 			# transposase adapter, clips 5' of the adapter on the forward strand and 3' on the reverse strand
 			# applicable to nexttera pair-end reads 
 ADAPTER="$ADAPTER"
+FUZZY_ADAPTER=${FUZZY_ADAPTER:-1}			# Allow 1 adapter mismatch
+ENFORCE_CLIPPED_LENGTH=${ENFORCE_CLIPPED_LENGTH:-1}	# Reads are filtered for minimum length post adapter trimming.	
 MERGE_SECONDARY=$MERGE_SECONDARY	# merge secondary data after the first round, good if no co-infections
 BLAT_IDENTITY=${BLAT_IDENTITY:-80}	# blat identity for read gathering, usually 80
 DO_SECONDARY=${DO_SECONDARY:-0}		# do secondary assembly
@@ -52,6 +54,7 @@ MIN_RP=$MIN_RP		# minimum read pattern count to continue doing primary assembly
 MIN_RC=$MIN_RC		# minimum read count to continue doing primary assembly
 MIN_RP_RESIDUAL=${MIN_RP_RESIDUAL:-150}		# minimum read pattern count to continue doing residual assembly
 MIN_RC_RESIDUAL=${MIN_RC_RESIDUAL:-150}		# minimum read count to continue doing residual assembly
+MIN_BLAT_MATCH=${MIN_BLAT_MATCH:-0}	# minimum blat match, default settings within the program practically limit to 30 bp, only useful if set higher.
 
 ## SORT STEP 
 SORT_PROG="${SORT_PROGS[@]}"	# [LABEL,BLAT]
@@ -87,6 +90,8 @@ MM2_O=${MM2_O:-$SSW_O}		# minimap2 gap open
 MM2_E=${MM2_E:-$SSW_E}		# minimap2 gap extend
 MIN_CONS_SUPPORT=${MIN_CONS_SUPPORT:-1}	# minimum consensus support for amended consensus
 MIN_CONS_QUALITY=${MIN_CONS_QUALITY:-0}	# minimum consensus average quality for amended consensus
+ALIGN_AMENDED={ALIGN_AMENDED:-0}		# do global alignment of the amended consensus to the HMM profile
+PADDED_CONSENSUS=${PADDED_CONSENSUS:-1}	# attempt to pad amended_consensus with Ns for amplicaton dropout: requires ALIGN_AMENDED=1 and ASSEM_REF=1
 
 ### VARIANT CALLING ###
 # HEURISTICS
