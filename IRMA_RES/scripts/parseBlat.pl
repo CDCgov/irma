@@ -332,10 +332,10 @@ while( $record = <IN> ) {
 		} else {
 			foreach $gene ( keys(%{$maxGene{$q}}) ) {
 				($strand,$matchLine,$score,$sg) = (@{$maxGene{$q}{$gene}});
-				if ( defined($alignSequences) ) { recordStats(\%alignStats,$gene, alignedBLAT($matchLine,$sequence,$gene) ); }
 				$seq2 = $strand eq '+' ? $sequence : rc($sequence);
 				$tag = $strand eq '+' ? '' : '{c}';
 
+				if ( defined($alignSequences) ) { recordStats(\%alignStats,$gene, alignedBLAT($matchLine,$seq2,$gene) ); }
 				if ( $classify ) { print CLASS $header,$tag,"\t",$gene,"\t",$score,"\n"; }
 				# write MATCH
 				if ( !defined($written{$strand}) ) { 
