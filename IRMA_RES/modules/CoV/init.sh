@@ -37,20 +37,20 @@ MERGE_SECONDARY=1
 ## ALIGN STEP ##
 ALIGN_PROG="BLAT"	# rough assembly / alignment to working reference [SAM,BLAT]
 ALIGN_PROC=64		# grid maximum processes for the rough align
-DEL_TYPE="NNN"		# how to handle deletions in the rough alignment: NNN, REF, or DEL (blank = OLD DEFAULTS)
+DEL_TYPE="REF"		# how to handle deletions in the rough alignment: NNN, REF, or DEL (blank = OLD DEFAULTS)
 
 ### FINISHING ASSEMBLY ###
 ASSEM_PROG="SSW"	# assembly program [SSW]
 ASSEM_PROC=64		# grid maximum processes for assembly
-INS_T=0.25		# minimum frquenncy threshold for insertion refinement
+INS_T=0.75		# minimum frquenncy threshold for insertion refinement
 DEL_T=0.75		# minimum frequency threshold for deletion refinement 
 INS_T_DEPTH=10		# minimum coverage depth for insertion refinement
 DEL_T_DEPTH=10		# minimum coverage depth for deletion refinement (in addition to plurality and frequency)
 MIN_AMBIG=0.20		# minimum called SNV frequency for mixed base in amended consensus folder
 ALIGN_AMENDED=1		# align the amended consensus to the HMM profile
 PADDED_CONSENSUS=1	# attempt to pad amended_consensus with Ns for amplicaton dropout: requires ALIGN_AMENDED=1 and ASSEM_REF=1
-MIN_CONS_SUPPORT=10	# consensus allele minimum count
-MIN_CONS_QUALITY=10	# consensus allele minimum average quality
+MIN_CONS_SUPPORT=15	# consensus allele minimum count
+MIN_CONS_QUALITY=15	# consensus allele minimum average quality
 
 ### VARIANT CALLING ###
 # HEURISTICS
