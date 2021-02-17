@@ -12,6 +12,7 @@ DEL_T=1.00		# threshold for deletion refinement : 1 => turn OFF deletion editing
 MIN_RP=1		# minimum read pattern count to continue
 MIN_RC=3		# minimum read count to continue
 MIN_CONS_SUPPORT=3
+ASSEM_REF=1
 
 # VARIANT CALLING HEURISTICS & STATS
 MIN_AQ=8		# minimum average variant quality, does not apply to deletions
@@ -20,4 +21,3 @@ MIN_FD=0.02		# minimum deletion variant frequency
 
 ALIGN_PROG="SAM"	# rough alignment with HMM
 ASSEM_PROG="SSW"	# final assembly, if reads and template are greater than 28k each, consider MINIMAP2.
-ASSEM_REF=1

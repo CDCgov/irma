@@ -6,11 +6,12 @@ PARAM_FILE_DATE="2021-02"
 
 # CONSENSUS REFINEMENT & READ SELECTION
 QUAL_THRESHOLD=0	# average or median threshold for QUALITY reads
-MIN_LEN=150		# minimum read length for QUALITY reads
+MIN_LEN=125		# minimum read length for QUALITY reads
 INS_T=0.75		# threshold for insertion refinement
 DEL_T=1.00		# threshold for deletion refinement : 1 => turn OFF deletion editing
 MIN_RP=1		# minimum read pattern count to continue
 MIN_RC=3		# minimum read count to continue
+MIN_CONS_SUPPORT=3
 ASSEM_REF=1
 
 # VARIANT CALLING HEURISTICS & STATS
