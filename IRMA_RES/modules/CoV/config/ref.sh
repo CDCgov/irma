@@ -2,11 +2,12 @@
 PARAM_FILE_NAME="ref"
 PARAM_FILE_AUTHOR="S. Shepard"
 PARAM_FILE_VERSION="1.0"
-PARAM_FILE_DATE="2016-02"
+PARAM_FILE_DATE="2021-02"
 
 ASSEM_REF=1
 
 # Use this for files you put in the reference folder
+# Warning: will have unexpected interactions with PADDED_CONSENSUS if not the same length as the default reference seed
 CUSTOM_REF_FILE="your_file_in_reference_folder.fasta"	# custom ref file
 REF_SET=$(dirname $REF_SET)/$CUSTOM_REF_FILE
 

@@ -19,7 +19,6 @@ ALIGN_PROG="SAM"
 
 # FINISHING ASSEMBLY
 ASSEM_PROG="MINIMAP2"
-ASSEM_REF=1
 
 # match, mismatch, gap open, gap extend
 MM2_A=2

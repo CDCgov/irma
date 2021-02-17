@@ -46,6 +46,8 @@ DEL_T=0.75		# minimum frequency threshold for deletion refinement
 INS_T_DEPTH=10		# minimum coverage depth for insertion refinement
 DEL_T_DEPTH=10		# minimum coverage depth for deletion refinement (in addition to plurality and frequency)
 MIN_AMBIG=0.20		# minimum called SNV frequency for mixed base in amended consensus folder
+ASSEM_REF=1		# use the same reference(s) for the final assembly as read gathering
+			# NOTE: uses the default reference seed, any mention of "user supplied reference sorting" is merely perfunctory
 ALIGN_AMENDED=1		# align the amended consensus to the HMM profile
 PADDED_CONSENSUS=1	# attempt to pad amended_consensus with Ns for amplicaton dropout: requires ALIGN_AMENDED=1 and ASSEM_REF=1
 MIN_CONS_SUPPORT=15	# consensus allele minimum count

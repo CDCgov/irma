@@ -8,7 +8,6 @@ INS_T_DEPTH=1		# minimum coverage depth for insertion refinement
 DEL_T_DEPTH=1		# minimum coverage depth for deletion refinement 
 
 DEL_TYPE="REF NNN"
-ASSEM_REF=1
 ALIGN_PROG="BLAT"
 ASSEM_PROG="SSW"
 MAX_ROUNDS=5
