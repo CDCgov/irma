@@ -84,6 +84,10 @@ while ( $ref_sequence =~ /([atcgn]+)/g ) {
 	my $insert = $1;
 	substr($padded_reference, $-[0], 0) = $1
 }
+while ( $padded_reference =~ /(?<=[*N])([ACTG])?[-]+|[-]+([ACTG])?(?=[*N])/g ) {
+        my $replacement_string = '*' x length($0);
+        substr($padded_reference, $-[0], length($0)) = $replacement_string
+}
 $padded_reference =~ tr/*/N/;
 
 
