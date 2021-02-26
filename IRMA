@@ -1172,16 +1172,17 @@ function ASSEMBLE_REPORT() {
 		[ "$MIN_CONS_QUALITY" != "" ] && options+=" --min-consensus-quality ${MIN_CONS_QUALITY:-0}"
 	fi
 	"$spath"/amendConsensus.pl -P "$ppath" "${final}.fasta" "${final}-variants.txt" $options
-	if [ "${ALIGN_AMENDED:-0}" -eq "1" -a -s "$phmms"/${gene}_hmm.mod ];then
+	if [ "${ALIGN_AMENDED:-0}" -eq "1" -a -s "$phmms"/${gene}_hmm.mod -a -s "${final}.fasta" ];then
+			cd "$ppath"
+			"$A2M" $gene -db "${final}.fasta" -modelfile "$phmms"/${gene}_hmm.mod -sw 0 > /dev/null 2>&1
 			local a2m_file=$("$spath"/amendConsensus.pl "${final}.fasta" "${final}-variants.txt" $options --print-name)
 			if [ "$a2m_file" != "" ];then	
-				cd "$ppath"
 				"$A2M" $a2m_file -db ${a2m_file}.fa -modelfile "$phmms"/${gene}_hmm.mod -sw 0 > /dev/null 2>&1
-				cd - > /dev/null
 				if [ "$ASSEM_REF" -eq "1" -a "${PADDED_CONSENSUS:-1}" -eq "1" ];then
-					"$spath"/amplicon_dropout_pad.pl -D "$ppath"/${a2m_file}.a2m "$assemp"/F1-${gene}.sam > "$ppath"/${a2m_file}.padded.fa
+					"$spath"/amplicon_dropout_pad.pl -D -A "$ppath"/${a2m_file}.a2m "$assemp"/F1-${gene}.sam > "$ppath"/${a2m_file}.padded.fa
 				fi
 			fi
+			cd - > /dev/null
 			
 	fi
 

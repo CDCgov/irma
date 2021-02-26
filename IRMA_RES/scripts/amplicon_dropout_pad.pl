@@ -5,14 +5,15 @@
 use strict;
 use warnings;
 
-my ($expected_length, $trim_ends,$message,$remove_inserted_N,$remove_deletions);
+my ($expected_length, $trim_ends,$message,$remove_inserted_N,$remove_deletions,$pad_adjacent);
 
 use Getopt::Long;
 GetOptions(
 		'expected-length|L=i' => \$expected_length,
 		'trim-ends|T' => \$trim_ends,
 		'remove-deletions|D' => \$remove_deletions,
-		'remove-inserted-N|I' => \$remove_inserted_N
+		'remove-inserted-N|I' => \$remove_inserted_N,
+		'pad-adjacent-deletions|A' => \$pad_adjacent
 	);
 
 if ( scalar(@ARGV) != 3 && scalar(@ARGV) != 2 ) {
@@ -21,6 +22,7 @@ if ( scalar(@ARGV) != 3 && scalar(@ARGV) != 2 ) {
 	$message .= "\t-T|--trim-ends\t\t\tTrim padded sequence ends of '-' and 'N'.\n";
 	$message .= "\t-D|--remove-deletions\t\tRemoves all deletions (-) from the padded sequence.\n";
 	$message .= "\t-I|--remove-inserted-N\t\tRemove inserted Ns (n) from the padded sequence.\n";
+	$message .= "\t-A|--pad-adjacent-deletions\tPads deletions adjacent to dropouts.\n";
 	die($message."\n");
 }
 
@@ -84,12 +86,20 @@ while ( $ref_sequence =~ /([atcgn]+)/g ) {
 	my $insert = $1;
 	substr($padded_reference, $-[0], 0) = $1
 }
-while ( $padded_reference =~ /(?<=[*N])([ACTG])?[-]+|[-]+([ACTG])?(?=[*N])/g ) {
-        my $replacement_string = '*' x length($0);
-        substr($padded_reference, $-[0], length($0)) = $replacement_string
-}
-$padded_reference =~ tr/*/N/;
 
+if ( defined($pad_adjacent) ) {
+	# Safely mask patterns found adjacent
+	sub mask($$$) {
+		my $all = defined($_[0]) ? $_[0] : '';
+		my $left = defined($_[1]) ? $_[1] : '';
+		my $right = defined($_[2]) ? $_[2] : '';
+		return ($left . '*' x (length($all)-length($left)-length($right)) . $right);
+	}
+
+	$padded_reference =~ s/(?<=[*N])([ACTG])?[-]+|[-]+([ACTG])?(?=[*N])/mask($&,$1,$2)/ige;
+}
+
+$padded_reference =~ tr/*/N/;
 
 if ( defined($remove_inserted_N) ) {
 	$padded_reference =~ tr/n//d;
