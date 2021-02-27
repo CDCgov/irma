@@ -5,7 +5,7 @@
 use strict;
 use warnings;
 
-my ($expected_length, $trim_ends,$message,$remove_inserted_N,$remove_deletions,$pad_adjacent);
+my ($expected_length, $trim_ends,$message,$remove_inserted_N,$remove_deletions,$pad_adjacent,$coverage_in,$coverage_out);
 
 use Getopt::Long;
 GetOptions(
@@ -13,7 +13,9 @@ GetOptions(
 		'trim-ends|T' => \$trim_ends,
 		'remove-deletions|D' => \$remove_deletions,
 		'remove-inserted-N|I' => \$remove_inserted_N,
-		'pad-adjacent-deletions|A' => \$pad_adjacent
+		'pad-adjacent-deletions|A' => \$pad_adjacent,
+		'a2m-coverage-in|C=s' => \$coverage_in,
+		'pad-coverage-out|O=s' => \$coverage_out
 	);
 
 if ( scalar(@ARGV) != 3 && scalar(@ARGV) != 2 ) {
@@ -23,6 +25,8 @@ if ( scalar(@ARGV) != 3 && scalar(@ARGV) != 2 ) {
 	$message .= "\t-D|--remove-deletions\t\tRemoves all deletions (-) from the padded sequence.\n";
 	$message .= "\t-I|--remove-inserted-N\t\tRemove inserted Ns (n) from the padded sequence.\n";
 	$message .= "\t-A|--pad-adjacent-deletions\tPads deletions adjacent to dropouts.\n";
+	$message .= "\t-C|--a2m-coverage-in <file>\tA2M coverage table..\n";
+	$message .= "\t-O|--pad-coverage-out <file>\tOutput padded coverage table..\n";
 	die($message."\n");
 }
 
@@ -97,6 +101,37 @@ if ( defined($pad_adjacent) ) {
 	}
 
 	$padded_reference =~ s/(?<=[*N])([ACTG])?[-]+|[-]+([ACTG])?(?=[*N])/mask($&,$1,$2)/ige;
+}
+
+if ( defined($coverage_in) ) {
+	open(COV,'<',$coverage_in) or die("Cannot open $coverage_in for reading.\n");
+	my $header = <COV>;
+	my @coverage = <COV>; 
+	chomp(@coverage);
+	close(COV);
+
+	if ( !defined($coverage_out) ) {
+		$coverage_out = $coverage_in;
+	}
+	open(COV,'>',$coverage_out) or die("Cannot open $coverage_out for writing.\n");
+	print COV $header;
+	my ($iPos, $iCon) = (1, 3);
+	foreach my $line ( @coverage ) {
+		my @fields = split("\t",$line);
+		# index position
+		my $idx = $fields[$iPos] - 1;
+		if ( substr($padded_reference,$idx,1) eq '*' ) {
+			if ( $fields[$iCon] eq '-' ) {
+				print COV $fields[0],"\t",$fields[1],"\t0\tN\t0\t0\t0\t0\tP\n";
+			} else {
+				print STDERR "Expected '-' in table at $fields[$iPos], but found $fields[$iCon] instead, printing existing line.\n";
+				print COV $line,"\n";
+			}
+		} else {
+			print COV $line,"\n";
+		}
+	}	
+	close(COV);
 }
 
 $padded_reference =~ tr/*/N/;

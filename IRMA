@@ -1164,26 +1164,27 @@ function ASSEMBLE_REPORT() {
 	"$RSCRIPT" --vanilla "$spath"/heuristicDiagram.R $MIN_AQ $MIN_F $MIN_TCC $MIN_CONF "${final}-allAlleles.txt" "${final}-heuristics.pdf" > /dev/null 2>&1
 
 	local options="-C $MIN_C -N $RUN -F $MIN_AMBIG"
+	local acpath="$ppath"/amended_consensus
 	[ "$SEG_NUMBERS" != "" ] && options+=" -S $SEG_NUMBERS"
 	[ "$SORT_GROUPS" == "" -a "${NONSEGMENTED:-1}" -eq "0" ] && options+=" -H"
 	if [ "$MIN_CONS_SUPPORT" != "" -o "$MIN_CONS_QUALITY" != "" ];then
-		 options+=" -c ${final}-coverage.txt"
+		options+=" -c ${final}-coverage.txt"
 		[ "$MIN_CONS_SUPPORT" != "" ] && options+=" --min-consensus-support ${MIN_CONS_SUPPORT:-1}"
 		[ "$MIN_CONS_QUALITY" != "" ] && options+=" --min-consensus-quality ${MIN_CONS_QUALITY:-0}"
 	fi
-	"$spath"/amendConsensus.pl -P "$ppath" "${final}.fasta" "${final}-variants.txt" $options
+
+	"$spath"/amendConsensus.pl -P "$acpath" "${final}.fasta" "${final}-variants.txt" $options $extra_opts
 	if [ "${ALIGN_AMENDED:-0}" -eq "1" -a -s "$phmms"/${gene}_hmm.mod -a -s "${final}.fasta" ];then
 			cd "$ppath"
 			"$A2M" $gene -db "${final}.fasta" -modelfile "$phmms"/${gene}_hmm.mod -sw 0 > /dev/null 2>&1
-			local a2m_file=$("$spath"/amendConsensus.pl "${final}.fasta" "${final}-variants.txt" $options --print-name)
-			if [ "$a2m_file" != "" ];then	
-				"$A2M" $a2m_file -db ${a2m_file}.fa -modelfile "$phmms"/${gene}_hmm.mod -sw 0 > /dev/null 2>&1
-				if [ "$ASSEM_REF" -eq "1" -a "${PADDED_CONSENSUS:-1}" -eq "1" ];then
-					"$spath"/amplicon_dropout_pad.pl -D -A "$ppath"/${a2m_file}.a2m "$assemp"/F1-${gene}.sam > "$ppath"/${a2m_file}.padded.fa
-				fi
-			fi
 			cd - > /dev/null
-			
+			local amended_file=$("$spath"/amendConsensus.pl -P "$acpath" "${final}.a2m" "${final}-variants.txt" $options --print-name)
+			options+=" --a2m-reference -o ${final}-coverage.a2m.txt"
+			"$spath"/amendConsensus.pl -P "$acpath" "${final}.a2m" "${final}-variants.txt" $options
+			if [ "$ASSEM_REF" -eq "1" -a "${PADDED_CONSENSUS:-1}" -eq "1" ];then
+				"$spath"/amplicon_dropout_pad.pl -D -A -C ${final}-coverage.a2m.txt -O ${final}-coverage.pad.txt \
+					"$acpath"/${amended_file}.a2m "$assemp"/F1-${gene}.sam > "$acpath"/${amended_file}.pad.fa
+			fi
 	fi
 
 	if [ -r "${final}-insertions.txt" -a -r "${final}-deletions.txt" ];then
@@ -1286,6 +1287,8 @@ function doPostProcessing() {
 	rmglob "$sortp"/R*.fa "$ppath"/R0.fa &
 	wait
 	
+	[ ! -d "$ppath"/amended_consensus ] && mkdir "$ppath"/amended_consensus
+		
 	pid=()
 	# POLISH the final assembly & do variant calls/phasing
 	if test -n "$(shopt -s nullglob;echo "$assemp"/F1-*.ref)";then
@@ -1316,10 +1319,6 @@ function doPostProcessing() {
 		grep '>' "$assemp"/*.fa -Hc >> "$ppath"/NR_COUNTS_log.txt
 		rmglob "$assemp"/*.fastq "$assemp"/*.fa
 
-		[ ! -d "$ppath"/amended_consensus ] && mkdir "$ppath"/amended_consensus
-		[ -n "$(shopt -s nullglob;echo "$ppath"/*.fa)" ] && mv "$ppath"/*.fa "$ppath"/amended_consensus
-		[ -n "$(shopt -s nullglob;echo "$ppath"/*.a2m)" ] && mv "$ppath"/*.a2m "$ppath"/amended_consensus
-		
 		[ ! -d "$ppath"/matrices ] && mkdir "$ppath"/matrices	
 		[ -n "$(shopt -s nullglob;echo "$ppath"/*.sqm)" ] && mv "$ppath"/*.sqm "$ppath"/matrices
 		

@@ -1,8 +1,14 @@
 #!/usr/bin/env perl
 # amendConsensus.pl - Samuel Shepard
-# v2 - 12/16/2014
+# 2021-02
+
+use strict;
+use warnings;
 
 use Getopt::Long;
+
+my ($minCount,$minTotal,$minFreq,$name,$convertSeg,$prefix,$faHeaderSuffix,$minFreqDel,$minFreqIns,$delFile,$insFile,$covgRewrite,$replaceNotEncode,$replaceWithPhase,$minConsensusSupport,$minConsensusQuality,$outputCoverageFile,$printFinalName,$a2mReference);
+
 Getopt::Long::Configure('no_ignore_case');
 GetOptions(	
        		'count|C=i' => \$minCount,
@@ -21,26 +27,29 @@ GetOptions(
 		'belong-to-phase|B=i' => \$replaceWithPhase,
 		'min-consensus-support=i' => \$minConsensusSupport,
 		'min-consensus-quality=f' => \$minConsensusQuality,
-		'replace-coverage-file' => \$replaceCoverageFile,
-		'print-name' => \$printFinalName
+		'output-coverage-file=s' => \$outputCoverageFile,
+		'print-name' => \$printFinalName,
+		'a2m-reference' => \$a2mReference
 	);
 
 if ( scalar(@ARGV) != 2 ) {
-	$message = "Usage:\n\tperl $0 <reference.fasta> <variants.txt> [options]\n";
-	$message .= "\t\t-C|--count <INT>\t\tMinimum total count needed (coverage).\n";
-	$message .= "\t\t-F|--freq <FLT>\t\t\tMinimum needed minor variant frequency.\n";
-	$message .= "\t\t-d|--deletion-file <STR>\tIRMA generated deletion table.\n";
-	$message .= "\t\t-D|--min-del-freq <FLT>\t\tMinimum deletion frequency.\n";
-	$message .= "\t\t-i|--insertion-file <STR>\tIRMA generated insertion table.\n";
-	$message .= "\t\t-I|--min-ins-freq <FLT>\t\tMinimum insertion frequency.\n";
-	$message .= "\t\t-N|--name <STR>\t\t\tName of header and file.\n";
-	$message .= "\t\t-H|--fa-header-suffix\t\tAdd fasta header as suffix to <name>.\n";
-	$message .= "\t\t-S|--seg\t\t\tConvert the seg name to number and add to ISA.\n";
-	$message .= "\t\t-P|--prefix <STR>\t\tOutput prefix for file.\n";
-	$message .= "\t\t-T|--min-total-depth <INT>\tMinimum non-ambiguous column coverage. Default = 2.\n";
-	$message .= "\t\t--min-consensus-support <INT>\tMinimum plurality count to call consensus, otherwise 'N'.\n";
-	$message .= "\t\t--min-consensus-quality <FLT>\tMinimum plurality average quality to call consensus, otherwise 'N'.\n";
-	$message .= "\t\t--replace-coverage-file\t\tImplied by min-consensus-support, replaces file exactly.\n";
+	my $message = "Usage:\n\tperl $0 <reference.fasta> <variants.txt> [options]\n";
+	$message .= "\t\t-C|--count <INT>\t\t\tMinimum total count needed (coverage).\n";
+	$message .= "\t\t-F|--freq <FLT>\t\t\t\tMinimum needed minor variant frequency.\n";
+	$message .= "\t\t-d|--deletion-file <STR>\t\tIRMA generated deletion table.\n";
+	$message .= "\t\t-D|--min-del-freq <FLT>\t\t\tMinimum deletion frequency.\n";
+	$message .= "\t\t-i|--insertion-file <STR>\t\tIRMA generated insertion table.\n";
+	$message .= "\t\t-I|--min-ins-freq <FLT>\t\t\tMinimum insertion frequency.\n";
+	$message .= "\t\t-N|--name <STR>\t\t\t\tName of header and file.\n";
+	$message .= "\t\t-H|--fa-header-suffix\t\t\tAdd fasta header as suffix to <name>.\n";
+	$message .= "\t\t-S|--seg\t\t\t\tConvert the seg name to number and add to ISA.\n";
+	$message .= "\t\t-P|--prefix <STR>\t\t\tOutput prefix for file.\n";
+	$message .= "\t\t-T|--min-total-depth <INT>\t\tMinimum non-ambiguous column coverage. Default = 2.\n";
+	$message .= "\t\t-c|--rewrite-coverage <FILE>\t\tRe-write the coverage file.\n";
+	$message .= "\t\t-o|--output-coverage-file <FILE>\tOutput coverage file, otherwise replaces file exactly.\n";
+	$message .= "\t\t--min-consensus-support <INT>\t\tMinimum plurality count to call consensus, otherwise 'N'.\n";
+	$message .= "\t\t--min-consensus-quality <FLT>\t\tMinimum plurality average quality to call consensus, otherwise 'N'.\n";
+	$message .= "\t\t--a2m-reference\t\t\t\tInterpret reference as an align to module fasta file.\n";
 	die($message."\n");
 }
 
@@ -68,12 +77,15 @@ if ( !defined($minTotal) || $minTotal < 0 ) {
 
 if ( !defined($minConsensusSupport) || $minConsensusSupport < 0 ) {
 	$minConsensusSupport = 1;
-} else {
-	$replaceCoverageFile = 1;
 }
 
 # mappings of nucleotides
-%M = (
+my %M = (
+	'A'=>'A',
+	'C'=>'C',
+	'G'=>'G',
+	'C'=>'C',
+	'N'=>'N',
 	'AT' => 'W',
 	'CG' => 'S',
 	'AC' => 'M',
@@ -87,45 +99,78 @@ if ( !defined($minConsensusSupport) || $minConsensusSupport < 0 ) {
 	'ACGT' => 'N'
 );
 
+# function ENCODE
+# Accepts string of alleles.
+# Returns mapped base call.
+sub encode($) {
+	my $nts = $_[0];
+	if ( length($nts) == 1 ) {
+		return $nts;
+	} elsif( $nts =~ /-/ ) {
+		return '?';
+	} elsif( $nts =~ /[^ATCG]/ ) {
+		return 'N';
+	} else {
+		$nts =  join('', sort( split('',$nts) ) );
+		$nts =~ tr/ACGT//s;
+		return $M{ $nts };
+	}
+}
+
 # PROCESS fasta data
 open(IN, '<', $ARGV[0]) or die("$0 ERROR: cannot open $ARGV[0].\n");
-$/ = ">"; $i = 0; %count = (); $L = 0;
-while($record = <IN> ) {
+$/ = ">";
+my %count = ();
+my ($i,$L) = (0,0);
+my @seq;
+my $faHeader = '';
+while(my $record = <IN> ) {
 	chomp($record);
-	@lines = split(/\r\n|\n|\r/, $record);
+	my @lines = split(/\r\n|\n|\r/, $record);
 	$faHeader = shift(@lines);
-	$sequence = uc(join('',@lines));
+	my $sequence = uc(join('',@lines));
 
 	if ( length($sequence) == 0 ) {
 		next;
+	} else {
+		@seq = split('',$sequence);
+		$L = length($sequence);
 	}
-	@seq = split('',$sequence);
 }
 close(IN);
 
-
-# GET called variant data
-open(IN,'<',$ARGV[1]) or die("$0 ERROR: cannot open $ARGV[1].\n");
-$/ = "\n"; $header = <IN>;
-@variants = <IN>; chomp(@variants);
-%validPos = %freqByAllele = ();
-foreach $line ( @variants ) {
-	($ref,$pos,$total,$majAllele,$allele,$majCount,$count,$majFreq,$freq,$majAQ,$aq,$con,$pairedUB,$qualityUB,$phase) = split("\t",$line);
-	$allele = uc($allele);
-	# necessary for a called variant to be used for mixed base call
-	
-	if ( defined($replaceNotEncode) && defined($replaceWithPhase) && $replaceWithPhase == $phase ) {
-			$validPos{$pos} = lc($allele);
-	} else {	
-		if ( $count >= $minCount && $freq >= $minFreq && $total >= $minTotal ) {
-			# get all minor alleles greater than thresholds
-			$validPos{$pos} .= $allele;
+my @refMap = ();	# Coordinate Map for A2M Aligned Reference
+my $CM; 		# Coordinate Mapper Function
+my $ext;		# File extension
+if ( defined($a2mReference) ) {
+	my $pos = 0;
+	for my $idx ( 0 .. $#seq ) {
+		if ( $seq[$idx] ne '-' && $seq[$idx] ne '.' ) {
+			$refMap[$pos] = $idx;
+			$pos++;			
 		}
 	}
+
+	$CM = sub {
+		if ( $_[0] < 0 ) {
+			print STDERR "Coordinate $_[0] out of bounds.\n";
+			return $refMap[0];;
+		} elsif ( $_[0] > $#refMap ) {
+			print STDERR "Coordinate $_[0] out of bounds.\n";
+			return $refMap[$#refMap];
+		} else {
+			return $refMap[ $_[0] ];
+		}
+	};
+
+	$ext = '.a2m';
+} else {
+	$CM = sub { return $_[0] };
+	$ext = '.fa';
 }
-close(IN);
 
 # if custom header name
+my $outHdr = 'unknown';
 if ( defined($name) ) {
 	$outHdr = $name;
 } else {
@@ -134,9 +179,9 @@ if ( defined($name) ) {
 
 # if fasta header has a protein name, convert to flu segment number
 if ( defined($convertSeg) ) {
-	@pairs = split(',',$convertSeg);
-	foreach $pair ( @pairs ) {
-		($prot,$numbering) = split(':',$pair);
+	my @pairs = split(',',$convertSeg);
+	foreach my  $pair ( @pairs ) {
+		my ($prot,$numbering) = split(':',$pair);
 		if ( $faHeader =~ /$prot/ ) {
 			$outHdr .= '_'.$numbering;
 			last;
@@ -155,12 +200,37 @@ if ( defined($printFinalName) ) {
 	exit(0);
 }
 
+
+# GET called variant data
+open(IN,'<',$ARGV[1]) or die("$0 ERROR: cannot open $ARGV[1].\n");
+$/ = "\n";
+my $header = <IN>;
+my @variants = <IN>; chomp(@variants);
+my %validPos = ();
+my  %freqByAllele = ();
+foreach my $line ( @variants ) {
+	my ($ref,$pos,$total,$majAllele,$allele,$majCount,$count,$majFreq,$freq,$majAQ,$aq,$con,$pairedUB,$qualityUB,$phase) = split("\t",$line);
+	$allele = uc($allele);
+	# necessary for a called variant to be used for mixed base call
+	
+	if ( defined($replaceNotEncode) && defined($replaceWithPhase) && $replaceWithPhase == $phase ) {
+			$validPos{$pos} = lc($allele);
+	} else {	
+		if ( $count >= $minCount && $freq >= $minFreq && $total >= $minTotal ) {
+			# get all minor alleles greater than thresholds
+			$validPos{$pos} .= $allele;
+		}
+	}
+}
+close(IN);
+
+
 # encode variants that are valid
-foreach $pos ( keys(%validPos) ) {
-	$p = $pos-1;				# base zero
+foreach my $pos ( keys(%validPos) ) {
+	my $p = $CM->($pos-1);				# base zero
 
 	if ( !defined($replaceNotEncode) ) {
-		$nts = $seq[$p] . $validPos{$pos};	# major + minor
+		my $nts = $seq[$p] . $validPos{$pos};	# major + minor
 		$seq[$p] = encode($nts);
 	} else {
 		$seq[$p] = $validPos{$pos};		# set to minor
@@ -170,27 +240,27 @@ foreach $pos ( keys(%validPos) ) {
 if ( defined($delFile) ) {
 	open(IN,'<',$delFile) or die("$0 ERROR: cannot open $delFile for reading.\n");
 	$header = <IN>;
-	while($line=<IN>) {
+	while(my $line=<IN>) {
 		chomp($line);
-		($Reference_Name,$Upstream_Position,$Length,$Context,$Called,$Count,$Total,$Frequency,$PairedUB) = split("\t",$line);
+		my ($Reference_Name,$Upstream_Position,$Length,$Context,$Called,$Count,$Total,$Frequency,$PairedUB) = split("\t",$line);
 		if ( $Count >= $minCount && $Frequency >= $minFreqDel && $Total >= $minTotal  ) {
-			for $p ( $Upstream_Position .. ($Upstream_Position + $Length - 1) ) {
+			for my $p ( $Upstream_Position .. ($Upstream_Position + $Length - 1) ) {
 				# deletions merely stack
-				$seq[$p] = '-';
+				$seq[$CM->($p)] = '-';
 			}
 		}
 	}
 	close(IN);
 }
 
-%insertions = ();
+my %insertions = ();
 if ( defined($insFile) ) {
 	open(IN,'<',$insFile) or die("$0 ERROR: cannot open $insFile for reading.\n");
-	$header = <IN>;
-	while($line=<IN>) {
+	my $header = <IN>;
+	while(my $line=<IN>) {
 		chomp($line);
-		($Reference_Name,$Upstream_Position,$Insert,$Context,$Called,$Count,$Total,$Frequency,$Average_Quality,$ConfidenceNotMacErr,$PairedUB,$QualityUB) = split("\t",$line);
-		$p = $Upstream_Position - 1;
+		my ($Reference_Name,$Upstream_Position,$Insert,$Context,$Called,$Count,$Total,$Frequency,$Average_Quality,$ConfidenceNotMacErr,$PairedUB,$QualityUB) = split("\t",$line);
+		my $p = $CM->($Upstream_Position - 1);
 		if ( $Count >= $minCount && $Frequency >= $minFreqIns && $Total >= $minTotal ) {
 			# most frequent insertion wins
 			if ( !defined($insertions{$p}) ) {
@@ -206,60 +276,136 @@ if ( defined($insFile) ) {
 if ( $covgRewrite ) {
 	$/ = "\n";
 	open(IN,'<',$covgRewrite) or die("$0 ERROR: cannot open $covgRewrite.\n");
-	$header = <IN>; chomp($header);
-	@coverages = <IN>; chomp(@coverages); close(IN);
+	my $header = <IN>; chomp($header);
+	my @coverages = <IN>; chomp(@coverages); close(IN);
 
 	my $coverage_filename = $prefix.'/'.$outHdr.'-coverage.txt';
-	if ( defined($replaceCoverageFile) ) {
+	if ( ! defined($outputCoverageFile) ) {
 		$coverage_filename = $covgRewrite;
+	} else {
+		#$prefix.'/'.$outHdr.'-coverage.txt';
+		$coverage_filename = $outputCoverageFile;
 	}
 	open(OUT,'>',$coverage_filename) or die("$0 ERROR: cannot open $outHdr-coverage.txt.\n");
-	print OUT $header,"\n";
 
-	$iPos = 1; $iDepth = 6; $iCon = 3; $iQuality = 7; $cursor = 1; $offset = 0;
-	foreach $line ( @coverages ) {
-		@fields = split("\t",$line);
-	}
+	my $iPos = 1;
+	my $iDepth = 6;
+	my $iCon = 3;
+	my $iQuality = 7;
 
-	foreach $line ( @coverages ) {
-		@fields = split("\t",$line);
+	if ( defined($a2mReference) ) {
+		# M is match, D is deletion, I is insertion, X is missing, and P is padded
+		print OUT $header,"\tAlignment_State\n";
+		my @fields = split("\t",$coverages[0]);
+		my $del_suffix = "\t0\t-\t0\t0\t0\t0\tD\n";
+		my $miss_suffix = "\t0\t.\t0\t0\t0\t0\tX\n";
+		my $gene = $fields[0]."\t";
 
-		if ( $fields[$iCon] eq '.' ) {
-			next;
-		} else {
-			$p = $fields[$iPos]-1;
-		}
+		my %cTable = ();
+		my $state = '';
+		my $last = 0;
+		foreach my $line ( @coverages ) {
+			my @fields = split("\t",$line);
+			if ( $fields[$iCon] eq '.' ) {
+				next;
+			}
+	
+			my $p = $CM->($fields[$iPos] - 1);	
+			if ( $seq[$p] =~ /[a-z]/ ) {
+				$state = 'I';
+			} else {
+				$last = $p;
+				$state = 'M';
+			}
+				
+			if ( $fields[$iDepth] < $minConsensusSupport || $fields[$iQuality] < $minConsensusQuality ) {
+				if ( 0 <= $p && $p <= $#seq ) {
+					if ( $state eq 'M' ) {
+						$seq[$p] = 'N';
+						$fields[$iCon] = 'N';
+					} else {
+						$seq[$p] = 'n';
+						$fields[$iCon] = 'n';
+					}
+				}
+			}
 
-		if ( $fields[$iDepth] < $minConsensusSupport || $fields[$iQuality] < $minConsensusQuality ) {
-			if ( 0 <= $p && $p <= $#seq ) {
-				$seq[$p] = 'N';
-				$fields[$iCon] = 'N';
+			if ( $fields[$iCon] ne '-' && $seq[$p] ne '-' ) {
+				if ( $state eq 'M' ) {
+					$fields[$iPos] = $p + 1;
+					$cTable{$p} = join("\t",(@fields,'M'));
+				} else {
+					$fields[$iPos] = $last;
+					$cTable{$p} = join("\t",(@fields,'M'));
+				}
 			}
 		}
 
-		if ( $fields[$iCon] ne '-' && $seq[$p] ne '-' ) {
-			$fields[$iPos] = $cursor;
-			print OUT join("\t",@fields),"\n";
-			$cursor++;
+		for my $p ( 0 .. $#seq ) {
+			my $pp = $p+1;
+			if ( $seq[$p] eq '-') {
+				print OUT $gene,$pp,$del_suffix;	
+			} elsif ( $seq[$p] eq '.' ) {
+				print OUT $gene,$pp,$miss_suffix;
+			} elsif ( defined($cTable{$p}) ) {
+				print OUT $cTable{$p},"\n";
+			} else {
+				print STDERR "Unexpected state, missing coverage at $pp of A2M. Using missing.";
+				print OUT $gene,$pp,$miss_suffix;
+			}
+
+			# Add insertions		
+			if ( defined($insertions{$p}) ) {
+				my @insertedBases = split('', $insertions{$p}[0] );
+				my $total = $insertions{$p}[2];
+				foreach my $insert ( @insertedBases ) {
+					print OUT $gene,"\t",$pp,"\t",$total,"\t",lc($insert),"\tNA\tNA\tI\n";
+				}		
+			}
 		}
 
-		# Add insertions		
-		if ( defined($insertions{$p}) ) {
-			@insertedBases = split('', $insertions{$p}[0] );
-			$total = $insertions{$p}[2];
-			foreach $insert ( @insertedBases ) {
-				print OUT $fields[0],"\t",($cursor++),"\t",$total,"\t",$insert,"\tNA\tNA\n";
-			}		
+	} else {
+		print OUT $header,"\n";
+		my $cursor = 1;
+		foreach my $line ( @coverages ) {
+			my @fields = split("\t",$line);
+
+			if ( $fields[$iCon] eq '.' ) {
+				next;
+			}
+			
+			my $p = $fields[$iPos]-1;
+			if ( $fields[$iDepth] < $minConsensusSupport || $fields[$iQuality] < $minConsensusQuality ) {
+				if ( 0 <= $p && $p <= $#seq ) {
+					$seq[$p] = 'N';
+					$fields[$iCon] = 'N';
+				}
+			}
+
+			if ( $fields[$iCon] ne '-' && $seq[$p] ne '-' ) {
+				$fields[$iPos] = $cursor;
+				print OUT join("\t",@fields),"\n";
+				$cursor++;
+			}
+
+			# Add insertions		
+			if ( defined($insertions{$p}) ) {
+				my @insertedBases = split('', $insertions{$p}[0] );
+				my $total = $insertions{$p}[2];
+				foreach my $insert ( @insertedBases ) {
+					print OUT $fields[0],"\t",($cursor++),"\t",$total,"\t",$insert,"\tNA\tNA\n";
+				}		
+			}
 		}
 	}
 	close(OUT);	
 }
 
 # amended consensus is written to a file
-open(OUT,'>',$prefix.'/'.$outHdr.'.fa') or die("$0 ERROR: cannot open $outHdr.fa for writing.\n");
+open(OUT,'>',$prefix.'/'.$outHdr . $ext) or die("$0 ERROR: cannot open $outHdr.fa for writing.\n");
 print OUT '>',$outHdr,"\n";
-for $p (0..$#seq) {
-	if ( $seq[$p] ne '-' && $seq[$p] ne '.' ) {
+for my $p (0..$#seq) {
+	if ( defined($a2mReference) || ($seq[$p] ne '-' && $seq[$p] ne '.') ) {
 		print OUT $seq[$p];
 	}
 
@@ -269,19 +415,3 @@ for $p (0..$#seq) {
 }
 print OUT "\n";
 close(OUT);
-
-# function ENCODE
-# Accepts string of alleles.
-# Returns mapped base call.
-sub encode($) {
-	my $nts = $_[0];
-	if ( length($nts) == 1 ) {
-		return $nts;
-	} elsif( $nts =~ /-/ ) {
-		return '?';
-	} elsif( $nts =~ /[^ATCG]/ ) {
-		return 'N';
-	} else {
-		return $M{ join('', sort( split('',$nts) ) )};
-	}
-}
