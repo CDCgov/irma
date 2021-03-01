@@ -145,27 +145,40 @@ while(my $record = <IN> ) {
 }
 close(IN);
 
-my @refMap = ();	# Coordinate Map for A2M Aligned Reference
-my $CM; 		# Coordinate Mapper Function
+my @a2mMap = ();	# Coordinate Map for Plurality to A2M
+my @refMap = ();	# Coordinate Map for A2M to A2M Reference
+my $CM; 		# Coordinate Mapper Function: Plurality to A2M
 my $ext;		# File extension
 if ( defined($a2mReference) ) {
+	# Map 0-based plurality to 0-based A2M
 	my $pos = 0;
 	for my $idx ( 0 .. $#seq ) {
 		if ( $seq[$idx] ne '-' && $seq[$idx] ne '.' ) {
-			$refMap[$pos] = $idx;
+			$a2mMap[$pos] = $idx;
 			$pos++;			
 		}
 	}
 
+	# Map 0-based A2M to 1-based reference position
+	$pos = 0;
+	for my $idx ( 0 .. $#seq ) {
+		if ( $seq[$idx] !~ /[a-z.]/ ) {
+			$pos++;
+		}
+ 
+		$refMap[$idx] = $pos;
+	}
+
+	# Maps table position (plurality) to index of a2m (not necessarily HMM position)
 	$CM = sub {
 		if ( $_[0] < 0 ) {
 			print STDERR "Coordinate $_[0] out of bounds.\n";
-			return $refMap[0];;
-		} elsif ( $_[0] > $#refMap ) {
+			return $a2mMap[0];;
+		} elsif ( $_[0] > $#a2mMap ) {
 			print STDERR "Coordinate $_[0] out of bounds.\n";
-			return $refMap[$#refMap];
+			return $a2mMap[$#a2mMap];
 		} else {
-			return $refMap[ $_[0] ];
+			return $a2mMap[ $_[0] ];
 		}
 	};
 
@@ -317,7 +330,7 @@ if ( $covgRewrite ) {
 			}
 	
 			my $p = $CM->($fields[$iPos] - 1);	
-			if ( $seq[$p] =~ /[a-z]/ ) {
+			if ( $seq[$p] =~ /[a-z.]/ ) {
 				$state = 'I';
 			} else {
 				$last = $p;
@@ -337,18 +350,14 @@ if ( $covgRewrite ) {
 			}
 
 			if ( $fields[$iCon] ne '-' && $seq[$p] ne '-' ) {
-				if ( $state eq 'M' ) {
-					$fields[$iPos] = $p + 1;
-					$cTable{$p} = join("\t",(@fields,'M'));
-				} else {
-					$fields[$iPos] = $last;
-					$cTable{$p} = join("\t",(@fields,'M'));
-				}
+				$fields[$iPos] = $refMap[$p];
+				$cTable{$p} = join("\t",(@fields,$state));
 			}
 		}
 
+		my $cursor = 1;
 		for my $p ( 0 .. $#seq ) {
-			my $pp = $p+1;
+			my $pp = $refMap[$p];
 			if ( $seq[$p] eq '-') {
 				print OUT $gene,$pp,$del_suffix;	
 			} elsif ( $seq[$p] eq '.' ) {
@@ -356,7 +365,7 @@ if ( $covgRewrite ) {
 			} elsif ( defined($cTable{$p}) ) {
 				print OUT $cTable{$p},"\n";
 			} else {
-				print STDERR "Unexpected state, missing coverage at $pp of A2M. Using missing.";
+				print STDERR "Unexpected state, missing coverage at $pp of A2M. Using missing.\n";
 				print OUT $gene,$pp,$miss_suffix;
 			}
 

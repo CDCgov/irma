@@ -18,8 +18,8 @@ GetOptions(
 		'pad-coverage-out|O=s' => \$coverage_out
 	);
 
-if ( scalar(@ARGV) != 3 && scalar(@ARGV) != 2 ) {
-	$message = "Usage:\n\tperl $0 <a2m> <sam>\n";
+if ( scalar(@ARGV) != 2 ) {
+	$message = "Usage:\n\tperl $0 <a2m> <sam> [options]\n";
 	$message .= "\t-L|--expected-length <INT>\tExpected length of coordinate space for reference.\n";
 	$message .= "\t-T|--trim-ends\t\t\tTrim padded sequence ends of '-' and 'N'.\n";
 	$message .= "\t-D|--remove-deletions\t\tRemoves all deletions (-) from the padded sequence.\n";
@@ -116,10 +116,13 @@ if ( defined($coverage_in) ) {
 	open(COV,'>',$coverage_out) or die("Cannot open $coverage_out for writing.\n");
 	print COV $header;
 	my ($iPos, $iCon) = (1, 3);
-	foreach my $line ( @coverage ) {
+	foreach my $idx ( 0 .. $#coverage ) {
+		my $line = $coverage[$idx];
 		my @fields = split("\t",$line);
-		# index position
-		my $idx = $fields[$iPos] - 1;
+		if ( defined($remove_inserted_N) && $fields[$iCon] eq 'n' ) { next; }
+
+		# Will not line up with insertions
+		# my $cPos = $fields[$iPos] - 1;
 		if ( substr($padded_reference,$idx,1) eq '*' ) {
 			if ( $fields[$iCon] eq '-' ) {
 				print COV $fields[0],"\t",$fields[1],"\t0\tN\t0\t0\t0\t0\tP\n";
