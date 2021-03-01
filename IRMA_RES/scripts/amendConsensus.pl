@@ -318,10 +318,10 @@ if ( $covgRewrite ) {
 
 	if ( defined($a2mReference) ) {
 		# M is match, D is deletion, I is insertion, X is missing, and P is padded
-		print OUT $header,"\tAlignment_State\n";
+		print OUT $header,"\tHMM_Position\tAlignment_State\n";
 		my @fields = split("\t",$coverages[0]);
-		my $del_suffix = "\t0\t-\t0\t0\t0\t0\tD\n";
-		my $miss_suffix = "\t0\t.\t0\t0\t0\t0\tX\n";
+		my $del_suffix = "NA\t0\t-\t0\t0\t0\t0\t";
+		my $miss_suffix = "NA\t0\t.\t0\t0\t0\t0\n";
 		my $gene = $fields[0]."\t";
 
 		my %cTable = ();
@@ -336,6 +336,7 @@ if ( $covgRewrite ) {
 			my $p = $CM->($fields[$iPos] - 1);	
 			if ( $seq[$p] =~ /[a-z.]/ ) {
 				$state = 'I';
+				$fields[$iCon] = lc($fields[$iCon]);
 			} else {
 				$last = $p;
 				$state = 'M';
@@ -354,23 +355,21 @@ if ( $covgRewrite ) {
 			}
 
 			if ( $fields[$iCon] ne '-' && $seq[$p] ne '-' ) {
-				$fields[$iPos] = $refMap[$p];
-				$cTable{$p} = join("\t",(@fields,$state));
+				$cTable{$p} = join("\t",(@fields,$refMap[$p],$state));
 			}
 		}
 
-		my $cursor = 1;
 		for my $p ( 0 .. $#seq ) {
 			my $pp = $refMap[$p];
 			if ( $seq[$p] eq '-') {
-				print OUT $gene,$pp,$del_suffix;	
+				print OUT $gene,$del_suffix,$pp,"\tD\n";	
 			} elsif ( $seq[$p] eq '.' ) {
-				print OUT $gene,$pp,$miss_suffix;
+				print OUT $gene,$miss_suffix,$pp,"\tX\n";
 			} elsif ( defined($cTable{$p}) ) {
 				print OUT $cTable{$p},"\n";
 			} else {
 				print STDERR "Unexpected state, missing coverage at $pp of A2M. Using missing.\n";
-				print OUT $gene,$pp,$miss_suffix;
+				print OUT $gene,$miss_suffix,$pp,"\tX\n";
 			}
 
 			# Add insertions		
@@ -378,11 +377,10 @@ if ( $covgRewrite ) {
 				my @insertedBases = split('', $insertions{$p}[0] );
 				my $total = $insertions{$p}[2];
 				foreach my $insert ( @insertedBases ) {
-					print OUT $gene,"\t",$pp,"\t",$total,"\t",lc($insert),"\tNA\tNA\tI\n";
+					print OUT $gene,"\tNA\t",$total,"\t",lc($insert),"\tNA\tNA\tI\t$pp\n";
 				}		
 			}
 		}
-
 	} else {
 		print OUT $header,"\n";
 		my $cursor = 1;

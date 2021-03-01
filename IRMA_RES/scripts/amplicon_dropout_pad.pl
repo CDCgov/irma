@@ -125,7 +125,7 @@ if ( defined($coverage_in) ) {
 		# my $cPos = $fields[$iPos] - 1;
 		if ( substr($padded_reference,$idx,1) eq '*' ) {
 			if ( $fields[$iCon] eq '-' ) {
-				print COV $fields[0],"\t",$fields[1],"\t0\tN\t0\t0\t0\t0\tP\n";
+				print COV $fields[0],"\t",$fields[1],"\t0\tN\t0\t0\t0\t0\t$fields[8]\tP\n";
 			} else {
 				print STDERR "Expected '-' in table at $fields[$iPos], but found $fields[$iCon] instead, printing existing line.\n";
 				print COV $line,"\n";
