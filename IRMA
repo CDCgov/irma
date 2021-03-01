@@ -1173,13 +1173,14 @@ function ASSEMBLE_REPORT() {
 		[ "$MIN_CONS_QUALITY" != "" ] && options+=" --min-consensus-quality ${MIN_CONS_QUALITY:-0}"
 	fi
 
-	"$spath"/amendConsensus.pl -P "$acpath" "${final}.fasta" "${final}-variants.txt" $options $extra_opts
+	"$spath"/amendConsensus.pl -P "$acpath" "${final}.fasta" "${final}-variants.txt" $options
 	if [ "${ALIGN_AMENDED:-0}" -eq "1" -a -s "$phmms"/${gene}_hmm.mod -a -s "${final}.fasta" ];then
 			cd "$ppath"
 			"$A2M" $gene -db "${final}.fasta" -modelfile "$phmms"/${gene}_hmm.mod -sw 0 > /dev/null 2>&1
 			cd - > /dev/null
 			local amended_file=$("$spath"/amendConsensus.pl -P "$acpath" "${final}.a2m" "${final}-variants.txt" $options --print-name)
 			options+=" --a2m-reference -o ${final}-coverage.a2m.txt"
+			"$spath"/amendConsensus.pl -P "$acpath" "${final}.a2m" "${final}-variants.txt" $options
 			"$spath"/amendConsensus.pl -P "$acpath" "${final}.a2m" "${final}-variants.txt" $options
 			if [ "$ASSEM_REF" -eq "1" -a "${PADDED_CONSENSUS:-1}" -eq "1" ];then
 				"$spath"/amplicon_dropout_pad.pl -D -A -C ${final}-coverage.a2m.txt -O ${final}-coverage.pad.txt \

@@ -128,7 +128,13 @@ while(my $record = <IN> ) {
 	chomp($record);
 	my @lines = split(/\r\n|\n|\r/, $record);
 	$faHeader = shift(@lines);
-	my $sequence = uc(join('',@lines));
+		
+	my $sequence;
+	if ( defined($a2mReference) ) {
+		$sequence = join('',@lines);
+	} else {
+		$sequence = uc(join('',@lines));
+	}
 
 	if ( length($sequence) == 0 ) {
 		next;
