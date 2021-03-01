@@ -79,6 +79,10 @@ if ( !defined($minConsensusSupport) || $minConsensusSupport < 0 ) {
 	$minConsensusSupport = 1;
 }
 
+if ( !defined($minConsensusQuality) || $minConsensusQuality < 0 ) {
+	$minConsensusQuality = 0;
+}
+
 # mappings of nucleotides
 my %M = (
 	'A'=>'A',
