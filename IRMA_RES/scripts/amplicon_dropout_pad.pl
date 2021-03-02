@@ -101,8 +101,8 @@ if ( defined($pad_adjacent) ) {
 	}
 
 	$padded_reference =~ s/(?<=[*N])([ACTG])?[-]+|[-]+([ACTG])?(?=[*N])/mask($&,$1,$2)/ige;
-	# $padded_reference =~ s/^*+/-/g;
-	# $padded_reference =~ s/*+$/-/g;
+	#$padded_reference =~ s/^([*]+)/'-' x length($1)/e;
+	#$padded_reference =~ s/([*]+)$/'-' x length($1)/e;
 }
 
 if ( defined($coverage_in) ) {
