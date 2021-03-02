@@ -3,7 +3,7 @@ PROGRAM="Iterative Refinement Meta-Assembler (IRMA)"
 AUTHOR="Samuel S. Shepard"
 EMAIL="vfn4@cdc.gov"
 AFFIL="CDC/DDID/NCIRD/ID"
-DATE="01 MAR 2021"
+DATE="03 MAR 2021"
 VERSION="1.0.1"
 LICENSE="GPL version 3. This program comes with ABSOLUTELY NO WARRANTY. This is free software.
 You are welcome to redistribute it under certain conditions. See:  <http://www.gnu.org/licenses/>.
@@ -1182,7 +1182,7 @@ function ASSEMBLE_REPORT() {
 			options+=" --a2m-reference -o ${final}-coverage.a2m.txt"
 			"$spath"/amendConsensus.pl -P "$acpath" "${final}.a2m" "${final}-variants.txt" $options
 			if [ "$ASSEM_REF" -eq "1" -a "${PADDED_CONSENSUS:-1}" -eq "1" ];then
-				"$spath"/amplicon_dropout_pad.pl -D -A -C ${final}-coverage.a2m.txt -O ${final}-coverage.pad.txt \
+				"$spath"/amplicon_dropout_pad.pl -D -T -A -C ${final}-coverage.a2m.txt -O ${final}-coverage.pad.txt \
 					"$acpath"/${amended_file}.a2m "$assemp"/F1-${gene}.sam > "$acpath"/${amended_file}.pad.fa
 			fi
 	fi

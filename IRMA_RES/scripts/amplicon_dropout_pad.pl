@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 # Sam Shepard with Kristine Lacek
-# 2020.02
+# 2020.03
 
 use strict;
 use warnings;
@@ -121,7 +121,6 @@ if ( defined($coverage_in) ) {
 	foreach my $idx ( 0 .. $#coverage ) {
 		my $line = $coverage[$idx];
 		my @fields = split("\t",$line);
-		if ( defined($remove_inserted_N) && $fields[$iCon] eq 'n' ) { next; }
 
 		# Will not line up with insertions
 		# my $cPos = $fields[$iPos] - 1;
