@@ -149,8 +149,8 @@ if ( defined($remove_deletions) ) {
 }
 
 if ( defined($trim_ends) ) {
-	$padded_reference =~ s/^[N.]+//;
-	$padded_reference =~ s/[N.]+$//;
+	$padded_reference =~ s/^[N.]+(?=[^N.])//;
+	$padded_reference =~ s/(?<=[^N.])[N.]+$//;
 }
 
 print STDOUT '>',$ref_header,"\n",$padded_reference,"\n";
