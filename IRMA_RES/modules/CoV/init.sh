@@ -22,7 +22,7 @@ MERGE_SECONDARY=1
 MATCH_PROC=64		# grid maximum processes for the MATCH
 MATCH_PROG="BLAT"	# match (all or any match) program [BLAT]
 MIN_RP=1		# minimum read pattern count to continue
-MIN_RC=5		# minimum read count to continue
+MIN_RC=15		# minimum read count to continue
 MIN_BLAT_MATCH=65	# minimum blat match, default settings within the program practically limit to 30 bp, only useful if set higher.
 
 ## SORT STEP
