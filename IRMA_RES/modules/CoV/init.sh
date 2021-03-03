@@ -22,7 +22,7 @@ MERGE_SECONDARY=1
 MATCH_PROC=64		# grid maximum processes for the MATCH
 MATCH_PROG="BLAT"	# match (all or any match) program [BLAT]
 MIN_RP=1		# minimum read pattern count to continue
-MIN_RC=1		# minimum read count to continue
+MIN_RC=5		# minimum read count to continue
 MIN_BLAT_MATCH=65	# minimum blat match, default settings within the program practically limit to 30 bp, only useful if set higher.
 
 ## SORT STEP
@@ -43,7 +43,7 @@ ASSEM_PROG="SSW"	# assembly program [SSW]
 ASSEM_PROC=64		# grid maximum processes for assembly
 INS_T=0.75		# minimum frquenncy threshold for insertion refinement
 DEL_T=0.75		# minimum frequency threshold for deletion refinement 
-INS_T_DEPTH=10		# minimum coverage depth for insertion refinement
+INS_T_DEPTH=15		# minimum coverage depth for insertion refinement
 DEL_T_DEPTH=10		# minimum coverage depth for deletion refinement (in addition to plurality and frequency)
 MIN_AMBIG=0.20		# minimum called SNV frequency for mixed base in amended consensus folder
 ASSEM_REF=1		# use the same reference(s) for the final assembly as read gathering
