@@ -5,14 +5,16 @@
 use strict;
 use warnings;
 
-my ($delim,$fieldSet,$message,$flexibleHeader,$inPlace);
+my ($delim,$fieldSet,$message,$flexibleHeader,$inPlace,$impalaNull);
 use Getopt::Long;
 GetOptions(
 		'delim|D=s' => \$delim,
 		'field|F=s' => \$fieldSet,
 		'flexible-header|H' => \$flexibleHeader,
-		'in-place|I' => \$inPlace
+		'in-place|I' => \$inPlace,
+		'impala-null|N' => \$impalaNull
 	);
+
 
 if ( scalar(@ARGV) < 1 ) {
 	$message = "\nUsage:\n\tperl $0 <main_table> [<join1> <join2> ...]\n";
@@ -20,6 +22,7 @@ if ( scalar(@ARGV) < 1 ) {
 	$message .= "\t\t-F|--field <STR>\tComma-delimited set of fields to use for group. Default: column 1.\n";
 	$message .= "\t\t-H|--flexible-header\tAllows header group fields to not match.\n";
 	$message .= "\t\t-I|--in-place\t\tOverwrite main table using joined table.\n";
+	$message .= "\t\t-N|--impala-null\tUse Apache Impala style nulls (\\N) rather than R style nulls (NA).\n";
 	die($message."\n");
 }
 
@@ -63,7 +66,7 @@ if ( !defined($delim) ) {
 
 $flexibleHeader = defined($flexibleHeader) ? 1 : 0;
 $inPlace = defined($inPlace) ? 1 : 0;
-
+my $NULL = defined($impalaNull) ? '\N' : 'NA';
 
 my $fileLimit = scalar(@ARGV) - 1;
 my @data = (); 
@@ -87,7 +90,7 @@ foreach my $i ( 1 .. $fileLimit ) {
 		}
 
 		if ( $id ne '' ) {
-			my @remainingColumns = map { $_ eq '' ? '\N' : $_ } complementArray(\@values,\@fields);
+			my @remainingColumns = map { $_ eq '' ? $NULL : $_ } complementArray(\@values,\@fields);
 			my $N = scalar(@remainingColumns);
 			if ( !defined($lengthRemaining[$i-1]) || $N > $lengthRemaining[$i-1] ) {
 				$lengthRemaining[$i-1] = $N;
@@ -126,7 +129,7 @@ sub leftJoin($$) {
 						$line .= "\t".join("\t",@{$data[$i-1]{$id}});
 					}
 					foreach( 1 .. ($lengthRemaining[$i-1] - $N) ) {
-						$line .= "\t\\N";
+						$line .= "\t$NULL";
 					}
 				} else {
 					$line .= "\t".join("\t",@{$data[$i-1]{$id}});
@@ -135,7 +138,7 @@ sub leftJoin($$) {
 				$line .= "\t".join("\t",@{$header[$i-1]});
 			} else {
 				
-				$line .= "\t\\N" for 1 .. $lengthRemaining[$i-1];
+				$line .= "\t$NULL" for 1 .. $lengthRemaining[$i-1];
 			}
 		}
 	}	
