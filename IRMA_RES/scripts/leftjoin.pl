@@ -1,21 +1,23 @@
 #!/usr/bin/env perl
-# Samuel Shepard - 3.14.2019
+# Samuel Shepard - 2021-03
 # Perform left join
 
 use strict;
 use warnings;
 
-my ($delim,$fieldSet,$message);
+my ($delim,$fieldSet,$message,$flexibleHeader);
 use Getopt::Long;
 GetOptions(
 		'delim|D=s' => \$delim,
-		'field|F=s' => \$fieldSet
+		'field|F=s' => \$fieldSet,
+		'flexible-header|H' => \$flexibleHeader
 	);
 
 if ( scalar(@ARGV) < 1 ) {
-	$message = "Usage:\n\tperl $0 <table> [<left1> <left2> ...]\n";
-	$message .= "\t\t--delim|-D <CHAR>\tDelimiter for the key, the column delimiter many only be tab.\n";
-	$message .= "\t\t--field|-F <STR>\tComma-delimited set of fields to use for group. Default: column 1.\n";
+	$message = "Usage:\n\tperl $0 <table> [<join1> <join2> ...]\n";
+	$message .= "\t\t-D|--delim <CHAR>\tDelimiter for the key, the column delimiter many only be tab.\n";
+	$message .= "\t\t-F|--field <STR>\tComma-delimited set of fields to use for group. Default: column 1.\n";
+	$message .= "\t\t-H|--flexible-header\tAllows header group fields to not match.\n";
 	die($message."\n");
 }
 
@@ -57,11 +59,15 @@ if ( !defined($delim) ) {
 	die("$0 ERROR: single character delimiter expected instead of '$delim'.\n");
 }
 
+$flexibleHeader = defined($flexibleHeader) ? 1 : 0;
+
 
 my $fileLimit = scalar(@ARGV) - 1;
 my @data = (); 
 my @lengthRemaining = ();
-foreach my $i ( 1 .. $fileLimit) {
+my @header = ();
+foreach my $i ( 1 .. $fileLimit ) {
+	my $first = 1;
 	open(my $IN,'<',$ARGV[$i]) or die("Cannot open file $ARGV[$i].\n");
 	while(my $line = <$IN> ) {
 		chomp($line);
@@ -84,12 +90,17 @@ foreach my $i ( 1 .. $fileLimit) {
 				$lengthRemaining[$i-1] = $N;
 			}
 			$data[$i-1]{$id} = [@remainingColumns];
+			if ( $first ) {
+				$first = 0;
+				$header[$i-1] = [@remainingColumns];
+			}
 		}
 	}
 	close($IN);
 }
 
 open(my $IN,'<',$ARGV[0]) or die("Cannot open main table: $ARGV[0].\n");
+my $first = 1;
 while(my $line = <$IN>) {
 	chomp($line);
 	my @values = split("\t",$line);
@@ -118,7 +129,11 @@ while(my $line = <$IN>) {
 				} else {
 					$line .= "\t".join("\t",@{$data[$i-1]{$id}});
 				}
+			} elsif ( $first && $flexibleHeader ) {
+				$first = 0;
+				$line .= "\t".join("\t",@{$header[$i-1]});
 			} else {
+				
 				$line .= "\t\\N" for 1 .. $lengthRemaining[$i-1];
 			}
 		}
