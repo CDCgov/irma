@@ -62,6 +62,7 @@ if ( !defined($delim) ) {
 }
 
 $flexibleHeader = defined($flexibleHeader) ? 1 : 0;
+$inPlace = defined($inPlace) ? 1 : 0;
 
 
 my $fileLimit = scalar(@ARGV) - 1;
