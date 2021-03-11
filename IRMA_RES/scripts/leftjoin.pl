@@ -5,19 +5,21 @@
 use strict;
 use warnings;
 
-my ($delim,$fieldSet,$message,$flexibleHeader);
+my ($delim,$fieldSet,$message,$flexibleHeader,$inPlace);
 use Getopt::Long;
 GetOptions(
 		'delim|D=s' => \$delim,
 		'field|F=s' => \$fieldSet,
-		'flexible-header|H' => \$flexibleHeader
+		'flexible-header|H' => \$flexibleHeader,
+		'in-place|I' => \$inPlace
 	);
 
 if ( scalar(@ARGV) < 1 ) {
-	$message = "Usage:\n\tperl $0 <table> [<join1> <join2> ...]\n";
+	$message = "\nUsage:\n\tperl $0 <main_table> [<join1> <join2> ...]\n";
 	$message .= "\t\t-D|--delim <CHAR>\tDelimiter for the key, the column delimiter many only be tab.\n";
 	$message .= "\t\t-F|--field <STR>\tComma-delimited set of fields to use for group. Default: column 1.\n";
 	$message .= "\t\t-H|--flexible-header\tAllows header group fields to not match.\n";
+	$message .= "\t\t-I|--in-place\t\tOverwrite main table using joined table.\n";
 	die($message."\n");
 }
 
@@ -99,10 +101,9 @@ foreach my $i ( 1 .. $fileLimit ) {
 	close($IN);
 }
 
-open(my $IN,'<',$ARGV[0]) or die("Cannot open main table: $ARGV[0].\n");
-my $first = 1;
-while(my $line = <$IN>) {
-	chomp($line);
+sub leftJoin($$) {
+	my $line = $_[0]; chomp($line);
+	my $first = $_[1];
 	my @values = split("\t",$line);
 	my $numberFound = scalar(@values);
 	my $id = '';
@@ -130,7 +131,6 @@ while(my $line = <$IN>) {
 					$line .= "\t".join("\t",@{$data[$i-1]{$id}});
 				}
 			} elsif ( $first && $flexibleHeader ) {
-				$first = 0;
 				$line .= "\t".join("\t",@{$header[$i-1]});
 			} else {
 				
@@ -138,6 +138,33 @@ while(my $line = <$IN>) {
 			}
 		}
 	}	
-	print STDOUT $line,"\n";
+
+	return $line;
 }
-close($IN);
+
+
+my $first = 1;
+if ( $inPlace ) {
+	open(my $IN,'<',$ARGV[0]) or die("Cannot open main table for reading: $ARGV[0].\n");
+	my @lines = <$IN>;
+	close($IN);
+
+	open(my $OUT,'>',$ARGV[0]) or die("Cannot open main table for writing: $ARGV[0].\n");
+	if ( scalar(@lines) > 0 ) {
+		print $OUT leftJoin($lines[0],1),"\n";
+	}
+
+	if ( scalar(@lines) > 1 ) {
+		foreach my $i ( 1 .. $#lines ) {
+			print $OUT leftJoin($lines[$i],0),"\n";
+		}
+	}
+	close($OUT);
+} else {
+	open(my $IN,'<',$ARGV[0]) or die("Cannot open main table for reading: $ARGV[0].\n");
+	print STDOUT leftJoin(<$IN>,1),"\n";
+	while(my $line = <$IN>) {
+		print STDOUT leftJoin($line,0),"\n";
+	}
+	close($IN);
+}
