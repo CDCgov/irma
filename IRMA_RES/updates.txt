@@ -1,6 +1,9 @@
 IRMA Changelog
 
-v1.0.1 : 2021-03
+v1.0.2 : 2021-03-11
+- When available, left join HMM coordinates and alignment states from the coverage.a2m.txt file to the variants, allAlleles, insertions, and deletions table.  Many thanks to K. Lacek for assistance.
+
+v1.0.1 : 2021-03-02
 - Refined amplicon dropout padding for greater accuracy; added plurality global alignment and coverge tables for A2M and padded data. Many thanks to K. Lacek.
 
 
