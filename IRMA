@@ -3,8 +3,8 @@ PROGRAM="Iterative Refinement Meta-Assembler (IRMA)"
 AUTHOR="Samuel S. Shepard"
 EMAIL="vfn4@cdc.gov"
 AFFIL="CDC/DDID/NCIRD/ID"
-DATE="03 MAR 2021"
-VERSION="1.0.1"
+DATE="11 MAR 2021"
+VERSION="1.0.2"
 LICENSE="GPL version 3. This program comes with ABSOLUTELY NO WARRANTY. This is free software.
 You are welcome to redistribute it under certain conditions. See:  <http://www.gnu.org/licenses/>.
 Components of this pipeline have non-commercial restrictions. See: IRMA_RES/scripts/packaged-citations-licenses"
@@ -1191,6 +1191,15 @@ function ASSEMBLE_REPORT() {
 		local options="-C $MIN_C -F $MIN_F -I $MIN_FI -D $MIN_FD -Q $MIN_AQ -T $MIN_TCC -M $MIN_CONF -S $SIG_LEVEL"
 		[ "$AUTO_F" -eq 1 ] && options+=" -A"
 		"$spath"/vcfGenerator.pl $options "${final}.fasta" "${final}-allAlleles.txt" "${final}-insertions.txt" "${final}-deletions.txt" > "${final}.vcf"
+	fi
+
+	if [ -s "${final}-coverage.a2m.txt" ];then
+		local tbl=""
+		for tbl in variants insertions deletions allAlleles;do
+			if [ -s "${final}-${tbl}.txt" ];then
+				"$spath"/leftjoin.pl -H -F 1,2 -I "${final}-${tbl}.txt" <(cut -f1-2,9-10 "${final}-coverage.a2m.txt")
+			fi
+		done
 	fi
 
 	"$SAMTOOLS" view -bS "${final}.sam" > "${final}.bam" 2> /dev/null
