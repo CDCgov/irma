@@ -15,7 +15,8 @@ GetOptions(
 		'alternative-threshold|A=f' => \$alternativeThreshold,
 		'alternative-count|C=i' => \$alternativeCount,
 		'store-stats|S=s' => \$storeStats,
-		'mark-deletions|M' => \$markDeletions
+		'mark-deletions|M' => \$markDeletions,
+        'min-dropout-edge-support|E=i' => \$minDropoutEdgeSupport
 	);
 
 if ( scalar(@ARGV) < 2 ) {
@@ -29,6 +30,7 @@ if ( scalar(@ARGV) < 2 ) {
 	$message .= "\t\t-C|--alternative-count <#>\t\tVariant count where alternative reference allele is changed. Default is off.\n";
 	$message .= "\t\t-S|--store-stats <FILE>\t\t\tSave aggregate stats to a .sto file.\n";
 	$message .= "\t\t-M|--mark-deletions\t\t\tOutput '-' for deletions in the consensus instead ommitting the deleted states.\n";
+	$message .= "\t\t-E|--min-dropout-edge-support\t\tMinimum site coverage depth in order mask dropouts (91+) with flanking regions (6bp) with N.\n";
 	die($message."\n");
 }
 
@@ -63,9 +65,19 @@ if ( !defined($deletionDepthThreshold) ) 	{ $deletionDepthThreshold = 1; }
 if ( !defined($alternativeThreshold) ) 		{ $alternativeThreshold = 2; }
 if ( !defined($alternativeCount) ) 		{ $alternativeCount = LONG_MAX; }
 
+
+if ( !defined($minDropoutEdgeSupport) || $minDropoutEdgeSupport < 0 ) { 
+    $minDropoutEdgeSupport = 0 
+} else {
+    $minDropoutEdgeSupport = int($minDropoutEdgeSupport);
+}
+
+
 # Flags
 $markDeletions = defined($markDeletions) ? 1 : 0; 
 $storeStats = defined($storeStats) ? 1 : 0;
+
+
 
 # Aggregate data
 @bigTable = ();
@@ -87,7 +99,7 @@ for($i=1;$i<scalar(@ARGV);$i++) {
 }
 
 @cons = @totals = ();
-for $p ( 0 .. ($N-1) ) {
+for my $p ( 0 .. ($N-1) ) {
 	$total = 0;
 	$con = '';
 	my $max;
@@ -103,6 +115,18 @@ for $p ( 0 .. ($N-1) ) {
 	$totals[$p] = $total;
 }
 
+if ( $minDropoutEdgeSupport > 0 ) {
+    my $plurality_sequence = join('',( map { $_ eq '' ? '.' : $_ } @cons ));
+    while( $plurality_sequence =~ m/([ATGCNatcgn]{6}[.]{91,}[ATCGNatcgn]{6})/g ) {
+        for my $p ( $-[1] .. ($+[1]-1) ) {
+            if ( $totals[$p] < $minDropoutEdgeSupport ) {
+                $cons[$p] = 'N';
+            }
+        }
+    }
+}
+
+
 $header = $header2 = '';
 $consensus = $alternative = '';
 if ( $name ) {
@@ -112,7 +136,7 @@ if ( $name ) {
 	$header = ">consensus\n";
 	$header2 = ">alternative\n";
 }
-for $p ( 0 .. ($N-1) ) {
+for my $p ( 0 .. ($N-1) ) {
 	if ( $cons[$p] ne '-' ) {
 		$consensus .= $cons[$p];
 		# alternative non-gap

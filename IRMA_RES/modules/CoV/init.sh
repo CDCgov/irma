@@ -52,6 +52,7 @@ ALIGN_AMENDED=1		# align the amended consensus to the HMM profile
 PADDED_CONSENSUS=1	# attempt to pad amended_consensus with Ns for amplicaton dropout: requires ALIGN_AMENDED=1 and ASSEM_REF=1
 MIN_CONS_SUPPORT=15	# consensus allele minimum count
 MIN_CONS_QUALITY=15	# consensus allele minimum average quality
+MIN_DROPOUT_EDGE_DEPTH=15 # minimum threshold before dropouts (91+) with flanking regions (6+) are masked during final iterative refinement
 
 ### VARIANT CALLING ###
 # HEURISTICS

@@ -3,8 +3,8 @@ PROGRAM="Iterative Refinement Meta-Assembler (IRMA)"
 AUTHOR="Samuel S. Shepard"
 EMAIL="vfn4@cdc.gov"
 AFFIL="CDC/DDID/NCIRD/ID"
-DATE="11 MAR 2021"
-VERSION="1.0.2"
+DATE="28 APR 2021"
+VERSION="1.0.2p1"
 LICENSE="GPL version 3. This program comes with ABSOLUTELY NO WARRANTY. This is free software.
 You are welcome to redistribute it under certain conditions. See:  <http://www.gnu.org/licenses/>.
 Components of this pipeline have non-commercial restrictions. See: IRMA_RES/scripts/packaged-citations-licenses"
@@ -1066,6 +1066,7 @@ function REFINE_ASSEMBLY_CALL_VARIANTS() {
 	# DEFINE local variables
 	local log="$assemp"/$gene.log
 	local COMBINE_SAM_OPTS="-N $gene -I $INS_T -D $DEL_T -A $MIN_FA -C $MIN_CA -i ${INS_T_DEPTH:-1} -d ${DEL_T_DEPTH:-1}"
+    [ "${MIN_DROPOUT_EDGE_DEPTH:-0}" -gt "0" ] && COMBINE_SAM_OPTS+=" -E $MIN_DROPOUT_EDGE_DEPTH"
 	local theRef="";local -a theStats=();local newRef=""
 	local theBAM="";local theSAM=""
 	local lastScore=0;local currentScore=0;local iter=1

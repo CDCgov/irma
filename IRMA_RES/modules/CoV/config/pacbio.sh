@@ -13,6 +13,7 @@ DEL_T=0.75				# threshold for deletion refinement
 MIN_RP=1				# minimum read pattern count to continue
 MIN_RC=3				# minimum read count to continue
 MIN_CONS_SUPPORT=3      		# minimum consensus alleles to not ambiguate
+MIN_DROPOUT_EDGE_DEPTH=3
 
 #ALIGNMENT STEP
 ALIGN_PROG="SAM"

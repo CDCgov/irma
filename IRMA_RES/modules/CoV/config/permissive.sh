@@ -20,3 +20,4 @@ MIN_RC=1		# minimum read count to continue
 
 MIN_CONS_SUPPORT=1	# consensus allele minimum count
 MIN_CONS_QUALITY=1	# consensus allele minimum average quality
+MIN_DROPOUT_EDGE_DEPTH=0

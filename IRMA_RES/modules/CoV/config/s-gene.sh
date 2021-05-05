@@ -12,6 +12,7 @@ DEL_T=0.75              # threshold for deletion refinement : 1 => turn OFF dele
 MIN_RP=1                # minimum read pattern count to continue
 MIN_RC=3                # minimum read count to continue
 MIN_CONS_SUPPORT=3
+MIN_DROPOUT_EDGE_DEPTH=3
 ASSEM_REF=1
 
 # VARIANT CALLING HEURISTICS & STATS
