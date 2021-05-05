@@ -92,6 +92,7 @@ MIN_CONS_SUPPORT=${MIN_CONS_SUPPORT:-1}	# minimum consensus support for amended 
 MIN_CONS_QUALITY=${MIN_CONS_QUALITY:-0}	# minimum consensus average quality for amended consensus
 ALIGN_AMENDED={ALIGN_AMENDED:-0}		# do global alignment of the amended consensus to the HMM profile
 PADDED_CONSENSUS=${PADDED_CONSENSUS:-1}	# attempt to pad amended_consensus with Ns for amplicaton dropout: requires ALIGN_AMENDED=1 and ASSEM_REF=1
+MIN_DROPOUT_EDGE_DEPTH=${MIN_DROPOUT_EDGE_DEPTH:-0} # minimum threshold before dropouts (91+) with flanking regions (6+) are masked during final iterative refinement
 
 ### VARIANT CALLING ###
 # HEURISTICS
