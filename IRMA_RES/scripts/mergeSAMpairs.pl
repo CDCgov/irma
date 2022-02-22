@@ -2,18 +2,24 @@
 # Sam Shepard -- mergeSAMpairs -- version 2
 # 9.2014
 
+use 5.16.1;
+use strict;
+use warnings;
 use Storable;
 use Getopt::Long;
+
+use constant { false => 0, true => 1 };
+
+my ($useStorable, $bowtieFormat) = (false,false);
 GetOptions(
 		'use-storable|S' => \$useStorable, 'bowtie-format|B' => \$bowtieFormat
 	);
 
 if ( scalar(@ARGV) != 3 ) {
-	$message = "Usage:\n\tperl $0 <ref> <sam> <prefix>\n";
+	my $message = "Usage:\n\tperl $0 <ref> <sam> <prefix>\n";
 	$message .= "\t\t-S|--use-storable\tStore statistics object..\n";
 	die($message."\n");
 }
-
 
 # FUNCTIONS #
 sub condenseCigar($) {
@@ -49,18 +55,20 @@ sub avg($$) {
 }
 #############
 
-$REisBase = qr/[ATCG]/;
-$REgetMolID = qr/(.+?)[_ ]([12]):.+/;
+my $REisBase = qr/[ATCG]/;
+my $REgetMolID = qr/(.+?)[_ ]([12]):.+/;
 
 $/ = ">"; 
-$REF_LEN = $REF_NAME = '';
-@REF_SEQ = ();	
-open(REF,'<',$ARGV[0]) or die("Cannot open $ARGV[0] for reading.\n");
-while($record = <REF>) {
+my $REF_LEN = 0;
+my $REF_NAME = '';
+my @REF_SEQ = ();
+my $REF;
+open($REF,'<',$ARGV[0]) or die("Cannot open $ARGV[0] for reading.\n");
+while(my $record = <$REF>) {
 	chomp($record);
-	@lines = split(/\r\n|\n|\r/, $record);
+	my @lines = split(/\r\n|\n|\r/, $record);
 	$REF_NAME = shift(@lines);
-	$seq = join('',@lines);
+	my $seq = join('',@lines);
 	if ( length($seq) < 1 ) {
 		next;
 	}
@@ -68,20 +76,24 @@ while($record = <REF>) {
 	$REF_LEN = length($seq);
 	last;
 }
-close(REF);
+close($REF);
 
 $/ = "\n";
-open(SAM,'<',$ARGV[1]) or die("Cannot open $ARGV[1] for reading.\n");
-@sam = <SAM>; chomp(@sam);
-close(SAM);
+my $SAM;
+open($SAM,'<',$ARGV[1]) or die("Cannot open $ARGV[1] for reading.\n");
+my @sam = <$SAM>; chomp(@sam);
+close($SAM);
 
-%pairs = %insByIndex = ();
-for($K=0;$K<scalar(@sam);$K++) {
+my %pairs = ();
+my %insByIndex = ();
+foreach my $K ( 0 .. $#sam ) {
 	if ( substr($sam[$K],0,1) eq '@' ) {
 		next;
 	}
 
-	($qname,$flag,$rn,$pos,$mapq,$cigar,$mrnm,$mpos,$isize,$seq,$qual) = split("\t",$sam[$K]);
+	my ($qname,$flag,$rn,$pos,$mapq,$cigar,$mrnm,$mpos,$isize,$seq,$qual) = split("\t",$sam[$K]);
+
+    my ($qMolID, $qSide);
 	if ( $bowtieFormat ) {
 		$qMolID = $qname;
 		if ( defined($pairs{$qMolID}) ) {
@@ -95,24 +107,25 @@ for($K=0;$K<scalar(@sam);$K++) {
 	}
 
 	if ( $REF_NAME eq $rn ) {
-		@NTs = split('',uc($seq));
-		@QCs = split('',$qual);
-		@Qint = unpack("c* i*",$qual);
-		@cigars = split('',$cigar);
-		$rpos=$pos-1;
-		$qpos=0;
+		my @NTs = split('',uc($seq));
+		my @QCs = split('',$qual);
+		my @Qint = unpack("c* i*",$qual);
+		my @cigars = split('',$cigar);
+		my $rpos=$pos-1;
+		my $qpos=0;
+        my ($aln, $qAln) = ('','');
 		
-		if ( $rpos > 0 ) {
-			$aln = '.' x $rpos; 
-			$qAln = ' ' x $rpos;
-		} else {
-			$aln = '';
-			$qAln = '';
-		}
+		#if ( $rpos > 0 ) {
+		#	$aln = '.' x $rpos; 
+		#	$qAln = ' ' x $rpos;
+		#} else {
+		#	$aln = '';
+		#	$qAln = '';
+		#}
 		
 		while($cigar =~ /(\d+)([MIDNSHP])/g ) {
-			$inc=$1;
-			$op=$2;
+			my $inc=$1;
+			my $op=$2;
 			if ( $op eq 'M' ) {
 				for(1..$inc) {
 					$qAln .= $QCs[$qpos];
@@ -140,51 +153,94 @@ for($K=0;$K<scalar(@sam);$K++) {
 				die("Extended CIGAR ($op) not yet supported.\n");
 			}
 		}
-		$aln .= '.' x (($REF_LEN)-$rpos);
-		$qAln .= ' ' x (($REF_LEN)-$rpos);
+		#$aln .= '.' x (($REF_LEN)-$rpos);
+		#$qAln .= ' ' x (($REF_LEN)-$rpos);
 		$pairs{$qMolID}{$qSide} = [$aln,$qAln,$K,($pos-1),($rpos-1),$qname,$mapq];
 	}
 }
 
-%observations = ();
-open(SAM,'>',$ARGV[2].'.sam') or die("Cannot open $ARGV[2].sam\n");
-foreach $line ( @sam ) {
+my %observations = ();
+my $OSAM;
+open($OSAM,'>',$ARGV[2].'.sam') or die("Cannot open $ARGV[2].sam\n");
+foreach my $line ( @sam ) {
 	if ( substr($line,0,1) eq '@' ) {
-		print SAM $line,"\n";
+		print $OSAM $line,"\n";
 	} else {
 		last;
 	}
 }
-$dmv = $obs = $fmv = $tmv = 0;
-$insObs = $insErr = 0;
-foreach $mID ( keys(%pairs) ) {
-	@mPairs = keys(%{$pairs{$mID}});
+my ($dmv, $obs, $fmv, $tmv) = (0,0,0,0);
+my ($insObs, $insErr) = (0,0);
+foreach my $mID ( keys(%pairs) ) {
+	my @mPairs = keys(%{$pairs{$mID}});
 	if ( scalar(@mPairs) == 2 ) {
-		@a1 = @{$pairs{$mID}{'1'}};			
-		@a2 = @{$pairs{$mID}{'2'}};
-		($s1,$e1) = ($a1[3],$a1[4]);
-		($s2,$e2) = ($a2[3],$a2[4]);
+		my @a1 = @{$pairs{$mID}{'1'}};			
+		my @a2 = @{$pairs{$mID}{'2'}};
+		my ($s1,$e1) = ($a1[3],$a1[4]);
+		my ($s2,$e2) = ($a2[3],$a2[4]);
 
-		$start = min($s1,$s2);
-		$end = max($e1,$e2);
+		my $start = min($s1,$s2);
+		my $end = max($e1,$e2);
 
-		$mSeq = '';
-		$cigars = '';
-		$qSeq = '';
+		my $mSeq = '';
+		my $cigars = '';
+		my $qSeq = '';
 		
-		$K1 = $a1[2];
-		$K2 = $a2[2];
-		@bases1 = split('',$a1[0]);
-		@bases2 = split('',$a2[0]);
-		@quals1 = unpack("c* i*",$a1[1]);
-		@quals2 = unpack("c* i*",$a2[1]);
+		my $K1 = $a1[2];
+		my $K2 = $a2[2];
+		my @bases1 = split('',$a1[0]);
+		my @bases2 = split('',$a2[0]);
+		my @quals1 = unpack("c* i*",$a1[1]);
+		my @quals2 = unpack("c* i*",$a2[1]);
 
-		for($i=$start;$i<=$end;$i++) {
-			$x = $bases1[$i];
-			$y = $bases2[$i];
-			$qx = $quals1[$i];
-			$qy = $quals2[$i];
-			$r = $REF_SEQ[$i];
+        
+        my $FB1 = sub {
+            my $i = $_[0];
+            if ( $i < $s1 || $i > $e1 ) {
+                return '.';
+            } else {
+                if ( ($i - $s1) > $#bases1 ) { die("Bad: " . ($i-$s1) . " > " . $#bases1 ."\n"); }
+                return $bases1[$i - $s1];
+            }
+        };
+
+        my $FQ1 = sub {
+            my $i = $_[0];
+            if ( $i < $s1 || $i > $e1 ) {
+                return ' ';
+            } else {
+                return $quals1[$i - $s1];
+            }
+        };
+
+        my $FB2 = sub {
+            my $i = $_[0];
+            if ( $i < $s2 || $i > $e2 ) {
+                return '.';
+            } else {
+                return $bases2[$i - $s2];
+            }
+        };
+
+        my $FQ2 = sub {
+            my $i = $_[0];
+            if ( $i < $s2 || $i > $e2 ) {
+                return ' ';
+            } else {
+                return $quals2[$i - $s2];
+            }
+        };
+
+		foreach my $i ( $start .. $end ) {
+			#my $x = $bases1[$i];
+			#my $y = $bases2[$i];
+			#my $qx = $quals1[$i];
+			#my $qy = $quals2[$i];
+			my $x   = $FB1->($i);
+			my $y   = $FB2->($i);
+			my $qx  = $FQ1->($i);
+			my $qy  = $FQ2->($i);
+			my $r   = $REF_SEQ[$i];
 
 			if ( $x ne '.' && $y ne '.' ) {
 				$obs++;
@@ -260,15 +316,15 @@ foreach $mID ( keys(%pairs) ) {
 
 
 			if ( defined($insByIndex{$K1}{$i}) && defined($insByIndex{$K2}{$i}) ) {
-				$ins1 = lc($insByIndex{$K1}{$i}[0]);
-				$ins2 = lc($insByIndex{$K2}{$i}[0]);
+				my $ins1 = lc($insByIndex{$K1}{$i}[0]);
+				my $ins2 = lc($insByIndex{$K2}{$i}[0]);
 				$insObs++;
 				if ( $ins1 eq $ins2 ) {
 					$mSeq .= $ins1;
-					@qIns1 = split('',$insByIndex{$K1}{$i}[1]);	
-					@qIns2 = split('',$insByIndex{$K2}{$i}[1]);
-					$qSeqNew = '';
-					for($qIndex=0;$qIndex<length($ins1);$qIndex++ ) {
+					my @qIns1 = split('',$insByIndex{$K1}{$i}[1]);	
+					my @qIns2 = split('',$insByIndex{$K2}{$i}[1]);
+					my $qSeqNew = '';
+					foreach my $qIndex ( 0 .. (length($ins1)-1) ) {
 						$qSeqNew .= chr(max(ord($qIns1[$qIndex]),ord($qIns2[$qIndex])));
 					}
 					$qSeq .= $qSeqNew;
@@ -289,8 +345,10 @@ foreach $mID ( keys(%pairs) ) {
 					$insErr++;
 				}
 			} elsif ( defined($insByIndex{$K1}{$i}) ) {
+                my $w = '';
 				if ( $i != $end ) {
-					$w = $bases2[$i+1]
+					#$w = $bases2[$i+1]
+					$w = $FB2->($i+1);
 				} else {
 					$w = '.';
 				}
@@ -299,15 +357,17 @@ foreach $mID ( keys(%pairs) ) {
 				if ( $y ne '.' && $w ne '.' ) {
 					$insObs++; $insErr++;
 				} else {
-					$ins1 = lc($insByIndex{$K1}{$i}[0]);
+					my $ins1 = lc($insByIndex{$K1}{$i}[0]);
 
 					$mSeq .= $ins1;
 					$qSeq .= $insByIndex{$K1}{$i}[1];
 					$cigars .= 'I' x length($ins1);
 				}
 			} elsif ( defined($insByIndex{$K2}{$i}) ) {
+                my $v = '';
 				if ( $i != $end ) {
-					$v = $bases1[$i+1]
+					#$v = $bases1[$i+1];
+					$v = $FB1->($i+1);
 				} else {
 					$v = '.';
 				}
@@ -315,7 +375,7 @@ foreach $mID ( keys(%pairs) ) {
 				if ( $x ne '.' && $v ne '.' ) {
 					$insObs++; $insErr++;
 				} else {
-					$ins2 = lc($insByIndex{$K2}{$i}[0]);
+					my $ins2 = lc($insByIndex{$K2}{$i}[0]);
 
 					$mSeq .= $ins2;
 					$qSeq .= $insByIndex{$K2}{$i}[1];
@@ -324,17 +384,17 @@ foreach $mID ( keys(%pairs) ) {
 			}
 		}
 		
-		$qname = $a1[5];
-		$mapq = int(avg($a1[6],$a2[6]));
+		my $qname = $a1[5];
+		my $mapq = int(avg($a1[6],$a2[6]));
 
 		if ( ! $bowtieFormat ) {
 			$qname =~ s/(.+?[_ ])[12](:.+)/${1}3${2}/;
 		}
-		print SAM $qname,"\t",'0',"\t",$REF_NAME,"\t",($start+1),"\t",$mapq;
-		print SAM "\t",condenseCigar($cigars),"\t*\t0\t0\t",$mSeq,"\t",$qSeq,"\n";
+		print $OSAM $qname,"\t",'0',"\t",$REF_NAME,"\t",($start+1),"\t",$mapq;
+		print $OSAM "\t",condenseCigar($cigars),"\t*\t0\t0\t",$mSeq,"\t",$qSeq,"\n";
 	} else {
-		$K = $pairs{$mID}{$mPairs[0]}[2];
-		print SAM $sam[$K],"\n";
+		my $K = $pairs{$mID}{$mPairs[0]}[2];
+		print $OSAM $sam[$K],"\n";
 	}
 }
 
@@ -345,7 +405,7 @@ $observations{$REF_NAME}{'dmv'} = $dmv;
 $observations{$REF_NAME}{'insObs'} = $insObs;
 $observations{$REF_NAME}{'insErr'} = $insErr;
 
-close(SAM);
+close($OSAM);
 if ( $useStorable ) {
 	store(\%observations,$ARGV[2].'.sto');
 }
