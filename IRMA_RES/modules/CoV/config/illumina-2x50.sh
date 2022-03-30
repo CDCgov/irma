@@ -5,4 +5,4 @@ PARAM_FILE_VERSION="1.0"
 PARAM_FILE_DATE="2021-03-23"
 
 MIN_LEN=25      # minimum read length
-
+MIN_BLAT_MATCH=25
