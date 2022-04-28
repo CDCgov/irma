@@ -9,7 +9,4 @@ MAX_ROUNDS=5
 ALIGN_PROG="BLAT"
 ASSEM_PROG="SSW"
 
-INS_T=0.55              # threshold for insertion refinement
-DEL_T=0.55              # threshold for deletion refinement : 1 => turn OFF deletion editing
-
 MIN_DROPOUT_EDGE_DEPTH=0
