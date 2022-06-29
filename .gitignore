@@ -2,3 +2,15 @@ LABEL
 LABEL_RES
 label
 IRMA_RES/ppath
+CoV-dev
+debug
+deprecated
+experimental
+tests
+tests2
+toIntegrate
+IRMA_RES/modules/*/*/legacy/
+IRMA_RES/modules/*/*/*debug*
+IRMA_RES/modules/FLU/config/ref
+._*
+IRMA_RES/.commit
