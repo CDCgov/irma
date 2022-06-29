@@ -1,7 +1,0 @@
-Instructions for references
-
-1) Create a FASTA file called “consensus.fasta”; alternatively, you can alter your “init.sh” for the module and use a different filename by setting the “REF_SET” variable to your default reference library. You can override your module default reference library at the config file level as well.
-
-2) The FASTA file should contain one sequence per each genome lineage and/or gene segment. The header should contain the name of gene segment and/or type/lineage/subtype. Spaces are not allowed. The recommended solution is to build an alignment for each and take the consensus sequence without using mixed base calls (plurality consensus).
-
-3) Create a text file describing the data for others to reference.
