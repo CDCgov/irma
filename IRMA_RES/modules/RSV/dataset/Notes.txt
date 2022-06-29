@@ -1,0 +1,7 @@
+notes:
+Somehow, the program does not consider all my RSV fasta file as fasta file. 
+So I have to copied them to the previous NDV fasta file, which worked for creating NDV profile. 
+
+The command also asked for specify "alphabet", due to there are Ns in the data. So the command:
+In LABEL_RES, scripts folder:
+./modelfromalign_Darwin XX.hmm -alignfile xx.fasta -alphabet "DNA"
