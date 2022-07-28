@@ -11,6 +11,8 @@ INS_T=0.75				# threshold for insertion refinement
 DEL_T=0.75				# threshold for deletion refinement
 MIN_RP=3				# minimum read pattern count to continue
 MIN_RC=3				# minimum read count to continue
+MIN_CONS_SUPPORT=50
+MIN_CONS_QUALITY=10
 
 # VARIANT CALLING HEURISTICS & STATS
 MIN_AQ=8			# minimum average variant quality, does not apply to deletions
