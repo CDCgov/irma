@@ -27,4 +27,4 @@ As a complete package, IRMA is under GPLv3 with non-commercial use clauses added
 
 ## System requirements
 
-Perl 5.16.1, R 3.6+, BASH 3+; CentOS 7+, Ubuntu Linux, or MacOS 10.14+
+Perl 5.16, R 3.6+, BASH 3+; CentOS 7+, Ubuntu Linux, or MacOS 10.14+
