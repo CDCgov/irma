@@ -99,4 +99,5 @@ minimum_confidence_not_sequencer_error	MIN_CONF	$MIN_CONF
 merge_secondary_data	MERGE_SECONDARY	$MERGE_SECONDARY
 do_secondary_assembly	DO_SECONDARY ${DO_SECONDARY:-0}
 final_assembly_to_reference_seed	ASSEM_REF	${ASSEM_REF:-0}
+packaged_final_fastq	PACKAGED_FASTQ	${PACKAGED_FASTQ:-1}
 EOF
