@@ -22,6 +22,7 @@ SINGLE_LOCAL_PROC=$SINGLE_LOCAL_PROC	# local maximum processes
 DOUBLE_LOCAL_PROC=$DOUBLE_LOCAL_PROC	# local maximum processes (double this number)
 ALLOW_TMP=$ALLOW_TMP		# if GRID_ON=0, try to use /tmp for working directory
 TMP=$TMP		# the scratch/tmpfs for working on the assemblies
+PACKAGED_FASTQ=${PACKAGED_FASTQ:-1}		# Create *.tar.gz for final fastq, otherwise use *.gz for each file
 
 ### REFERENCE ###
 MIN_FA=$MIN_FA		# no alternative reference [0..1]

@@ -1,5 +1,9 @@
 # IRMA Changelog
 
+v1.0.4 : 2022-09
+
+- Added new option "PACKAGED_FASTQ" (default on). One can now optionally turn off packaging together sorted assembly fastq as a "tar.gz" and instead gzip up each fastq separately.
+
 v1.0.3 : 2022-09 (thanks for contributions from K. Lacek & B. Rambo-Martin)
 
 - Configuration tweaks for CoV
