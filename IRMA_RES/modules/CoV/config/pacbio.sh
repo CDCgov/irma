@@ -10,8 +10,9 @@ QUAL_THRESHOLD=20			# average or median threshold for QUALITY reads
 MIN_LEN=125				# minimum read length for QUALITY reads
 MIN_RP=1				# minimum read pattern count to continue
 MIN_RC=3				# minimum read count to continue
-MIN_CONS_SUPPORT=3      		# minimum consensus alleles to not ambiguate
-MIN_DROPOUT_EDGE_DEPTH=3
+MIN_CONS_SUPPORT=8      		# minimum consensus alleles to not ambiguate
+MIN_DROPOUT_EDGE_DEPTH=0
+PACKAGED_FASTQ=0
 
 #ALIGNMENT STEP
 ALIGN_PROG="SAM"
