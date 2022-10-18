@@ -1,0 +1,9 @@
+--cuddled-else
+--indent-columns=4
+--line-up-parentheses
+--output-line-ending=unix
+--delete-semicolons
+--opening-brace-always-on-right
+--maximum-line-length=125
+--nospace-for-semicolon
+--square-bracket-tightness=2
