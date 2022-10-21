@@ -11,7 +11,6 @@ MIN_LEN=125				# minimum read length for QUALITY reads
 MIN_RP=1				# minimum read pattern count to continue
 MIN_RC=3				# minimum read count to continue
 MIN_CONS_SUPPORT=8      		# minimum consensus alleles to not ambiguate
-MIN_DROPOUT_EDGE_DEPTH=0
 PACKAGED_FASTQ=0
 
 #ALIGNMENT STEP

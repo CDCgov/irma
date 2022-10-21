@@ -10,7 +10,6 @@ MIN_LEN=125		# minimum read length for QUALITY reads
 MIN_RP=1		# minimum read pattern count to continue
 MIN_RC=3		# minimum read count to continue
 MIN_CONS_SUPPORT=3
-MIN_DROPOUT_EDGE_DEPTH=3
 
 # VARIANT CALLING HEURISTICS & STATS
 MIN_AQ=8		# minimum average variant quality, does not apply to deletions

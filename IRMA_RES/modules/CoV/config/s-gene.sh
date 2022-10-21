@@ -14,7 +14,6 @@ MIN_RP=1                # minimum read pattern count to continue
 MIN_RC=3                # minimum read count to continue
 MIN_CONS_SUPPORT=50
 MIN_CONS_QUALITY=10
-#MIN_DROPOUT_EDGE_DEPTH=3
 ASSEM_REF=1
 
 # VARIANT CALLING HEURISTICS & STATS
