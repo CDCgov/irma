@@ -1,40 +1,40 @@
-[ "$USE_MEDIAN" == "-M" ] && USE_MEDIAN=1 || USE_MEDIAN=0
-if [ "$MATCH_PROG" == "BLAT" ];then
-	MATCH_OPTS=" ($BLAT_OPTS)"
+[ "$USE_MEDIAN" == "-M" -o "$USE_MEDIAN" -eq "1" ] && USE_MEDIAN=1 || USE_MEDIAN=0
+if [ "$MATCH_PROG" == "BLAT" ]; then
+    MATCH_OPTS=" ($BLAT_OPTS)"
 else
-	MATCH_OPTS=""	
+    MATCH_OPTS=""
 fi
 
-if  [ "$SORT_PROG" == "LABEL" ];then
-	SORT_OPTS=" (LFASTM=$LFASTM)"
-elif [ "$SORT_PROG" == "BLAT" ];then
-	SORT_OPTS=""
+if [ "$SORT_PROG" == "LABEL" ]; then
+    SORT_OPTS=" (LFASTM=$LFASTM)"
+elif [ "$SORT_PROG" == "BLAT" ]; then
+    SORT_OPTS=""
 else
-	SORT_OPTS=""
+    SORT_OPTS=""
 fi
 
-if [ "$ALIGN_PROG" == "SAM" ];then
-	ALIGN_OPTS=""
-elif [ "$ALIGN_PROG" == "BLAT" ];then
-	ALIGN_OPTS=""
+if [ "$ALIGN_PROG" == "SAM" ]; then
+    ALIGN_OPTS=""
+elif [ "$ALIGN_PROG" == "BLAT" ]; then
+    ALIGN_OPTS=""
 else
-	ALIGN_OPTS=""
+    ALIGN_OPTS=""
 fi
 
 ASSEM_OPTS=""
-if [ "$ASSEM_PROG" == "SSW" ];then
-	ASSEM_OPTS=" ($SSW_OPTS)"
-elif [ "$ASSEM_PROG" == "MINIMAP2" ];then
-	ASSEM_OPTS=" ($MM2_OPTS)"
+if [ "$ASSEM_PROG" == "SSW" ]; then
+    ASSEM_OPTS=" ($SSW_OPTS)"
+elif [ "$ASSEM_PROG" == "MINIMAP2" ]; then
+    ASSEM_OPTS=" ($MM2_OPTS)"
 fi
 
-if [ "${PAIRED:-0}" -eq "1" ];then
-	INPUT_READ_DATA="LEFT;RIGHT	$LEFT;$RIGHT"
+if [ "${PAIRED:-0}" -eq "1" ]; then
+    INPUT_READ_DATA="LEFT;RIGHT	$LEFT;$RIGHT"
 else
-	INPUT_READ_DATA="LEFT	$LEFT"
+    INPUT_READ_DATA="LEFT	$LEFT"
 fi
 
-cat <<EOF > "$ppath"/logs/run_info.txt
+cat << EOF > "$ppath"/logs/run_info.txt
 program_name	PROGRAM	$PROGRAM
 program_version	VERSION	$VERSION
 last_git_commit_hash	LAST_COMMIT	$LAST_COMMIT

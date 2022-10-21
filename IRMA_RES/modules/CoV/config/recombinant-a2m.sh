@@ -14,7 +14,6 @@ ASSEM_PROC=80           # grid maximum processes for assembly
 TMP=/tmp
 ALIGN_AMENDED=1
 PADDED_CONSENSUS=0
-#MIN_DROPOUT_EDGE_DEPTH=3
 ASSEM_REF=1 
 GRID_ON=0
 CUSTOM_REF_FILE="SARS-CoV-2_recombinant.fasta"   # custom ref file

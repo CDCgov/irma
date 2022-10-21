@@ -1,5 +1,11 @@
 # IRMA Changelog
 
+v1.0.5 : 2022-10
+
+- Performs more efficient fuzzy adapter matching within IRMA for Illumina configurations.
+- Provides a fix to actually allow turning off the default median read quality filter and instead use the average read quality filter as expected.  Configuration logs now correctly display USE_MEDIAN status.
+- Adds more uniform and updated defaults to the CoV module configurations (thanks to K. Lacek).
+
 v1.0.4 : 2022-09
 
 - Added new option "PACKAGED_FASTQ" (default on). One can now optionally turn off packaging together sorted assembly fastq as a "tar.gz" and instead gzip up each fastq separately.
