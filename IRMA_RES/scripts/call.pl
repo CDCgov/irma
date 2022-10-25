@@ -337,6 +337,7 @@ foreach my $p ( 0 .. ( $REF_LEN - 1 ) ) {
 
     if ( $nAlleles == 0 ) {
         print STDERR "Unexpected empty site @ $p (zero-based), skipping";
+
         #next;
     }
 
@@ -375,7 +376,9 @@ foreach my $p ( 0 .. ( $REF_LEN - 1 ) ) {
     print $CONS $consensus;
 
     my ( $conFreq, $conQuality ) = ( 0, 0 );
-    if ( $canonical_total != 0 ) {
+    if ( $consensus eq 'N' ) {
+        $conFreq = 'NA';
+    } elsif ( $canonical_total != 0 ) {
         $conFreq = $conCount / $canonical_total;
     }
 
@@ -404,36 +407,33 @@ foreach my $p ( 0 .. ( $REF_LEN - 1 ) ) {
         if ( $base eq $consensus ) {
             if ($printAllAlleles) {
 
-                # Please revisit
-                my ( $ee, $confidence, $quality, $pairedUB, $qualityUB );
+                my ( $confidence, $quality, $pairedUB, $qualityUB );
                 if ( $base eq 'N' ) {
-                    $ee         = 1 / ( 10**( $conQuality / 10 ) );
-                    $confidence = calcProb( $conFreq, $ee );
+                    $confidence = 'NA';
                     $quality    = $conQuality;
-                    $pairedUB   = UB( $PE, $conCount );
-                    $qualityUB  = UB( $ee, $conCount );
-                    $total      = $conCount;
+                    $pairedUB   = 'NA';
+                    $qualityUB  = 'NA';
                 } elsif ( $base eq '-' ) {
-                    $ee         = 0;
                     $confidence = 'NA';
                     $quality    = 'NA';
                     $pairedUB   = UB( $DE, $total );
                     $qualityUB  = 0;
                 } else {
-                    $ee         = 1 / ( 10**( $conQuality / 10 ) );
+                    my $ee = 1 / ( 10**( $conQuality / 10 ) );
+
                     $confidence = calcProb( $conFreq, $ee );
                     $quality    = $conQuality;
                     $pairedUB   = UB( $PE, $total );
                     $qualityUB  = UB( $ee, $total );
                 }
-                print $ALLA $REF_NAME, "\t", $cons_p, "\t", $base, "\t", $conCount, "\t", $total, "\t", $conFreq, "\t",
-                  $quality, "\t", $confidence, "\t", $pairedUB, "\t", $qualityUB, "\t", 'Consensus', "\n";
+                print $ALLA $REF_NAME, "\t", $cons_p, "\t", $base, "\t", $conCount, "\t", $canonical_total, "\t", $conFreq,
+                  "\t", $quality, "\t", $confidence, "\t", $pairedUB, "\t", $qualityUB, "\t", 'Consensus', "\n";
             }
-        } else {
+        } elsif ( $base ne 'N' ) {
 
             # minority allele
             my $count = $cTable[$p]{$base};
-            if ( $count == 0 || $base eq 'N' ) {
+            if ( $count == 0 ) {
                 next;
             }
 
@@ -446,65 +446,64 @@ foreach my $p ( 0 .. ( $REF_LEN - 1 ) ) {
             }
 
             # minor allele
-            if ( $base ne 'N' ) {
+            # valid called variant
+            if (    !( $noGap && $base eq '-' )
+                 && $freq >= $minFreq
+                 && $count >= $minCount
+                 && $quality >= $minQuality
+                 && $total >= $minTotal ) {
 
-                # valid called variant
-                if (    !( $noGap && $base eq '-' )
-                     && $freq >= $minFreq
-                     && $count >= $minCount
-                     && $quality >= $minQuality
-                     && $total >= $minTotal ) {
-                    my ( $ee, $confidence, $pairedUB, $qualityUB );
-                    if ( $base eq '-' ) {
-                        $ee         = 0;
-                        $confidence = 'NA';
-                        $quality    = 'NA';
-                        $pairedUB   = UB( $DE, $total );
-                        $qualityUB  = 0;
-                    } else {
-                        $ee         = 1 / ( 10**( $quality / 10 ) );
-                        $confidence = calcProb( $freq, $ee );
-                        $pairedUB   = UB( $PE, $total );
-                        $qualityUB  = UB( $ee, $total );
-                    }
+                my ( $ee, $confidence, $pairedUB, $qualityUB );
+                if ( $base eq '-' ) {
+                    $ee         = 0;
+                    $confidence = 'NA';
+                    $quality    = 'NA';
+                    $pairedUB   = UB( $DE, $total );
+                    $qualityUB  = 0;
+                } else {
+                    $ee         = 1 / ( 10**( $quality / 10 ) );
+                    $confidence = calcProb( $freq, $ee );
+                    $pairedUB   = UB( $PE, $total );
+                    $qualityUB  = UB( $ee, $total );
+                }
 
-                    if ( $freq <= $ee && $freq > $hFreq ) { $hFreq = $freq; }
-                    if ($printAllAlleles) {
-                        print $ALLA $REF_NAME, "\t", $cons_p, "\t", $base, "\t", $count, "\t", $total, "\t", $freq, "\t",
-                          $quality, "\t", $confidence, "\t", $pairedUB, "\t", $qualityUB, "\t", 'Minority', "\n";
-                    }
-
-                    if ( $confidence < $minConf || $freq <= $pairedUB || $freq <= $qualityUB ) {
-                        next;
-                    }
-
-                    $variants{$p}{$base} = $freq;
-                    $varLine{$p}{$base}  = $REF_NAME . "\t" . $cons_p . "\t" . $total . "\t";
-                    $varLine{$p}{$base} .= $consensus . "\t" . $base . "\t" . $conCount . "\t" . $count . "\t";
-                    $varLine{$p}{$base} .= $conFreq . "\t" . $freq . "\t" . $conQuality . "\t" . $quality . "\t";
-                    $varLine{$p}{$base} .= $confidence . "\t" . $pairedUB . "\t" . $qualityUB . "\n";
-
-                } elsif ($printAllAlleles) {
-
-                    # any variant
-                    my ( $ee, $confidence, $pairedUB, $qualityUB );
-                    if ( $base eq '-' ) {
-                        $ee         = 0;
-                        $confidence = 'NA';
-                        $pairedUB   = UB( $DE, $total );
-                        $qualityUB  = 0;
-                        $quality    = 'NA';
-                    } else {
-                        $ee         = 1 / ( 10**( $quality / 10 ) );
-                        $confidence = calcProb( $freq, $ee );
-                        $pairedUB   = UB( $PE, $total );
-                        $qualityUB  = UB( $ee, $total );
-                    }
-                    if ( $freq <= $ee && $freq > $hFreq ) { $hFreq = $freq; }
+                if ( $freq <= $ee && $freq > $hFreq ) { $hFreq = $freq; }
+                if ($printAllAlleles) {
                     print $ALLA $REF_NAME, "\t", $cons_p, "\t", $base, "\t", $count, "\t", $total, "\t", $freq, "\t",
                       $quality, "\t", $confidence, "\t", $pairedUB, "\t", $qualityUB, "\t", 'Minority', "\n";
                 }
+
+                if ( $confidence < $minConf || $freq <= $pairedUB || $freq <= $qualityUB ) {
+                    next;
+                }
+
+                $variants{$p}{$base} = $freq;
+                $varLine{$p}{$base}  = $REF_NAME . "\t" . $cons_p . "\t" . $total . "\t";
+                $varLine{$p}{$base} .= $consensus . "\t" . $base . "\t" . $conCount . "\t" . $count . "\t";
+                $varLine{$p}{$base} .= $conFreq . "\t" . $freq . "\t" . $conQuality . "\t" . $quality . "\t";
+                $varLine{$p}{$base} .= $confidence . "\t" . $pairedUB . "\t" . $qualityUB . "\n";
+
+            } elsif ($printAllAlleles) {
+
+                # any variant
+                my ( $ee, $confidence, $pairedUB, $qualityUB );
+                if ( $base eq '-' ) {
+                    $ee         = 0;
+                    $confidence = 'NA';
+                    $pairedUB   = UB( $DE, $total );
+                    $qualityUB  = 0;
+                    $quality    = 'NA';
+                } else {
+                    $ee         = 1 / ( 10**( $quality / 10 ) );
+                    $confidence = calcProb( $freq, $ee );
+                    $pairedUB   = UB( $PE, $total );
+                    $qualityUB  = UB( $ee, $total );
+                }
+                if ( $freq <= $ee && $freq > $hFreq ) { $hFreq = $freq; }
+                print $ALLA $REF_NAME, "\t", $cons_p, "\t", $base, "\t", $count, "\t", $total, "\t", $freq, "\t",
+                  $quality, "\t", $confidence, "\t", $pairedUB, "\t", $qualityUB, "\t", 'Minority', "\n";
             }
+
         }
     }
 }
