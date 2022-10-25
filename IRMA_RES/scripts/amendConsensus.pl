@@ -330,8 +330,6 @@ if ($covgRewrite) {
     if ( !defined($outputCoverageFile) ) {
         $coverage_filename = $covgRewrite;
     } else {
-
-        #$prefix.'/'.$outHdr.'-coverage.txt';
         $coverage_filename = $outputCoverageFile;
     }
     open( OUT, '>', $coverage_filename ) or die("$0 ERROR: cannot open $outHdr-coverage.txt.\n");

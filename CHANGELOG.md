@@ -13,6 +13,9 @@
 
 - Thanks to previous work with variant phasing and figure generation, R is no longer
   an IRMA dependency.
+- The `allAlleles` table now reports canonical total depths (AGTC + '-') for all
+  alleles. Statistics for 'N' alleles are not calculated nor are minor variant
+  calculations considered for 'N' consensus sites to avoid confusion.
 
 ### Fixes
 

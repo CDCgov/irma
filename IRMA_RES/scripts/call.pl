@@ -329,11 +329,8 @@ my %totals       = ();
 my $consensusSeq = q{};
 my $cons_p       = 0;
 foreach my $p ( 0 .. ( $REF_LEN - 1 ) ) {
-    my $consensus       = '.';
-    my $conCount        = 0;
-    my $canonical_total = 0;
-    my @site_alleles    = keys( %{ $cTable[$p] } );
-    my $nAlleles        = scalar(@site_alleles);
+    my @site_alleles = keys( %{ $cTable[$p] } );
+    my $nAlleles     = scalar(@site_alleles);
 
     if ( $nAlleles == 0 ) {
         print STDERR "Unexpected empty site @ $p (zero-based), skipping";
@@ -342,11 +339,11 @@ foreach my $p ( 0 .. ( $REF_LEN - 1 ) ) {
     }
 
     # consensus for nAlleles = 1
-    $consensus       = $site_alleles[0];
-    $conCount        = $cTable[$p]{$consensus};
-    $canonical_total = $conCount;
+    my $consensus       = $site_alleles[0];
+    my $conCount        = $cTable[$p]{$consensus};
+    my $canonical_total = $conCount;
 
-    # find the consensus allele for nAlleles ≥ 2l
+    # find the consensus allele for nAlleles ≥ 2
     foreach my $b ( 1 .. $#site_alleles ) {
         my $base = $site_alleles[$b];
         if ( $base ne '-' ) {
@@ -375,14 +372,15 @@ foreach my $p ( 0 .. ( $REF_LEN - 1 ) ) {
     $consensusSeq .= $consensus;
     print $CONS $consensus;
 
-    my ( $conFreq, $conQuality ) = ( 0, 0 );
+    my $conFreq = 0;
     if ( $consensus eq 'N' ) {
         $conFreq = 'NA';
     } elsif ( $canonical_total != 0 ) {
         $conFreq = $conCount / $canonical_total;
     }
 
-    if ( $conCount != 0 ) {
+    my $conQuality = 0;
+    if ( $conCount > 0 ) {
         $conQuality = ( $qTable[$p]{$consensus} - $conCount * 33 ) / $conCount;
     }
 
@@ -401,9 +399,8 @@ foreach my $p ( 0 .. ( $REF_LEN - 1 ) ) {
     print $COVG "\t", $conCount, "\t", $conQuality, "\n";
 
     foreach my $base (@site_alleles) {
-        my $total = $canonical_total;
 
-        # plurality allele
+        # plurality allele can be ATGC + "N" + "-"
         if ( $base eq $consensus ) {
             if ($printAllAlleles) {
 
@@ -416,61 +413,76 @@ foreach my $p ( 0 .. ( $REF_LEN - 1 ) ) {
                 } elsif ( $base eq '-' ) {
                     $confidence = 'NA';
                     $quality    = 'NA';
-                    $pairedUB   = UB( $DE, $total );
+                    $pairedUB   = UB( $DE, $canonical_total );
                     $qualityUB  = 0;
                 } else {
                     my $ee = 1 / ( 10**( $conQuality / 10 ) );
 
                     $confidence = calcProb( $conFreq, $ee );
                     $quality    = $conQuality;
-                    $pairedUB   = UB( $PE, $total );
-                    $qualityUB  = UB( $ee, $total );
+                    $pairedUB   = UB( $PE, $canonical_total );
+                    $qualityUB  = UB( $ee, $canonical_total );
                 }
                 print $ALLA $REF_NAME, "\t", $cons_p, "\t", $base, "\t", $conCount, "\t", $canonical_total, "\t", $conFreq,
                   "\t", $quality, "\t", $confidence, "\t", $pairedUB, "\t", $qualityUB, "\t", 'Consensus', "\n";
             }
         } elsif ( $base ne 'N' ) {
 
-            # minority allele
+            # no zero count columns
             my $count = $cTable[$p]{$base};
             if ( $count == 0 ) {
                 next;
             }
 
-            my $freq = $count / $total;
+            my $freq = $count / $canonical_total;
             my $quality;
-            if ( $base ne '-' && $base ne 'N' ) {
+            if ( $base ne '-' ) {
                 $quality = ( $qTable[$p]{$base} - $count * 33 ) / $count;
             } else {
                 $quality = $minQuality;
             }
 
-            # minor allele
-            # valid called variant
-            if (    !( $noGap && $base eq '-' )
+            my ( $confidence, $pairedUB, $qualityUB );
+            if ( $base eq '-' ) {
+                $quality    = 'NA';
+                $confidence = 'NA';
+                $pairedUB   = UB( $DE, $canonical_total );
+                $qualityUB  = 0;
+            } elsif ( $consensus eq 'N' ) {
+                $freq       = 'NA';
+                $confidence = 'NA';
+                $pairedUB   = 'NA';
+                $qualityUB  = 'NA';
+            } else {
+
+                # quality-based estimated error
+                my $ee = 1 / ( 10**( $quality / 10 ) );
+
+                $confidence = calcProb( $freq, $ee );
+                $pairedUB   = UB( $PE, $canonical_total );
+                $qualityUB  = UB( $ee, $canonical_total );
+
+                # Deletions have no expected error from quality scores Even if
+                # were deletion minor variants were allowed, they would be
+                # unikely to contribute to the  auto-frequency heuristic
+                # threshold.
+                if ( $freq <= $ee && $freq > $hFreq ) {
+                    $hFreq = $freq;
+                }
+            }
+
+            # Valid called variant: ATGC + "-"
+            # IRMA v1.1.0 does not allow minor variants with ambiguous consensus
+            if (    $consensus ne 'N'
+                 && !( $noGap && $base eq '-' )
                  && $freq >= $minFreq
                  && $count >= $minCount
                  && $quality >= $minQuality
-                 && $total >= $minTotal ) {
+                 && $canonical_total >= $minTotal ) {
 
-                my ( $ee, $confidence, $pairedUB, $qualityUB );
-                if ( $base eq '-' ) {
-                    $ee         = 0;
-                    $confidence = 'NA';
-                    $quality    = 'NA';
-                    $pairedUB   = UB( $DE, $total );
-                    $qualityUB  = 0;
-                } else {
-                    $ee         = 1 / ( 10**( $quality / 10 ) );
-                    $confidence = calcProb( $freq, $ee );
-                    $pairedUB   = UB( $PE, $total );
-                    $qualityUB  = UB( $ee, $total );
-                }
-
-                if ( $freq <= $ee && $freq > $hFreq ) { $hFreq = $freq; }
                 if ($printAllAlleles) {
-                    print $ALLA $REF_NAME, "\t", $cons_p, "\t", $base, "\t", $count, "\t", $total, "\t", $freq, "\t",
-                      $quality, "\t", $confidence, "\t", $pairedUB, "\t", $qualityUB, "\t", 'Minority', "\n";
+                    print $ALLA $REF_NAME, "\t", $cons_p, "\t", $base, "\t", $count, "\t", $canonical_total, "\t", $freq,
+                      "\t", $quality, "\t", $confidence, "\t", $pairedUB, "\t", $qualityUB, "\t", 'Minority', "\n";
                 }
 
                 if ( $confidence < $minConf || $freq <= $pairedUB || $freq <= $qualityUB ) {
@@ -478,32 +490,17 @@ foreach my $p ( 0 .. ( $REF_LEN - 1 ) ) {
                 }
 
                 $variants{$p}{$base} = $freq;
-                $varLine{$p}{$base}  = $REF_NAME . "\t" . $cons_p . "\t" . $total . "\t";
+                $varLine{$p}{$base}  = $REF_NAME . "\t" . $cons_p . "\t" . $canonical_total . "\t";
                 $varLine{$p}{$base} .= $consensus . "\t" . $base . "\t" . $conCount . "\t" . $count . "\t";
                 $varLine{$p}{$base} .= $conFreq . "\t" . $freq . "\t" . $conQuality . "\t" . $quality . "\t";
                 $varLine{$p}{$base} .= $confidence . "\t" . $pairedUB . "\t" . $qualityUB . "\n";
 
             } elsif ($printAllAlleles) {
 
-                # any variant
-                my ( $ee, $confidence, $pairedUB, $qualityUB );
-                if ( $base eq '-' ) {
-                    $ee         = 0;
-                    $confidence = 'NA';
-                    $pairedUB   = UB( $DE, $total );
-                    $qualityUB  = 0;
-                    $quality    = 'NA';
-                } else {
-                    $ee         = 1 / ( 10**( $quality / 10 ) );
-                    $confidence = calcProb( $freq, $ee );
-                    $pairedUB   = UB( $PE, $total );
-                    $qualityUB  = UB( $ee, $total );
-                }
-                if ( $freq <= $ee && $freq > $hFreq ) { $hFreq = $freq; }
-                print $ALLA $REF_NAME, "\t", $cons_p, "\t", $base, "\t", $count, "\t", $total, "\t", $freq, "\t",
+                # any minor variant: ATGC + "-"
+                print $ALLA $REF_NAME, "\t", $cons_p, "\t", $base, "\t", $count, "\t", $canonical_total, "\t", $freq, "\t",
                   $quality, "\t", $confidence, "\t", $pairedUB, "\t", $qualityUB, "\t", 'Minority', "\n";
             }
-
         }
     }
 }
@@ -512,6 +509,8 @@ close $CONS or croak("Cannot close file: $OS_ERROR\n");
 close $COVG or croak("Cannot close file: $OS_ERROR\n");
 close $ALLA or croak("Cannot close file: $OS_ERROR\n");
 
+# Revise variants according to the heuristic auto-frequency
+# and print the variant table.
 foreach my $p ( sort { $a <=> $b } keys(%varLine) ) {
     foreach my $base ( sort { $varLine{$p}{$a} cmp $varLine{$p}{$b} } keys( %{ $varLine{$p} } ) ) {
         if ($autoFreq) {
