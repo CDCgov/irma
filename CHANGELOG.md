@@ -1,5 +1,13 @@
 # IRMA Changelog
 
+v1.0.6 : 2023-05
+
+- When `ALLOW_TMP` is set but `TMP` is unset, adds an error and aborts to avoid writing to unintended directories.
+- With IRMA v1.0.6 and beyond attempt we will attempt to follow *semantic versioning* (v Major.Minor.Patch) more closely:
+  - **Major**: breaking changes to the CLI, output, configurations, and supported inputs
+  - **Minor**: changes that break undocumented/unintended behaviors for generating data without altering format, adding new features, or changes in configuration defaults
+  - **Patch**: fix bugs, minor performance improvements, non-breaking updates to dependencies, log or error improvements
+
 v1.0.5 : 2022-10
 
 - Performs more efficient fuzzy adapter matching within IRMA for Illumina configurations.

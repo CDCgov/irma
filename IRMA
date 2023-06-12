@@ -3,8 +3,8 @@ PROGRAM="Iterative Refinement Meta-Assembler (IRMA)"
 AUTHOR="Samuel S. Shepard"
 EMAIL="vfn4@cdc.gov"
 AFFIL="CDC/DDID/NCIRD/ID"
-DATE="21 OCT 2022"
-VERSION="1.0.5"
+DATE="23 MAY 2023"
+VERSION="1.0.6"
 LICENSE="GPL version 3. This program comes with ABSOLUTELY NO WARRANTY. This is free software.
 You are welcome to redistribute it under certain conditions. See:  <http://www.gnu.org/licenses/>.
 Components of this pipeline have non-commercial restrictions. See: IRMA_RES/scripts/packaged-citations-licenses"
@@ -258,10 +258,14 @@ fi
 
 # define ppath
 TOKEN=$(perl -e '@chars = ("A".."Z","0".."9","a".."z");print $chars[int(rand(scalar(@chars)))] for 1..32;')
-if [ "$ALLOW_TMP" -eq "1" -a "$GRID_ON" -eq "0" ]; then
-    ppath="$TMP"/$(whoami)/IRMAv$VERSION/${RUN}-${TOKEN}
+if [[ "$ALLOW_TMP" -eq "1" && "${GRID_ON:-0}" -eq "0" ]]; then
+    if [ -z "$TMP" ]; then
+        abort "ALLOW_TMP=1 but TMP var was unspecified!"
+    else
+        ppath="$TMP"/$(whoami)/IRMAv$VERSION/${RUN}-${TOKEN}
+    fi
 else
-    if [ "${GRID_PATH:-0}" != "0" -a "${GRID_ON:-0}" -eq "1" ]; then
+    if [[ "${GRID_PATH:-0}" != "0" && "${GRID_ON:-0}" -eq "1" ]]; then
         ppath="$GRID_PATH"/$(whoami)/IRMAv$VERSION/${RUN}-${TOKEN}
     else
         ppath="$rpath"/ppath/${RUN}-${TOKEN}
@@ -270,17 +274,15 @@ fi
 
 # check if RUN already exists
 if [ ! -d "$ppath" ]; then
-    mkdir -p "$ppath"
-    if [ "$?" -ne "0" ]; then
-        if [ "$ALLOW_TMP" -eq "1" -a "$GRID_ON" -eq "0" ]; then
-            echo "IRMA WARNING: cannot create directory '$ppath', trying: "$rpath"/ppath/${RUN}-${TOKEN}"
+    mkdir -p "$ppath" || {
+        if [[ "$ALLOW_TMP" -eq "1" && "${GRID_ON:-0}" -eq "0" ]]; then
+            echo "IRMA WARNING: cannot create directory '$ppath', trying: $rpath/ppath/${RUN}-${TOKEN}"
             ppath="$rpath"/ppath/${RUN}-${TOKEN}
-            mkdir -p "$ppath"
-            [ "$?" -ne "0" ] && abort "cannot create directory '$ppath'"
+            mkdir -p "$ppath" || abort "cannot create directory '$ppath'"
         else
             abort "cannot create directory '$ppath'"
         fi
-    fi
+    }
 else
     abort "run already exists"
 fi
