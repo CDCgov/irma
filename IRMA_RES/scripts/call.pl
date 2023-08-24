@@ -594,7 +594,7 @@ foreach $p ( sort {$a <=> $b } keys(%icTable) ) {
 
 		print INSV $REF_NAME,"\t",($p+1),"\t",uc($insert),"\t",lc($left),uc($insert),lc($right);
 		print INSV "\t",$called,"\t",$count,"\t",$total,"\t",$freq,"\t",$quality;
-		print INSV "\t",$confidence,"\t",$pairedUB,"\t",$qualityUB,"\t","\n";
+		print INSV "\t",$confidence,"\t",$pairedUB,"\t",$qualityUB,"\n";
 	}
 }
 close(INSV);
