@@ -1,5 +1,9 @@
 # IRMA Changelog
 
+v1.1.0 : 2023-08
+
+- Fix: removes an erroneous tab character from the line ends of the insertion tables. Can cause issues downstream when ALIGN_AMENDED is enabled
+
 v1.0.6 : 2023-05
 
 - When `ALLOW_TMP` is set but `TMP` is unset, adds an error and aborts to avoid writing to unintended directories.
