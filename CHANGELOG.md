@@ -1,11 +1,34 @@
 # IRMA Changelog
 
-v1.1.0 : 2023-08
+## v1.1.0 : 2023-08
 
-- Feature: adds checked, external configuration parsing using the `--external-config <FILE>` option.
-- Fix: removes an erroneous tab character from the line ends of the insertion tables. Can cause issues downstream when ALIGN_AMENDED is enabled
+### Features
 
-v1.0.6 : 2023-05
+- Adds checked external configuration parsing using the `--external-config <FILE>` or `-c <FILE>` option. Example:
+
+```bash
+## Takes -c or --external-config at the beginning or end of the argument list
+./IRMA FLU ../flu-amd/tests/test2.fastq.gz S1 -c <(echo 'PARAM_FILE_AUTHOR="Wile E. Coyote"')
+./IRMA FLU ../flu-amd/tests/test2.fastq.gz S1 --external-config config.sh
+```
+
+- Adds **opt-in** configuration `USE_IRMA_CORE` to run the *mergeSAMpairs* and *fastQ_converter* tasks more efficiently. This is particularly helpful for longer genomes. The `irma-core_<OS>` binary must be in the *IRMA_RES/scripts* folder or in the `PATH`, otherwise the configuration will be turned back off. Example:
+
+```bash
+./IRMA FLU R1.tar.gz R2.tar.gz S1 -c <(echo 'USE_IRMA_CORE=1')
+```
+
+### Removed
+
+- Deletes the obsolete defaults back-up file
+- Removes superfluous configs in the defaults file and from loggers
+
+### Fixes
+
+- Removes an erroneous tab character from the line ends of the insertion tables. Can cause issues downstream when `ALIGN_AMENDED` is enabled (Thanks to K. Lacek).
+- Fixed bug related to observed read-pair insertion discrepancies being ignored when calculating estimated insertion error.
+
+## v1.0.6 : 2023-05
 
 - When `ALLOW_TMP` is set but `TMP` is unset, adds an error and aborts to avoid writing to unintended directories.
 - With IRMA v1.0.6 and beyond attempt we will attempt to follow *semantic versioning* (v Major.Minor.Patch) more closely:
@@ -13,17 +36,17 @@ v1.0.6 : 2023-05
   - **Minor**: changes that break undocumented/unintended behaviors for generating data without altering format, adding new features, or changes in configuration defaults
   - **Patch**: fix bugs, minor performance improvements, non-breaking updates to dependencies, log or error improvements
 
-v1.0.5 : 2022-10
+## v1.0.5 : 2022-10
 
 - Performs more efficient fuzzy adapter matching within IRMA for Illumina configurations.
 - Provides a fix to actually allow turning off the default median read quality filter and instead use the average read quality filter as expected.  Configuration logs now correctly display USE_MEDIAN status.
 - Adds more uniform and updated defaults to the CoV module configurations (thanks to K. Lacek).
 
-v1.0.4 : 2022-09
+## v1.0.4 : 2022-09
 
 - Added new option "PACKAGED_FASTQ" (default on). One can now optionally turn off packaging together sorted assembly fastq as a "tar.gz" and instead gzip up each fastq separately.
 
-v1.0.3 : 2022-09 (thanks for contributions from K. Lacek & B. Rambo-Martin)
+## v1.0.3 : 2022-09 (thanks for contributions from K. Lacek & B. Rambo-Martin)
 
 - Configuration tweaks for CoV
 - Added S-gene ONLY configurations + references (v1.0.2p1; thanks to K. Lacek)
@@ -34,15 +57,15 @@ v1.0.3 : 2022-09 (thanks for contributions from K. Lacek & B. Rambo-Martin)
 - Updated SSW to v0.1.5M (Linux+MacOS) and provided build script to repo fork: adds memory safety improvements
 - Updated BLAT to v35 (Mac) and re-compiled for 64-bit
 
-v1.0.2 : 2021-03-11
+## v1.0.2 : 2021-03-11
 
 - When available, left join HMM coordinates and alignment states from the coverage.a2m.txt file to the variants, allAlleles, insertions, and deletions table.  Many thanks to K. Lacek for assistance.
 
-v1.0.1 : 2021-03-03
+## v1.0.1 : 2021-03-03
 
 - Refined amplicon dropout padding for greater accuracy; added plurality global alignment and coverge tables for A2M and padded data. Many thanks to K. Lacek for assistance.
 
-v1.0.0 : 2021-02-16 (many thanks for suggestions and feedback to T. Stark, K. Lacek, B. Rambo-Martin, C. Paden, and J. Tognarelli)
+## v1.0.0 : 2021-02-16 (many thanks for suggestions and feedback to T. Stark, K. Lacek, B. Rambo-Martin, C. Paden, and J. Tognarelli)
 
 - Added SARS-CoV-2 to the experimental CoV module and performed optimization for MiSeq 2x150 PE reads.
 - Added ENFORCE_CLIPPED_LENGTH to enforce minimum read length during QC post IRMA adapter trimmed Illumina PE reads.
@@ -60,91 +83,91 @@ v1.0.0 : 2021-02-16 (many thanks for suggestions and feedback to T. Stark, K. La
 - Fixed bug that could affect the performance and accuracy of BLAT alignment (though retroactively corrected in following rounds of read-gathering)
 - Other bug fixes and stability improvements.
 
-v0.9.4 : 2019-12-04
+## v0.9.4 : 2019-12-04
 
 - Heatmap defaults are now statically determined for consistency with later version of R (3.6+)
 
-v0.9.3 : 2019-09-12
+## v0.9.3 : 2019-09-12
 
 - Increased local alignment end repair (read-gathering phase) from 7 to 9 bases (SAM/BLAT).
 
-v0.9.2 : 2019-09-06
+## v0.9.2 : 2019-09-06
 
 - For direct RNA sequencing, always convert Uracil to Thymine to avoid unexpected side-effects
 - Prevent whitespace in paths and inputs from crashing IRMA, improved error handling
 
-v0.9.1 : 2019-05-08
+## v0.9.1 : 2019-05-08
 
 - Added the "FLU_AD" module, capable of assembling influenza C and D in addition to A and B
 - Allow for more flexible LABEL module and SORT_GROUP specification; bug fixes
 
-v0.9.0 : 2019-03-20
+## v0.9.0 : 2019-03-20
 
 - Added new options for "residual" and "secondary" assembly (currently on type and subtype level). Please read more.
 - improved clean up code
 
-v0.8.4 : 2018-09-25
+## v0.8.4 : 2018-09-25
 
 - Fixed Perl regex deprecation issue
 
-v0.8.3 : 2018-09-18
+## v0.8.3 : 2018-09-18
 
 - Added variable "FUZZY_ADAPTER" (default ON) to trim library adapters with up to 1 mismatch
 
-v0.8.2 : 2018-07-09
+## v0.8.2 : 2018-07-09
 
 - Simplified temporary directory randomization TOKEN to Perl only
 
-v0.8.1 : 2018-06-05
+## v0.8.1 : 2018-06-05
 
 - Added variable "SILENCE_COMPLEX_INDELS" to silence reads with 4 or more indels within the final assembly
 
-v0.8.0 : 2018-03-23
+## v0.8.0 : 2018-03-23
 
 - Adds new variable "GRID_PATH" for custom grid working directory
 
-v0.7.2 : 2018-03-23
+## v0.7.2 : 2018-03-23
 
 - Fixes issues related to phase assignment, MATCH phase
 
-v0.7.1 : 2018-02-12
+## v0.7.1 : 2018-02-12
 
 - IRMA can run in /tmp even if noexec set
 
-v0.7.0 : 2018-02-02
+## v0.7.0 : 2018-02-02
 
 - Revised the EXPENR phase association measure to be more robust
 - Added SNV phase assignment numbers to the variants files
 
-v0.6.8 : 2017-04-27
+## v0.6.8 : 2017-04-27
 
 - Added disk space check based on fastq size to avoid running on a small disk
 - Added fail-over from /tmp to the project directory
 
-v0.6.7 : 2017-04-14
+## v0.6.7 : 2017-04-14
 
 - added parallelization for zipping files via pigz. If not compatible, defaults to gzip.
 - updated the Ebola and CoV modules to use MERGE_SECONDARY=1
 
-v0.6.6 : 2017-04-13
+## v0.6.6 : 2017-04-13
 
 - added "MERGE_SECONDARY" option, puts secondary data into the unmatched read pool for round 2. Recommended if lineage references are close, and for non-segmented viruses where co-infection is unlikely.
 - added "GENE_GROUP" variable for customizable two-stage sorting with BLAT performing rough sorting during MATCH step and before the SORT step. Example: influenza "LABEL-trio" in the paper
 
-v0.6.5 : 2016-12-02
+## v0.6.5 : 2016-12-02
 
 - added experimental configuration file "FLU-minion" for MinION R7/R9 chemistries
 - fixed VCF bug that prevented correct VCF creation
 
-v0.6.4 : 2016-11-04
+## v0.6.4 : 2016-11-04
 
 - added plurality consensus script to IRMA_RES/scripts folder to aid in new module creation
 
-v0.6.3 : 2016-08-12
+## v0.6.3 : 2016-08-12
 
 - added failovers to local node computation when grid computation doesn't work
 
-v0.6.2 : 2016-06-01
+## v0.6.2 : 2016-06-01
 
 - optimized indel calling algorithm for performance
 - added flexible segment numbering option for module init.sh (see SEG_NUMBERS in configuration, and SORT_GROUPS in primary vs. secondary)
@@ -153,10 +176,10 @@ v0.6.2 : 2016-06-01
 - changed NextTera adapter masking back to adapter clipping but without length penalization (see ADAPTER in configuration)
 - fixed bug with flexible parameter file naming
 
-v0.6.1 : 2016-04-01
+## v0.6.1 : 2016-04-01
 
 - added name + hashing to allow for multiple concurrent projects
 - tweaked reference elongation algorithm
 - changed ADAPTER clipping to masking
 
-v0.6.0 : 2016-03-09  (test release)
+## v0.6.0 : 2016-03-09  (test release)
