@@ -73,7 +73,6 @@ adapter_allow_one_mismatch	FUZZY_ADAPTER	${FUZZY_ADAPTER:-1}
 enforce_clipped_length	ENFORCE_CLIPPED_LENGTH	${ENFORCE_CLIPPED_LENGTH:-1}
 interval_significance_level	SIG_LEVEL	$SIG_LEVEL
 maximum_read_gathering_rounds	MAX_ROUNDS	$MAX_ROUNDS
-read_fasta_input	FASTA	$FASTA
 minimum_read_patterns	MIN_RP	$MIN_RP
 minimum_read_patterns_residual	MIN_RP_RESIDUAL	${MIN_RP_RESIDUAL:-150}
 minimum_reads	MIN_RC	$MIN_RC

@@ -179,6 +179,8 @@ MM2="$spath"/minimap2_$OS
 A2M="$Lspath"/align2model_$OS
 RSCRIPT="$(which Rscript)"
 BASH=bash
+MERGESAMPAIRS=("$spath/mergeSAMpairs.pl")
+FASTQ_CONVERTER=("$spath/fastQ_converter.pl")
 
 # select cat for reading reads
 if [ "${#LEFT}" -gt "2" ]; then
@@ -249,6 +251,19 @@ if [ -n "$EXTERNAL_CONFIG" ]; then
         echo "IRMA ERROR: could not set variables from: '$EXTERNAL_CONFIG'"
         exit 1
     }
+fi
+
+if [ "${USE_IRMA_CORE:-0}" == "1" ]; then
+    IRMA_CORE="irma-core_$OS"
+    if [ -x "$spath/$IRMA_CORE" ]; then
+        MERGESAMPAIRS=("$spath/$IRMA_CORE" "merge-sam")
+        FASTQ_CONVERTER=("$spath/$IRMA_CORE" "fastq-converter")
+    elif command -v "$IRMA_CORE" > /dev/null 2>&1; then
+        MERGESAMPAIRS=("$(which "$IRMA_CORE")" "merge-sam")
+        FASTQ_CONVERTER=("$(which "$IRMA_CORE")" "fastq-converter")
+    else
+        echo "IRMA WARNING: configured with 'USE_IRMA_CORE=1' but none detected. Add the following to PATH: $IRMA_CORE"
+    fi
 fi
 
 [ -n "$LFASTM" ] && SECONDARY_SORT=$LFASTM
@@ -1040,7 +1055,7 @@ VPREFIX="$assemp"/V${iter}-${gene}-\$ID
 if [ "$PAIRED" -eq "1" ];then
 	MSAM="$assemp"/M${iter}-${gene}-\$ID.sam
 	MPREFIX="$assemp"/M${iter}-${gene}-\$ID
-	"$spath"/mergeSAMpairs.pl -S "$ref" "\$SAM" "\$MPREFIX"
+	"${MERGESAMPAIRS[0]}" ${MERGESAMPAIRS[1]} -S "$ref" "\$SAM" "\$MPREFIX"
 	"$spath"/varCallStats.pl "$ref" "\$MSAM" "\$VPREFIX"
 else
 	"$spath"/varCallStats.pl "$ref" "\$SAM" "\$VPREFIX"
@@ -1070,7 +1085,7 @@ EOL
     # DO the CALL step
     local options="-C $MIN_C -F $MIN_F -I $MIN_FI -D $MIN_FD -Q $MIN_AQ -T $MIN_TCC -M $MIN_CONF -S $SIG_LEVEL"
     [ "$AUTO_F" -eq 1 ] && options+=" -A"
-    [ "$PAIRED" -eq "1" ] && "$spath"/getPairingStats.pl "${prefix2}"-*.sto > "$final-pairingStats.txt"
+    [ "$PAIRED" -eq "1" ] && "$spath"/getPairingStats.pl "${prefix2}"-*.stats > "$final-pairingStats.txt"
     "$spath"/call.pl -P -G $options "${pstats[@]}" "$ref" "$final" "$assemp"/V${iter}-${gene}-*.sto
 }
 
@@ -1640,14 +1655,14 @@ fi
 
 if [ "$PAIRED" -eq "1" ]; then
     "$spath"/xflate.pl -C -Q -L INTER "$ppath"/R0.xfl \
-        <($CAT < "$LEFT" | "$PARALLEL" --nn --pipe -L4 -j$DOUBLE_LOCAL_PROC -q "$spath"/fastQ_converter.pl $FASTQ_CONV_OPTS -G "$ppath"/LEFT.log -g {#}) \
-        <($CAT < "$RIGHT" | "$PARALLEL" --nn --pipe -L4 -j$DOUBLE_LOCAL_PROC -q "$spath"/fastQ_converter.pl $FASTQ_CONV_OPTS -G "$ppath"/RIGHT.log -g {#}) \
+        <($CAT < "$LEFT" | "$PARALLEL" --nn --pipe -L4 -j$DOUBLE_LOCAL_PROC -q "${FASTQ_CONVERTER[0]}" ${FASTQ_CONVERTER[1]} $FASTQ_CONV_OPTS -G "$ppath"/LEFT.log -g {#}) \
+        <($CAT < "$RIGHT" | "$PARALLEL" --nn --pipe -L4 -j$DOUBLE_LOCAL_PROC -q "${FASTQ_CONVERTER[0]}" ${FASTQ_CONVERTER[1]} $FASTQ_CONV_OPTS -G "$ppath"/RIGHT.log -g {#}) \
         > "$ppath"/R0.fa
     catglob "$ppath"/{LEFT,RIGHT}.log > "$ppath"/QC_log.txt && rmglob "$ppath"/{LEFT,RIGHT}.log
     time_stamp 'pre-processed'
 else
     "$spath"/xflate.pl -C -Q -L INTER "$ppath"/R0.xfl \
-        <($CAT < "$LEFT" | "$PARALLEL" --nn --pipe -L4 -j$SINGLE_LOCAL_PROC -q "$spath"/fastQ_converter.pl $FASTQ_CONV_OPTS -G "$ppath"/QC_log.txt -g {#}) \
+        <($CAT < "$LEFT" | "$PARALLEL" --nn --pipe -L4 -j$SINGLE_LOCAL_PROC -q "${FASTQ_CONVERTER[0]}" ${FASTQ_CONVERTER[1]} $FASTQ_CONV_OPTS -G "$ppath"/QC_log.txt -g {#}) \
         > "$ppath"/R0.fa
     time_stamp 'pre-processed'
 fi
