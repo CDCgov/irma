@@ -3,31 +3,57 @@ PROGRAM="Iterative Refinement Meta-Assembler (IRMA)"
 AUTHOR="Samuel S. Shepard"
 EMAIL="vfn4@cdc.gov"
 AFFIL="CDC/DDID/NCIRD/ID"
-DATE="23 MAY 2023"
-VERSION="1.0.6"
+DATE="21 AUG 2023"
+VERSION="1.1.0"
 LICENSE="GPL version 3. This program comes with ABSOLUTELY NO WARRANTY. This is free software.
 You are welcome to redistribute it under certain conditions. See:  <http://www.gnu.org/licenses/>.
 Components of this pipeline have non-commercial restrictions. See: IRMA_RES/scripts/packaged-citations-licenses"
 
-if [ $# -eq 4 ]; then
-    PAIRED=1
-    MODULE_CONFIG=$1
-    LEFT=$2  # R1 / left FASTQ
-    RIGHT=$3 # R2 / right FASTQ
-    RUN=$4   # name of the run
-elif [ $# -eq 3 ]; then
-    PAIRED=0
-    MODULE_CONFIG=$1
-    LEFT=$2 # single paired end FASTQ
-    RIGHT=""
-    RUN=$3 # name of the run
-else
+function print_usage_and_quit() {
     echo -e "$PROGRAM, v$VERSION ($DATE)"
     echo -e "$AUTHOR ($AFFIL), $EMAIL\n"
-    echo -e "$LICENSE\n\nUSAGE:"
-    echo -e "(PAIRED-END):\t$(basename $0) <MODULE|MODULE-CONFIG> <R1.fastq.gz|R1.fastq> <R2.fastq.gz|R2.fastq> [path/to/]<sample_name>"
-    echo -e "(SINGLE-END):\t$(basename $0) <MODULE|MODULE-CONFIG> <fastq|fastq.gz> [path/to/]<sample_name>\n"
+    echo -e "$LICENSE\n\nUsage:"
+    echo -e "(PAIRED-END):\tIRMA <MODULE|MODULE-CONFIG> <R1.fastq.gz|R1.fastq> <R2.fastq.gz|R2.fastq> [path/to/]<sample_name> [options]"
+    echo -e "(SINGLE-END):\tIRMA <MODULE|MODULE-CONFIG> <fastq|fastq.gz> [path/to/]<sample_name> [options]\n"
+    echo -e "Options:\n\t--external-config|-c <VALID_CONFIG_PATH>\n"
     exit 1
+}
+
+args=()
+EXTERNAL_CONFIG=""
+while [[ "$#" -gt 0 ]]; do
+    case $1 in
+        --external-config | -c)
+            shift
+            EXTERNAL_CONFIG=$1
+            [ -n "$EXTERNAL_CONFIG" ] || print_usage_and_quit
+            shift
+            ;;
+        --* | -*)
+            print_usage_and_quit
+            ;;
+        *)
+            args+=("$1")
+            shift
+            ;;
+    esac
+done
+nargs=${#args[@]}
+
+if [[ $nargs == 4 ]]; then
+    PAIRED=1
+    MODULE_CONFIG=${args[0]}
+    LEFT=${args[1]}  # R1 / left FASTQ
+    RIGHT=${args[2]} # R2 / right FASTQ
+    RUN=${args[3]}   # name of the run
+elif [[ $nargs == 3 ]]; then
+    PAIRED=0
+    MODULE_CONFIG=${args[0]}
+    LEFT=${args[1]} # single paired end FASTQ
+    RIGHT=""
+    RUN=${args[2]} # name of the run
+else
+    print_usage_and_quit
 fi
 
 #### UTILITY FUNCTIONS ####
@@ -212,7 +238,20 @@ else
         exit 0
     fi
 fi
-[ ! -z "$LFASTM" ] && SECONDARY_SORT=$LFASTM
+
+if [ -n "$EXTERNAL_CONFIG" ]; then
+    external_vars=$("$spath/sanitize_shell_configs.pl" "$EXTERNAL_CONFIG") \
+        || {
+            echo "IRMA ERROR: Configuration '$EXTERNAL_CONFIG' could not be processed."
+            exit 1
+        }
+    eval "$external_vars" || {
+        echo "IRMA ERROR: could not set variables from: '$EXTERNAL_CONFIG'"
+        exit 1
+    }
+fi
+
+[ -n "$LFASTM" ] && SECONDARY_SORT=$LFASTM
 REF1_SET=$REF_SET
 
 # selection of zip utility
@@ -1038,7 +1077,7 @@ EOL
 function doPHASING() {
     local gene=$1
     local final=$2
-    local proc=1
+    local procs=1
     local doGrid=0
     local script=${final}-phasing
     local n=$(wc -l < "${final}-variants.txt")

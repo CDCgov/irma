@@ -100,4 +100,5 @@ merge_secondary_data	MERGE_SECONDARY	$MERGE_SECONDARY
 do_secondary_assembly	DO_SECONDARY ${DO_SECONDARY:-0}
 final_assembly_to_reference_seed	ASSEM_REF	${ASSEM_REF:-0}
 packaged_final_fastq	PACKAGED_FASTQ	${PACKAGED_FASTQ:-1}
+use_irma_core   USE_IRMA_CORE   ${USE_IRMA_CORE:-0}
 EOF
