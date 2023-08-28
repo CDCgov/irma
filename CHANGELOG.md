@@ -2,6 +2,7 @@
 
 v1.1.0 : 2023-08
 
+- Feature: adds checked, external configuration parsing using the `--external-config <FILE>` option.
 - Fix: removes an erroneous tab character from the line ends of the insertion tables. Can cause issues downstream when ALIGN_AMENDED is enabled
 
 v1.0.6 : 2023-05

@@ -1,6 +1,4 @@
-
-
-cat <<EOF > "$ppath"/logs/${MODULE}-$RUN.sh
+cat << EOF > "$ppath"/logs/${MODULE}-$RUN.sh
 ### BACKGROUND INFO ###
 # $PROGRAM, v$VERSION, $DATE
 # $AUTHOR ($AFFIL), $EMAIL
@@ -23,6 +21,7 @@ DOUBLE_LOCAL_PROC=$DOUBLE_LOCAL_PROC	# local maximum processes (double this numb
 ALLOW_TMP=$ALLOW_TMP		# if GRID_ON=0, try to use /tmp for working directory
 TMP=$TMP		# the scratch/tmpfs for working on the assemblies
 PACKAGED_FASTQ=${PACKAGED_FASTQ:-1}		# Create *.tar.gz for final fastq, otherwise use *.gz for each file
+USE_IRMA_CORE=${USE_IRMA_CORE:-0}	# Use IRMA CORE where available for improved performance
 
 ### REFERENCE ###
 MIN_FA=$MIN_FA		# no alternative reference [0..1]
