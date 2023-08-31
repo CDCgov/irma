@@ -8,11 +8,12 @@
 
 ```bash
 ## Takes -c or --external-config at the beginning or end of the argument list
+## Note that process substitution will not work with Docker!
 ./IRMA FLU ../flu-amd/tests/test2.fastq.gz S1 -c <(echo 'PARAM_FILE_AUTHOR="Wile E. Coyote"')
 ./IRMA FLU ../flu-amd/tests/test2.fastq.gz S1 --external-config config.sh
 ```
 
-- Adds **opt-in** configuration `USE_IRMA_CORE` to run the *mergeSAMpairs* and *fastQ_converter* tasks more efficiently. This is particularly helpful for longer genomes. The `irma-core_<OS>` binary must be in the *IRMA_RES/scripts* folder or in the `PATH`, otherwise the configuration will be turned back off. Example:
+- Adds **opt-in** configuration `USE_IRMA_CORE` to run the *mergeSAMpairs* and *fastQ_converter* tasks more efficiently. This is currently most helpful for paired-end samples with a higher quantity of reads. The `irma-core_<OS>` binary must be in the *IRMA_RES/scripts* folder or in the `PATH`, otherwise the configuration will be turned back off. Example:
 
 ```bash
 ./IRMA FLU R1.tar.gz R2.tar.gz S1 -c <(echo 'USE_IRMA_CORE=1')
