@@ -73,7 +73,6 @@ adapter_allow_one_mismatch	FUZZY_ADAPTER	${FUZZY_ADAPTER:-1}
 enforce_clipped_length	ENFORCE_CLIPPED_LENGTH	${ENFORCE_CLIPPED_LENGTH:-1}
 interval_significance_level	SIG_LEVEL	$SIG_LEVEL
 maximum_read_gathering_rounds	MAX_ROUNDS	$MAX_ROUNDS
-read_fasta_input	FASTA	$FASTA
 minimum_read_patterns	MIN_RP	$MIN_RP
 minimum_read_patterns_residual	MIN_RP_RESIDUAL	${MIN_RP_RESIDUAL:-150}
 minimum_reads	MIN_RC	$MIN_RC
@@ -100,4 +99,5 @@ merge_secondary_data	MERGE_SECONDARY	$MERGE_SECONDARY
 do_secondary_assembly	DO_SECONDARY ${DO_SECONDARY:-0}
 final_assembly_to_reference_seed	ASSEM_REF	${ASSEM_REF:-0}
 packaged_final_fastq	PACKAGED_FASTQ	${PACKAGED_FASTQ:-1}
+use_irma_core   USE_IRMA_CORE   ${USE_IRMA_CORE:-0}
 EOF

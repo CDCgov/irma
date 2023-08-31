@@ -1,6 +1,4 @@
-
-
-cat <<EOF > "$ppath"/logs/${MODULE}-$RUN.sh
+cat << EOF > "$ppath"/logs/${MODULE}-$RUN.sh
 ### BACKGROUND INFO ###
 # $PROGRAM, v$VERSION, $DATE
 # $AUTHOR ($AFFIL), $EMAIL
@@ -23,6 +21,7 @@ DOUBLE_LOCAL_PROC=$DOUBLE_LOCAL_PROC	# local maximum processes (double this numb
 ALLOW_TMP=$ALLOW_TMP		# if GRID_ON=0, try to use /tmp for working directory
 TMP=$TMP		# the scratch/tmpfs for working on the assemblies
 PACKAGED_FASTQ=${PACKAGED_FASTQ:-1}		# Create *.tar.gz for final fastq, otherwise use *.gz for each file
+USE_IRMA_CORE=${USE_IRMA_CORE:-0}	# Use IRMA CORE where available for improved performance
 
 ### REFERENCE ###
 MIN_FA=$MIN_FA		# no alternative reference [0..1]
@@ -32,7 +31,6 @@ REF_SET=$REF1_SET	# Starting reference, usually default for \$DEF_SET
 ASSEM_REF=$ASSEM_REF
 
 ### READ GATHERING ###
-FASTA=$FASTA			# accept fasta format
 MAX_ROUNDS=$MAX_ROUNDS		# round of read gathering
 USE_MEDIAN=$USE_MEDIAN		# use the median quality or the average [1,0]
 QUAL_THRESHOLD=$QUAL_THRESHOLD	# minimum read statistic
@@ -91,7 +89,7 @@ MM2_O=${MM2_O:-$SSW_O}		# minimap2 gap open
 MM2_E=${MM2_E:-$SSW_E}		# minimap2 gap extend
 MIN_CONS_SUPPORT=${MIN_CONS_SUPPORT:-1}	# minimum consensus support for amended consensus
 MIN_CONS_QUALITY=${MIN_CONS_QUALITY:-0}	# minimum consensus average quality for amended consensus
-ALIGN_AMENDED={ALIGN_AMENDED:-0}		# do global alignment of the amended consensus to the HMM profile
+ALIGN_AMENDED=${ALIGN_AMENDED:-0}		# do global alignment of the amended consensus to the HMM profile
 PADDED_CONSENSUS=${PADDED_CONSENSUS:-1}	# attempt to pad amended_consensus with Ns for amplicaton dropout: requires ALIGN_AMENDED=1 and ASSEM_REF=1
 MIN_DROPOUT_EDGE_DEPTH=${MIN_DROPOUT_EDGE_DEPTH:-0} # minimum threshold before dropouts (91+) with flanking regions (6+) are masked during final iterative refinement
 
