@@ -1,6 +1,6 @@
 # IRMA Changelog
 
-## v1.1.1 : 2023
+## v1.1.1 : 2023-09
 
 ### Config Changes
 
