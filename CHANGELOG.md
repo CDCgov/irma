@@ -1,5 +1,18 @@
 # IRMA Changelog
 
+## v1.1.1 : 2023
+
+### Config Changes
+
+- Config file for "CoV-minion-long-reads" now uses `BLAT` instead of `SAM` for rough alignment during the read gathering phase. Results were similar in recent tests and performance is improved. If you need more sensitivity, use the "CoV-minion-sensitive" config file.
+
+### Fixes
+
+- Clarify semantic versioning standards established in v1.0.6 for program/module (minor) vs config file levels (patch)
+- Single-ended assemblies no longer underscore spaces in the FASTQ SEQNAME as it can cause failures in SAM to BAM conversion due to excess length (aligners typically remove SEQNAME descriptions from the QNAME). The BAM specification limits the QNAME field to 254 bytes. If needed for paired-end, IRMA now truncates excess FASTQ header (SEQNAME) length.
+- IRMA adds warning messages upon SAMTOOLS failure and for when FASTQ headers need to be truncated pre-emptively.
+- The final BAM files were not being sorted and indexed as expected due to usage errors on Linux; this has been corrected.
+
 ## v1.1.0 : 2023-08
 
 ### Features
@@ -34,8 +47,8 @@
 - When `ALLOW_TMP` is set but `TMP` is unset, adds an error and aborts to avoid writing to unintended directories.
 - With IRMA v1.0.6 and beyond attempt we will attempt to follow *semantic versioning* (v Major.Minor.Patch) more closely:
   - **Major**: breaking changes to the CLI, output, configurations, and supported inputs
-  - **Minor**: changes that break undocumented/unintended behaviors for generating data without altering format, adding new features, or changes in configuration defaults
-  - **Patch**: fix bugs, minor performance improvements, non-breaking updates to dependencies, log or error improvements
+  - **Minor**: changes that break undocumented/unintended behaviors for generating data without altering format, adding new features, and changes in module or program configuration defaults
+  - **Patch**: fix bugs, minor performance improvements, non-breaking updates to dependencies, log or error improvements, changes in config file defaults
 
 ## v1.0.5 : 2022-10
 

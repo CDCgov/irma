@@ -209,6 +209,8 @@ if ($complementAndAdd) {
     $dnp = '_';    # delimiter
 }
 
+my $give_warning_for_long_fastq = 1;
+
 while ( my $hdr = <> ) {
     chomp($hdr);
 
@@ -299,7 +301,20 @@ while ( my $hdr = <> ) {
         $reads_passing_qc++;
         $hdr = substr( $hdr, 1 );
 
-        if ( !$keepHeader ) { $hdr =~ tr/ /_/; }
+        if ( !$keepHeader ) {
+            if ( length $hdr > 254 ) {
+
+                # Default is to truncate bytes. If a unicode character is on the
+                # truncation boundary, could cause issues for UTF-8 readers.
+                $hdr = substr( $hdr, 0, 254 );
+                if ($give_warning_for_long_fastq) {
+                    $give_warning_for_long_fastq = 0;
+                    print STDERR "$PROGRAM_NAME WARNING: FASTQ headers truncated,",
+                      " downstream BAM format expects no more than 254 bytes!\n";
+                }
+            }
+            $hdr =~ tr/ /_/;
+        }
 
         if ($ordinal) {
             if ($fastQformat) {
