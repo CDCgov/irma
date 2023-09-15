@@ -3,8 +3,8 @@ PROGRAM="Iterative Refinement Meta-Assembler (IRMA)"
 AUTHOR="Samuel S. Shepard"
 EMAIL="vfn4@cdc.gov"
 AFFIL="CDC/DDID/NCIRD/ID"
-DATE="31 AUG 2023"
-VERSION="1.1.0"
+DATE="15 SEP 2023"
+VERSION="1.1.1"
 LICENSE="GPL version 3. This program comes with ABSOLUTELY NO WARRANTY. This is free software.
 You are welcome to redistribute it under certain conditions. See:  <http://www.gnu.org/licenses/>.
 Components of this pipeline have non-commercial restrictions. See: IRMA_RES/scripts/packaged-citations-licenses"
@@ -114,6 +114,7 @@ bpath=
 if [ "$bpath" == "" ]; then
     bpath=$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 fi
+echo "${BASH_SOURCE[0]}"
 rpath="$bpath"/IRMA_RES # IRMA resources
 spath="$rpath"/scripts  # IRMA specific scripts/binaries
 
@@ -196,7 +197,7 @@ fi
 # check for module
 MODULE=$(echo ${MODULE_CONFIG} | cut -f1 -d'-')
 if [ ! -d "$rpath/modules/$MODULE" ]; then
-    echo "IRMA ERROR: $MODULE not found."
+    echo "IRMA ERROR: $MODULE module not found in '$rpath/modules'."
     exit 1
 else
     mpath="$rpath"/modules/$MODULE
@@ -406,6 +407,10 @@ function die() {
     time_stamp "ERROR: $1"
     moveProject
     exit 1
+}
+
+function warn() {
+    time_stamp "WARNING: $1"
 }
 
 function doLABEL() {
@@ -1191,7 +1196,12 @@ function REFINE_ASSEMBLY_CALL_VARIANTS() {
         # convert SAM to BAM
         theSAM="$assemp"/F${iter}-$gene.sam
         theBAM="$assemp"/F${iter}-$gene.bam
-        "$SAMTOOLS" view -bS "$theSAM" > "$theBAM" 2> /dev/null
+        "$SAMTOOLS" view -bS "$theSAM" > "$theBAM" 2> "$theBAM.log" \
+            && rm "$theBAM.log" \
+            || {
+                warn "writing to '$theBAM' failed"
+                cat "$theBAM.log"
+            }
 
         # save last score & take current score
         lastScore=$currentScore
@@ -1320,9 +1330,21 @@ function ASSEMBLE_REPORT() {
         done
     fi
 
-    "$SAMTOOLS" view -bS "${final}.sam" > "${final}.bam" 2> /dev/null
-    "$SAMTOOLS" sort "${final}.bam" "$final" > /dev/null 2>&1
-    "$SAMTOOLS" index "${final}.bam" > /dev/null 2>&1
+    # The SAMTOOLS for MacOS is from 2015 has different usage than the 2021
+    # version for Linux. This can be removed when the Darwin version is upgraded
+    # or obviated.
+    local SAM_SORT=("$SAMTOOLS" sort "${final}.bam" -o "${final}.bam")
+    [[ "$spath/samtools_Darwin" == "$SAMTOOLS" ]] \
+        && SAM_SORT=("$SAMTOOLS" sort "${final}.bam" "${final}")
+
+    "$SAMTOOLS" view -bS "${final}.sam" > "${final}.bam" 2> "${final}.bam.log" \
+        && "${SAM_SORT[@]}" >> "${final}.bam.log" 2>&1 \
+        && "$SAMTOOLS" index "${final}.bam" >> "${final}.bam.log" 2>&1 \
+        && rm "${final}.bam.log" \
+        || {
+            warn "writing or manipulating '${final}.bam' failed."
+            cat "${final}.bam.log"
+        }
     rmglob "$assemp"/F*-$gene.sam
     return 0
 }
@@ -1451,7 +1473,8 @@ function doPostProcessing() {
         time_stamp 'variants phased, BAM files created'
 
         for i in "$ppath"/*bam; do
-            pairs=$("$SAMTOOLS" view -c "$i")
+            pairs=$("$SAMTOOLS" view -c "$i") || warn "SAMTOOLS encountered an error counting reads for '$i'"
+
             gene=$(basename "$i" .bam)
             read raw pats <<< $(grep '>' "$assemp"/${gene}.fa | cut -f2 -d'%' | "$spath"/sumField.pl -S)
             echo -e "4-${gene}\t${raw}\t${pats}\t${pairs}" >> "$ppath"/READ_COUNTS.txt.tmp
@@ -1662,7 +1685,7 @@ if [ "$PAIRED" -eq "1" ]; then
     time_stamp 'pre-processed'
 else
     "$spath"/xflate.pl -C -Q -L INTER "$ppath"/R0.xfl \
-        <($CAT < "$LEFT" | "$PARALLEL" --nn --pipe -L4 -j$SINGLE_LOCAL_PROC -q "${FASTQ_CONVERTER[0]}" ${FASTQ_CONVERTER[1]} $FASTQ_CONV_OPTS -G "$ppath"/QC_log.txt -g {#}) \
+        <($CAT < "$LEFT" | "$PARALLEL" --nn --pipe -L4 -j$SINGLE_LOCAL_PROC -q "${FASTQ_CONVERTER[0]}" ${FASTQ_CONVERTER[1]} --keep-header $FASTQ_CONV_OPTS -G "$ppath"/QC_log.txt -g {#}) \
         > "$ppath"/R0.fa
     time_stamp 'pre-processed'
 fi
