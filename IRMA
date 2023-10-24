@@ -3,8 +3,8 @@ PROGRAM="Iterative Refinement Meta-Assembler (IRMA)"
 AUTHOR="Samuel S. Shepard"
 EMAIL="vfn4@cdc.gov"
 AFFIL="CDC/DDID/NCIRD/ID"
-DATE="15 SEP 2023"
-VERSION="1.1.1"
+DATE="24 OCT 2023"
+VERSION="1.1.2"
 LICENSE="GPL version 3. This program comes with ABSOLUTELY NO WARRANTY. This is free software.
 You are welcome to redistribute it under certain conditions. See:  <http://www.gnu.org/licenses/>.
 Components of this pipeline have non-commercial restrictions. See: IRMA_RES/scripts/packaged-citations-licenses"
@@ -370,7 +370,7 @@ BLAT_OPTS="-oneOff=1 -minIdentity=${BLAT_IDENTITY:-80} -tileSize=10"
 
 # FASTQ converter/QC options
 
-FASTQ_CONV_OPTS="-U -Q -T ${QUAL_THRESHOLD:-0} -L ${MIN_LEN:-0}"
+FASTQ_CONV_OPTS="-U -Q -T ${QUAL_THRESHOLD:-0} -L ${MIN_LEN:-0} --keep-header"
 [ "${USE_MEDIAN:-1}" -eq "1" ] && FASTQ_CONV_OPTS+=" -M"
 if [ "$PAIRED" -eq "1" -a "$ADAPTER" != "" ]; then
     FASTQ_CONV_OPTS+=" -c $ADAPTER"
@@ -486,15 +486,17 @@ EOL
     ###
 
     chmod 755 "${script}.sh"
-    "$Lspath"/interleavedSamples.pl -G $procs "$queryDB" "$workdir"/$prefix-$name > /dev/null 2>&1
+    "$spath"/interleavedSamples.pl --silence -G "$procs" "$queryDB" "$workdir/$prefix-$name" \
+        || die "BLAT sample interleaving failed!"
+
     if [ "$doGrid" -eq "1" ]; then
-        qsub $IRMA_QUEUE -t 1-$procs:1 -N ${prefix}-${name}-BLAT -sync y -wd "$workdir" -j y -o "${script}.o" "${script}.sh" > /dev/null 2>&1
-        if [ "$?" -ne "0" ]; then
-            time_stamp "qsub of '${prefix}-${name}-BLAT' failed. Switching to master node."
-            "$PARALLEL" --nn --workdir "$workdir" -j $SINGLE_LOCAL_PROC -q $BASH "${script}.sh" {} ::: $(seq $procs) > /dev/null 2>&1
-        fi
+        qsub $IRMA_QUEUE -t "1-$procs:1" -N "${prefix}-${name}-BLAT" -sync y -wd "$workdir" -j y -o "${script}.o" "${script}.sh" > /dev/null 2>&1 \
+            || {
+                time_stamp "qsub of '${prefix}-${name}-BLAT' failed. Switching to master node."
+                "$PARALLEL" --nn --workdir "$workdir" -j "$SINGLE_LOCAL_PROC" -q $BASH "${script}.sh" {} ::: $(seq "$procs") > /dev/null 2>&1
+            }
     else
-        "$PARALLEL" --nn --workdir "$workdir" -j $procs -q $BASH "${script}.sh" {} ::: $(seq $procs) > /dev/null 2>&1
+        "$PARALLEL" --nn --workdir "$workdir" -j "$procs" -q $BASH "${script}.sh" {} ::: $(seq "$procs") > /dev/null 2>&1
     fi
     rmglob "${script}.sh"
 }
@@ -677,19 +679,21 @@ cd "$workdir"
 EOL
 
     chmod 755 "${script}.sh"
-    "$Lspath"/interleavedSamples.pl "$queryDB" "$workdir"/$prefix-$name -G $procs > /dev/null
+    "$spath"/interleavedSamples.pl --silence "$queryDB" "$workdir/$prefix-$name" -G "$procs" \
+        || die "SAM sample interleaving failed!"
+
     if [ "$doGrid" -eq "1" ]; then
-        qsub $IRMA_QUEUE -t 1-$procs:1 -N $prefix-$name-SAM -sync y -wd "$workdir" -j y -o "${script}.o" "${script}.sh" > /dev/null 2>&1
+        qsub $IRMA_QUEUE -t "1-$procs:1" -N "$prefix-$name-SAM" -sync y -wd "$workdir" -j y -o "${script}.o" "${script}.sh" > /dev/null 2>&1
         if [ "$?" -ne "0" ]; then
             time_stamp "qsub of '${prefix}-${name}-SAM' failed. Switching to master node."
-            "$PARALLEL" --nn --workdir "$workdir" -j $SINGLE_LOCAL_PROC -q $BASH "${script}.sh" {} ::: $(seq $procs) > /dev/null 2>&1
+            "$PARALLEL" --nn --workdir "$workdir" -j "$SINGLE_LOCAL_PROC" -q $BASH "${script}.sh" {} ::: $(seq "$procs") > /dev/null 2>&1
         else
             rm "${script}.o"
         fi
     else
-        "$PARALLEL" --nn --workdir "$workdir" -j $procs -q $BASH "${script}.sh" {} ::: $(seq $procs) > /dev/null 2>&1
+        "$PARALLEL" --nn --workdir "$workdir" -j "$procs" -q $BASH "${script}.sh" {} ::: $(seq "$procs") > /dev/null 2>&1
     fi
-    rmglob "$workdir"/${prefix}-${name}_????.fasta "$workdir"/${prefix}-${name}_????.a2m "${script}.sh"
+    rmglob "$workdir/${prefix}-${name}"_????.fasta "$workdir/${prefix}-${name}_"????.a2m "${script}.sh"
 }
 
 function doALIGN() {
@@ -899,6 +903,7 @@ function doRound() {
 #-------------------------------------------#
 #--- Polishing assembly function -----------#
 #-------------------------------------------#
+# shellcheck disable=SC2317
 function ASSEM_RUN_SSW() {
     local iter=$1
     local gene=$2
@@ -949,6 +954,7 @@ EOL
     rm "${script}.sh"
 }
 
+# shellcheck disable=SC2317
 function ASSEM_RUN_MM2() {
     local iter=$1
     local gene=$2
@@ -1266,9 +1272,11 @@ function ASSEMBLE_REPORT() {
 
     # ITERATIVE REFINEMENT of ASSEMBLY chained to CALLING and PHASING
     if [ "$PAIRED" -eq "1" ]; then
-        "$Lspath"/interleavedSamples.pl -G $procs -P "$fastq" "$assemp"/"$gene" > /dev/null
+        "$spath"/interleavedSamples.pl --silence --underscore-header -G "$procs" -P "$fastq" "$assemp"/"$gene" \
+            || die "FastQ sample interleaving failed!"
     else
-        "$Lspath"/interleavedSamples.pl -G $procs -Q "$fastq" "$assemp"/"$gene" > /dev/null
+        "$spath"/interleavedSamples.pl --silence -G "$procs" -Q "$fastq" "$assemp"/"$gene" \
+            || die "FastQ sample interleaving failed!"
     fi
     time_stamp "started $gene ($size)"
     REFINE_ASSEMBLY_CALL_VARIANTS "$gene" $procs $doGrid "$final" || return 1
@@ -1678,14 +1686,14 @@ fi
 
 if [ "$PAIRED" -eq "1" ]; then
     "$spath"/xflate.pl -C -Q -L INTER "$ppath"/R0.xfl \
-        <($CAT < "$LEFT" | "$PARALLEL" --nn --pipe -L4 -j$DOUBLE_LOCAL_PROC -q "${FASTQ_CONVERTER[0]}" ${FASTQ_CONVERTER[1]} $FASTQ_CONV_OPTS -G "$ppath"/LEFT.log -g {#}) \
-        <($CAT < "$RIGHT" | "$PARALLEL" --nn --pipe -L4 -j$DOUBLE_LOCAL_PROC -q "${FASTQ_CONVERTER[0]}" ${FASTQ_CONVERTER[1]} $FASTQ_CONV_OPTS -G "$ppath"/RIGHT.log -g {#}) \
+        <($CAT < "$LEFT" | "$PARALLEL" --nn --pipe -L4 -j$DOUBLE_LOCAL_PROC -q "${FASTQ_CONVERTER[0]}" ${FASTQ_CONVERTER[1]} $FASTQ_CONV_OPTS -R 1 -G "$ppath"/LEFT.log -g {#}) \
+        <($CAT < "$RIGHT" | "$PARALLEL" --nn --pipe -L4 -j$DOUBLE_LOCAL_PROC -q "${FASTQ_CONVERTER[0]}" ${FASTQ_CONVERTER[1]} $FASTQ_CONV_OPTS -R 2 -G "$ppath"/RIGHT.log -g {#}) \
         > "$ppath"/R0.fa
     catglob "$ppath"/{LEFT,RIGHT}.log > "$ppath"/QC_log.txt && rmglob "$ppath"/{LEFT,RIGHT}.log
     time_stamp 'pre-processed'
 else
     "$spath"/xflate.pl -C -Q -L INTER "$ppath"/R0.xfl \
-        <($CAT < "$LEFT" | "$PARALLEL" --nn --pipe -L4 -j$SINGLE_LOCAL_PROC -q "${FASTQ_CONVERTER[0]}" ${FASTQ_CONVERTER[1]} --keep-header $FASTQ_CONV_OPTS -G "$ppath"/QC_log.txt -g {#}) \
+        <($CAT < "$LEFT" | "$PARALLEL" --nn --pipe -L4 -j$SINGLE_LOCAL_PROC -q "${FASTQ_CONVERTER[0]}" ${FASTQ_CONVERTER[1]} $FASTQ_CONV_OPTS -G "$ppath"/QC_log.txt -g {#}) \
         > "$ppath"/R0.fa
     time_stamp 'pre-processed'
 fi

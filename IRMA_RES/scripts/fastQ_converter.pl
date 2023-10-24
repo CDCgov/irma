@@ -46,6 +46,7 @@ use Carp qw(croak);
 use Getopt::Long;
 
 # "$baseQuality" masking not implemented and removed.
+my $readSide;
 
 ## Heuristics
 my $qualityThreshold = 0;
@@ -90,7 +91,8 @@ GetOptions(
             'clip-adapter|c=s'         => \$clipAdapter,
             'fuzzy-adapter|Z'          => \$fuzzyAdapter,
             'uracil-to-thymine|U'      => \$uracilToThymine,
-            'enforce-clipped-length|E' => \$clippedMinLength
+            'enforce-clipped-length|E' => \$clippedMinLength,
+            'read-side|R=i'            => \$readSide
 );
 
 if ( -t STDIN && scalar @ARGV != 1 ) {
@@ -111,6 +113,7 @@ if ( -t STDIN && scalar @ARGV != 1 ) {
          . "\t\t-Z|--fuzzy-adapter\t\t\tAllow one mismatch.\n"
          . "\t\t-U|--uracil-to-thymine\t\t\tCovert uracil to thymine.\n"
          . "\t\t-E|--enforce-clipped-length\t\tThe minimum length threshold (-L) is enforced when adapter clipped (-c).\n"
+         . "\t\t-R|--read-side <INT>\t\t\tIf FASTQ header is SRA format and missing a read identifier, alter the header."
          . "\n" );
 }
 
@@ -195,6 +198,10 @@ if ( $minLength < 0 ) {
     $minLength = int($minLength);
 }
 
+if ( defined $readSide && ( $readSide < 0 || $readSide > 3 ) ) {
+    die("ERROR: --read-side must be in range [0, 3]\n");
+}
+
 local $RS = "\n";
 
 my $reads_passing_qc = 0;
@@ -211,8 +218,37 @@ if ($complementAndAdd) {
 
 my $give_warning_for_long_fastq = 1;
 
+sub fix_SRA_format {
+    my $s         = shift // q{};
+    my $read_side = shift // '0';
+    my $delim     = q{ };
+    my $pre       = substr( $s, 0, 4 );
+
+    if ( index( $s, q{ } ) == -1 ) {
+        $delim = '_';
+    }
+
+    my ( $mol_id, @remainder ) = split $delim, $s;
+    $mol_id //= q{};
+
+    if ( ( $pre eq '@SRR' || $pre eq '@DRR' || $pre eq '@ERR' ) && index( $mol_id, '.' ) != -1 ) {
+
+        # SRA format
+        my @fields = split '\.', $mol_id;
+        if ( scalar @fields == 2 ) {
+            return join( $delim, ( $mol_id . '.' . $read_side, @remainder ) );
+        }
+    }
+
+    return $s;
+}
+
 while ( my $hdr = <> ) {
     chomp($hdr);
+
+    if ( defined $readSide ) {
+        $hdr = fix_SRA_format( $hdr, $readSide );
+    }
 
     my $seq = <>;
     chomp($seq);

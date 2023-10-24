@@ -90,8 +90,7 @@ sub avg($$) {
 }
 #############
 
-my $REisBase   = qr/[ATCG]/;
-my $REgetMolID = qr/(.+?)[_ ]([12]):.+/;
+my $REisBase = qr/[ATCG]/smx;
 
 local $RS = ">";
 my $REF_LEN  = 0;
@@ -120,6 +119,133 @@ my @sam = <$SAM>;
 chomp(@sam);
 close($SAM) or croak("Cannot close file: $OS_ERROR\n");
 
+sub sra_prefix {
+    my $s = shift;
+    $s = substr( $s, 0, 4 );
+    return $s eq '@SRR' || $s eq '@DRR' || $s eq '@ERR';
+}
+
+sub get_molID_side {
+    my $s       = shift // q{};
+    my $default = shift // '0';
+    my $pre     = substr( $s, 0, 3 );
+
+    my ( $id, $read );
+
+    if ( index( $s, q{ } ) != -1 ) {
+        my @remainder = ();
+
+        ( $id, @remainder ) = split q{ }, $s;
+        if ( !( $pre eq 'SRR' || $pre eq 'DRR' || $pre eq 'ERR' ) || index( $id, '.' ) == -1 ) {
+
+            # Illumina format
+            ($read) = split ':', ( $remainder[0] // q{} );
+        } else {
+
+            # SRA format
+            my @fields = split '\.', $id;
+            if ( scalar @fields == 3 ) {
+                $read = $fields[2];
+                $id   = join( '.', @fields[0 .. 1] );
+            }
+        }
+
+    } elsif ( index( $s, '/' ) != -1 ) {
+
+        # Legacy Illumina
+        ( $id, $read ) = split '/', $s;
+    } else {
+
+        ## ASSUME SRA with phony Illumina
+        if ( ( $pre eq 'SRR' || $pre eq 'DRR' || $pre eq 'ERR' ) && index( $s, '.' ) != -1 ) {
+            my @remainder = ();
+            ( $id, @remainder ) = split '_', $s;
+            my @fields = split '\.', $id;
+            if ( scalar @fields == 3 ) {
+                $read = $fields[2];
+                $id   = join( '.', @fields[0 .. 1] );
+            }
+        } else {
+
+            # IRMA Illumina output
+            my @fields = split ':', $s;
+            if ( scalar @fields > 6 ) {
+                my $umi;
+                ( $umi, $read ) = split '_', $fields[6];
+                $id = join( ':', ( @fields[0 .. 5], $umi // q{} ) );
+            }
+        }
+    }
+
+    if ( !defined $read || $read lt '0' || $read gt '3' ) {
+        $read = $default;
+    }
+
+    return ( $id // $s, $read // $default );
+}
+
+sub make_merged_qname {
+    my $s = shift // q{};
+    my $id;
+    my $pre = substr( $s, 0, 3 );
+
+    if ( index( $s, q{ } ) != -1 ) {
+        my @remainder = ();
+        ( $id, @remainder ) = split q{ }, $s;
+        if ( !( $pre eq 'SRR' || $pre eq 'DRR' || $pre eq 'ERR' ) || index( $id, '.' ) == -1 ) {
+
+            # Illumina format
+            my @fields = split ':', ( $remainder[0] // q{} );
+            $fields[0]    = '3';
+            $remainder[0] = join( ':', @fields );
+
+        } else {
+
+            # SRA format
+            my @fields = split '\.', $id;
+            if ( scalar @fields == 3 ) {
+                $fields[2] = '3';
+                $id = join( '.', @fields );
+            } else {
+                $id .= '.3';
+            }
+        }
+        $s = join( q{ }, ( $id, @remainder ) );
+    } elsif ( index( $s, '/' ) != -1 ) {
+
+        # Legacy Illumina
+        ($id) = split '/', $s;
+        $s = $id . '/3';
+    } else {
+
+        ## ASSUME SRA with phony Illumina
+        if ( ( $pre eq 'SRR' || $pre eq 'DRR' || $pre eq 'ERR' ) && index( $s, '.' ) != -1 ) {
+            my @remainder = ();
+            ( $id, @remainder ) = split '_', $s;
+            my @fields = split '\.', $id;
+            if ( scalar @fields == 3 ) {
+                $fields[2] = '3';
+                $id = join( '.', @fields );
+            } else {
+                $id .= '.3';
+            }
+            $s = join( '_', ( $id, @remainder ) );
+        } else {
+
+            # IRMA Illumina output
+            my @fields = split ':', $s;
+            if ( scalar @fields > 6 ) {
+                my $umi;
+                ($umi) = split '_', $fields[6];
+                $fields[6] = ( $umi // q{} ) . '_3';
+                $s = join( ':', @fields );
+            }
+        }
+    }
+
+    return $s;
+}
+
 my %pairs      = ();
 my %insByIndex = ();
 foreach my $K ( 0 .. $#sam ) {
@@ -129,17 +255,16 @@ foreach my $K ( 0 .. $#sam ) {
 
     my ( $qname, $flag, $rn, $pos, $mapq, $cigar, $mrnm, $mpos, $isize, $seq, $qual ) = split( "\t", $sam[$K] );
 
-    my ( $qMolID, $qSide );
+    my ( $qMolID, $qSide ) = get_molID_side( $qname, '0' );
+
+    # TO CONSIDER: switching to an order-based approach in the future for
+    # everything
     if ($bowtieFormat) {
-        $qMolID = $qname;
         if ( defined $pairs{$qMolID} ) {
             $qSide = 2;
         } else {
             $qSide = 1;
         }
-    } elsif ( $qname =~ $REgetMolID ) {
-        $qMolID = $1;
-        $qSide  = $2;
     }
 
     if ( $REF_NAME eq $rn ) {
@@ -412,7 +537,7 @@ foreach my $mID ( keys(%pairs) ) {
         my $mapq  = int( avg( $a1[6], $a2[6] ) );
 
         if ( !$bowtieFormat ) {
-            $qname =~ s/(.+?[_ ])[12](:.+)/${1}3${2}/;
+            $qname = make_merged_qname($qname);
         }
         print $OSAM $qname, "\t", '0', "\t", $REF_NAME, "\t", ( $start + 1 ), "\t", $mapq;
         print $OSAM "\t", condenseCigar($cigars), "\t*\t0\t0\t", $mSeq, "\t", $qSeq, "\n";
