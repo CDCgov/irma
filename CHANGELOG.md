@@ -1,5 +1,13 @@
 # IRMA Changelog
 
+## v1.1.2 : 2023-10
+
+### Fixes
+
+- SRA format (with or without read side identifiers in the ID) now processes correctly without user FASTQ SEQNAME manipulation. IRMA still expects paired-end FASTQ files to be in split format and processes Illumina format as usual. Note: SRA read-side identifiers are order-based and their distribution may not be preserved between the original and SRA "standardized" sample.
+- IRMA now correctly processes legacy Illumina format (FASTQ SEQNAME ends in '/1' and '/2') with respect to paired-end reads.
+- IRMA no longer underlines FASTQ headers in the 'intermediate/4-ASSEMBLY-*/' sub-folder, which is sometimes used for submitting to SRA. Sorting is still by gene segment as needed and paired-end reads are still interleaved. The read set is also still adapter-trimmed as needed.
+
 ## v1.1.1 : 2023-09
 
 ### Config Changes
