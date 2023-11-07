@@ -1,5 +1,11 @@
 # IRMA Changelog
 
+## v1.1.3 : 2023-11
+
+### Fixes
+
+- Fixes regression (fixed in v1.1.1 but reintroduced in v1.1.2) of the FASTQ header length issue for single-ended assemblies that can cause BAM files to not be written.
+
 ## v1.1.2 : 2023-10
 
 ### Fixes

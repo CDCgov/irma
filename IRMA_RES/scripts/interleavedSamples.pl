@@ -216,7 +216,7 @@ if ($fastQ) {
                 die("Irregular header for fastQ read pairs: $hdr\n");
             }
 
-            if ( defined $underscoreHeader ) { $hdr =~ tr/ /_/; }
+            if ($underscoreHeader) { $hdr =~ tr/ /_/; }
 
             if ( !$fraction ) {
                 my $handle = $handles[$index];
@@ -232,7 +232,7 @@ if ($fastQ) {
             my $quality = <$IN>;
             chomp($quality);
 
-            if ( defined $underscoreHeader ) { $hdr =~ tr/ /_/; }
+            if ($underscoreHeader) { $hdr =~ tr/ /_/; }
 
             my $index = $id % $numberGroups;
             $id++;
@@ -257,7 +257,7 @@ if ($fastQ) {
             next;
         }
 
-        if ( defined $underscoreHeader ) { $header =~ tr/ /_/; }
+        if ($underscoreHeader) { $header =~ tr/ /_/; }
         my $index = $id % $numberGroups;
         $id++;
         $count[$index]++;
