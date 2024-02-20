@@ -1,5 +1,11 @@
 # IRMA Changelog
 
+## v1.1.4 : 2024-02
+
+### Fixes
+
+- Fixes a memory bottleneck for segmented modules (FLU) processing a large number of reads. Many thanks to T. Stark, K. Lacek, and M. Scotch for helping to diagnose the issue.
+
 ## v1.1.3 : 2023-11
 
 ### Fixes
