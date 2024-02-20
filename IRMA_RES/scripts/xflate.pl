@@ -1,181 +1,228 @@
 #!/usr/bin/env perl
-# Sam Shepard - xflate - 1.2014
+#
+# Filename:         xflate
+# Description:      Turns reads into deflated read patterns and inflates them
+# 					back to reads.
+#
+# Date dedicated:   2023-07-24
+# Author:           Samuel S. Shepard, Centers for Disease Control and Prevention
+#
+# Citation:         Shepard SS, Meno S, Bahl J, Wilson MM, Barnes J, Neuhaus E.
+#                   Viral deep sequencing needs an adaptive approach: IRMA, the
+#                   iterative refinement meta-assembler. BMC Genomics.
+#                   2016;17(1). doi:10.1186/s12864-016-3030-6
+#
+# =============================================================================
+#
+#                            PUBLIC DOMAIN NOTICE
+#
+#  This source code file or script constitutes a work of the United States
+#  Government and is not subject to domestic copyright protection under 17 USC §
+#  105. This file is in the public domain within the United States, and
+#  copyright and related rights in the work worldwide are waived through the CC0
+#  1.0 Universal public domain dedication:
+#  https://creativecommons.org/publicdomain/zero/1.0/
+#
+#  The material embodied in this software is provided to you "as-is" and without
+#  warranty of any kind, express, implied or otherwise, including without
+#  limitation, any warranty of fitness for a particular purpose. In no event
+#  shall the Centers for Disease Control and Prevention (CDC) or the United
+#  States (U.S.) government be liable to you or anyone else for any direct,
+#  special, incidental, indirect or consequential damages of any kind, or any
+#  damages whatsoever, including without limitation, loss of profit, loss of
+#  use, savings or revenue, or the claims of third parties, whether or not CDC
+#  or the U.S. government has been advised of the possibility of such loss,
+#  however caused and on any theory of liability, arising out of or in
+#  connection with the possession, use or performance of this software.
+#
+#  Please provide appropriate attribution in any work or product based on this
+#  material.
 
+use warnings;
+
+my ( $inflate, $clusterAll, $fastQ, $label, $rci );
+
+use Carp qw(croak);
+use English qw(-no_match_vars);
 use Getopt::Long;
-GetOptions(	'inflate|I' => \$inflate,
-		'cluster-all|C' => \$clusterAll,
-		'file-label|L=s' => \$label,
-		'reverse-complement-inflate|R' => \$rci,
-		'fastQ|Q' => \$fastQ
-	);
+GetOptions(
+            'inflate|I'                    => \$inflate,
+            'cluster-all|C'                => \$clusterAll,
+            'file-label|L=s'               => \$label,
+            'reverse-complement-inflate|R' => \$rci,
+            'fastQ|Q'                      => \$fastQ
+);
 
 if ( scalar(@ARGV) < 2 ) {
-	$message = "Usage:\n\tperl $0 <xflate.txt> [options] <fasta1.fa> ...\n";
-	$message .= "\t\t-I|--inflate\t\tInflate sequence files.\n";
-	$message .= "\t\t-C|--cluster-all\tUse a cluster for all sequences.\n";
-	$message .= "\t\t-L|--file-label <STR>\tLabels the clusters with an identifier.\n";
-	$message .= "\t\t-R|--rev-comp-inf\tReverse complement inflation.\n";
-	$message .= "\t\t-Q|--fastQ\t\tExpects fastQ input (deflate) and fastQ output (inflate).\n";
-	die($message."\n");
+    die(   "Usage:\n\tperl $PROGRAM_NAME <xflate.txt> [options] <fasta1.fa> ...\n"
+         . "\t\t-I|--inflate\t\tInflate sequence files.\n"
+         . "\t\t-C|--cluster-all\tUse a cluster for all sequences.\n"
+         . "\t\t-L|--file-label <STR>\tLabels the clusters with an identifier.\n"
+         . "\t\t-R|--rev-comp-inf\tReverse complement inflation.\n"
+         . "\t\t-Q|--fastQ\t\tExpects fastQ input (deflate) and fastQ output (inflate).\n"
+         . "\n" );
 }
 
 if ( !defined($label) ) {
-	$label = '';
+    $label = q{};
 } else {
-	$label = '|'.$label;
+    $label = '|' . $label;
 }
 
-$tableFile = shift(@ARGV);
-# INFLATE
-if ( $inflate ) {
-	open(TABLE,'<',$tableFile) or die("Cannot open $tableFile for reading (trying to inflate without a file?).\n");
-	$/ = "\n"; %headersByCluster = ();
+my $tableFile = shift(@ARGV);
 
-	if ( $fastQ ) {
-		while($line=<TABLE>) {
-			chomp($line);
-			@fields = split("\t",$line);
-#			@{$headersByCluster{$fields[0]}} = ();
-			for($i=1;$i<scalar(@fields);$i+=2) {
-#				push(@{$headersByCluster{$fields[0]}},$fields[$i]);
-				$headersByCluster{$fields[0]}[int($i/2)] = $fields[$i];
-				$qualityByHeader{$fields[$i]} = $fields[$i+1];
-			}
-		}
-	} else {
-		while($line=<TABLE>) {
-			chomp($line);
-			@fields = split("\t",$line);
-			@{$headersByCluster{$fields[0]}} = @fields[1..$#fields];
-		}
-	}
-	close(TABLE);
+## INFLATE
+if ($inflate) {
+    open( my $TABLE, '<', $tableFile ) or die("Cannot open $tableFile for reading (trying to inflate without a file?).\n");
 
-	foreach $file ( @ARGV ) {
-		$/ = '>';
-		open( IN, '<', $file ) or die("Cannot open $file.\n");
-		while( $record = <IN> ) {
-			chomp($record);
-			@lines = split(/\r\n|\n|\r/, $record);
-			$header = shift(@lines);
-			$sequence = lc(join('',@lines));
+    %sequenceByCluster = ();
+    foreach my $file (@ARGV) {
+        local $RS = '>';
+        open( my $IN, '<', $file ) or die("Cannot open $file.\n");
+        while ( my $fasta_record = <$IN> ) {
+            chomp($fasta_record);
+            my @lines    = split( /\r\n|\n|\r/smx, $fasta_record );
+            my $header   = shift(@lines);
+            my $sequence = lc( join( q{}, @lines ) );
 
-			$length = length($sequence);
-			if ( $length == 0 ) {
-				next;
-			}
-			
-			if ( $header =~ /^(C\d+%\d+%[^{]*)/ ) {
-				$cluster = $1;
-				if ( $rci && $header =~ /{c}/ ) {
-					$sequence = reverse($sequence);
-					$sequence =~ tr/gcatrykmbvdhuGCATRYKMBVDHU/cgtayrmkvbhdaCGTAYRMKVBHDA/;
-				}
-				
-				if ( $fastQ ) {
-					if ( defined($headersByCluster{$cluster}) ) {
-						foreach $hdr ( @{$headersByCluster{$cluster}} ) {
-							print STDOUT $hdr,"\n",$sequence,"\n+\n",$qualityByHeader{$hdr},"\n";
-						}
-					} else {
-						$quality = '?' x length($sequence);
-						print STDOUT '@',$header,"\n",$sequence,"\n+\n",$quality,"\n";
-					}
-				} else {
-					if ( defined($headersByCluster{$cluster}) ) {
-						foreach $hdr ( @{$headersByCluster{$cluster}} ) {
-							print STDOUT '>',$hdr,"\n",$sequence,"\n";
-						}
-					} else {
-						print STDOUT '>',$header,"\n",$sequence,"\n";
-					}
-				}
-			} else {
-				if ( $fastQ ) {
-					$quality = '?' x length($sequence);
-					print STDOUT '@',$header,"\n",$sequence,"\n+\n",$quality,"\n";
-				} else {
-					print STDOUT '>',$header,"\n",$sequence,"\n";
-				}
-			}
-		}
-	}
-	
-# DEFLATE
+            my $length = length($sequence);
+            if ( $length == 0 ) {
+                next;
+            }
+
+            if ( $header =~ /^(C\d+%\d+%[^{]*)/smx ) {
+                my $cluster = $1;
+                if ( $rci && $header =~ /{c}/smx ) {
+                    $sequence = reverse($sequence);
+                    $sequence =~ tr/gcatrykmbvdhuGCATRYKMBVDHU/cgtayrmkvbhdaCGTAYRMKVBHDA/;
+                }
+
+                $sequenceByCluster{$cluster} = $sequence;
+            } else {
+                if ($fastQ) {
+                    my $quality = '?' x length $sequence;
+                    print STDOUT '@', $header, "\n", $sequence, "\n+\n", $quality, "\n";
+                } else {
+                    print STDOUT '>', $header, "\n", $sequence, "\n";
+                }
+            }
+        }
+    }
+
+    local $RS = "\n";
+    if ($fastQ) {
+        while ( my $line = <$TABLE> ) {
+            chomp($line);
+            my @fields  = split( "\t", $line );
+            my $cluster = $fields[0];
+
+            if ( defined $sequenceByCluster{$cluster} ) {
+                ## Must increment 2 at a time.
+                ## no critic (ControlStructures::ProhibitCStyleForLoops)
+                for ( my $i = 1; $i < scalar(@fields); $i += 2 ) {
+                    print STDOUT $fields[$i], "\n", $sequenceByCluster{$cluster}, "\n+\n", $fields[$i + 1], "\n";
+                }
+            }
+        }
+    } else {
+        while ( my $line = <$TABLE> ) {
+            chomp($line);
+            my @fields  = split( "\t", $line );
+            my $cluster = $fields[0];
+
+            if ( defined $sequenceByCluster{$cluster} ) {
+                ## Must increment 2 at a time.
+                ## no critic (ControlStructures::ProhibitCStyleForLoops)
+                for ( my $i = 1; $i < scalar(@fields); $i += 2 ) {
+                    print STDOUT '>', $fields[$i], "\n", $sequenceByCluster{$cluster}, "\n";
+                }
+            }
+        }
+    }
+    close $TABLE or croak("Cannot close file: $OS_ERROR");
+
+## DEFLATE
 } else {
-	if ( -e $tableFile ) {
-		print STDERR "WARNING, using ${tableFile}2 since file exists.\n";
-		$tableFile .= '2';
-	}
-	open(TABLE,'>',$tableFile) or die("Cannot open $tableFile for reading (trying to inflate without a file?).\n");
-	%clustersBySequence = ();
-	foreach $file ( @ARGV ) {
-		open( IN, '<', $file ) or die("Cannot open $file.\n");
-		if ( $fastQ ) {
-			$/ = "\n";
-			while($header=<IN>) {
-				chomp($header);
-				$sequence=<IN>; chomp($sequence);
-				$junk=<IN>; chomp($junk);
-				$quality=<IN>; chomp($quality);
+    if ( -e $tableFile ) {
+        print STDERR "WARNING, using ${tableFile}2 since file exists.\n";
+        $tableFile .= '2';
+    }
+    open( my $TABLE, '>', $tableFile ) or die("Cannot open $tableFile for reading (trying to inflate without a file?).\n");
 
-				if ( !defined($clustersBySequence{$sequence}) ) {
-					$clustersBySequence{$sequence}[0] = $header;
-				} else {
-					push(@{$clustersBySequence{$sequence}},$header);
-				}
+    # Adding a 'my' declaration adds a severe performance penalty for some reason.
+    %clustersBySequence = ();
+    %qualityByHeader    = ();
 
-				$qualityByHeader{$header} = $quality;
-			}
-		} else {
-			$/ = '>';
-			while( $record = <IN> ) {
-				chomp($record);
-				@lines = split(/\r\n|\n|\r/, $record);
-				$header = shift(@lines);
-				$sequence = lc(join('',@lines));
+    foreach my $file (@ARGV) {
+        open( my $IN, '<', $file ) or die("Cannot open $file.\n");
+        if ($fastQ) {
+            local $RS = "\n";
+            while ( my $header = <$IN> ) {
+                chomp($header);
+                my $sequence = <$IN>;
+                chomp($sequence);
+                my $junk = <$IN>;
+                chomp($junk);
+                my $quality = <$IN>;
+                chomp($quality);
 
-				$length = length($sequence);
-				if ( $length == 0 ) {
-					next;
-				}
-				
-				if ( !defined($clustersBySequence{$sequence}) ) {
-					$clustersBySequence{$sequence}[0] = $header;
-				} else {
-					push(@{$clustersBySequence{$sequence}},$header);
-				}
-			}
-		}
-		close(IN);
-	}
+                if ( !defined $clustersBySequence{$sequence} ) {
+                    $clustersBySequence{$sequence}[0] = $header;
+                } else {
+                    push( @{ $clustersBySequence{$sequence} }, $header );
+                }
 
-	$i = 0;
-	foreach $seq ( keys(%clustersBySequence) ) {
-		$clusterSize=scalar(@{$clustersBySequence{$seq}});
-		if ( $clusterAll || $clusterSize > 1 || $clustersBySequence{$seq}[0] =~ /^C\d+?%/ ) {
-			print TABLE "C${i}%",$clusterSize,'%',$label;
-			if ( $clustersBySequence{$seq}[0] =~ /\{(.+?)\}/ ) {
-				$annot = $1;	
-				print STDOUT '>C',$i,'%',$clusterSize,"%$label\{$annot\}\n",$seq,"\n";
-			} else {
-				print STDOUT '>C',$i,'%',$clusterSize,"%$label\n",$seq,"\n";
-			}
+                $qualityByHeader{$header} = $quality;
+            }
+        } else {
+            local $RS = '>';
+            while ( my $fasta_record = <$IN> ) {
+                chomp($fasta_record);
+                my @lines    = split( /\r\n|\n|\r/smx, $fasta_record );
+                my $header   = shift(@lines);
+                my $sequence = lc( join( q{}, @lines ) );
 
-			if ( $fastQ ) {
-				foreach $hdr ( @{$clustersBySequence{$seq}} ) {
-					print TABLE "\t",$hdr,"\t",$qualityByHeader{$hdr};
-				}
-			} else {
-				foreach $hdr ( @{$clustersBySequence{$seq}} ) {
-					print TABLE "\t",$hdr;
-				}
-			}
-			print TABLE "\n";
-			$i++;
-		} else {
-			print STDOUT '>',$clustersBySequence{$seq}[0],"\n",$seq,"\n";
-		}
-	}
-	close(TABLE);
+                my $length = length $sequence;
+                if ( $length == 0 ) {
+                    next;
+                }
+
+                if ( !defined $clustersBySequence{$sequence} ) {
+                    $clustersBySequence{$sequence}[0] = $header;
+                } else {
+                    push( @{ $clustersBySequence{$sequence} }, $header );
+                }
+            }
+        }
+        close $IN or croak("Cannot close file: $OS_ERROR\n");
+    }
+
+    my $i = 0;
+    foreach my $seq ( keys %clustersBySequence ) {
+        $clusterSize = scalar( @{ $clustersBySequence{$seq} } );
+        if ( $clusterAll || $clusterSize > 1 || $clustersBySequence{$seq}[0] =~ /^C\d+?%/smx ) {
+            print $TABLE "C${i}%", $clusterSize, '%', $label;
+            if ( $clustersBySequence{$seq}[0] =~ /\{(.+?)\}/smx ) {
+                my $annot = $1;
+                print STDOUT '>C', $i, '%', $clusterSize, "%$label\{$annot\}\n", $seq, "\n";
+            } else {
+                print STDOUT '>C', $i, '%', $clusterSize, "%$label\n", $seq, "\n";
+            }
+
+            if ($fastQ) {
+                foreach my $hdr ( @{ $clustersBySequence{$seq} } ) {
+                    print $TABLE "\t", $hdr, "\t", $qualityByHeader{$hdr};
+                }
+            } else {
+                foreach my $hdr ( @{ $clustersBySequence{$seq} } ) {
+                    print $TABLE "\t", $hdr;
+                }
+            }
+            print $TABLE "\n";
+            $i++;
+        } else {
+            print STDOUT '>', $clustersBySequence{$seq}[0], "\n", $seq, "\n";
+        }
+    }
+    close $TABLE or croak("Cannot close table: $OS_ERROR");
 }
