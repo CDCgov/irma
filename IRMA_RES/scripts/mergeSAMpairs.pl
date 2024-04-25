@@ -287,7 +287,7 @@ foreach my $K ( 0 .. $#sam ) {
                     $rpos++;
                 }
             } elsif ( $op eq 'D' ) {
-                $qAln .= q{ } x $inc;
+                $qAln .= q{!} x $inc;    # This should never be used after checking all cases, but use a valid state anyway
                 $aln  .= '-' x $inc;
                 for ( 1 .. $inc ) {
                     $rpos++;
@@ -299,7 +299,7 @@ foreach my $K ( 0 .. $#sam ) {
                 $qpos += $inc;
             } elsif ( $op eq 'N' ) {
                 $aln  .= 'N' x $inc;
-                $qAln .= q{ } x $inc;
+                $qAln .= q{!} x $inc;    # This should never be used, but use a valid state anyway
                 $rpos += $inc;
             } elsif ( $op eq 'H' ) {
                 next;
@@ -359,7 +359,7 @@ foreach my $mID ( keys(%pairs) ) {
         my $FQ1 = sub {
             my $i = $_[0];
             if ( $i < $s1 || $i > $e1 ) {
-                return q{ };
+                return q{!};    # This never be used, but return a valid state anyway.
             } else {
                 return $quals1[$i - $s1];
             }
@@ -377,7 +377,7 @@ foreach my $mID ( keys(%pairs) ) {
         my $FQ2 = sub {
             my $i = $_[0];
             if ( $i < $s2 || $i > $e2 ) {
-                return q{ };
+                return q{!};    # This never be used, but return a valid state anyway.
             } else {
                 return $quals2[$i - $s2];
             }
@@ -386,8 +386,8 @@ foreach my $mID ( keys(%pairs) ) {
         foreach my $i ( $start .. $end ) {
             my $x  = $FB1->($i);
             my $y  = $FB2->($i);
-            my $qx = $FQ1->($i);
-            my $qy = $FQ2->($i);
+            my $qx = $FQ1->($i);     # These could be deferred to where needed.
+            my $qy = $FQ2->($i);     # Leaving it as-is for now since it is less commong.
             my $r  = $REF_SEQ[$i];
 
             if ( $x ne '.' && $y ne '.' ) {
@@ -402,44 +402,41 @@ foreach my $mID ( keys(%pairs) ) {
                         $mSeq   .= $x;
                         $qSeq   .= chr( max( $qx, $qy ) );
                     }
-                } elsif ( $x eq $r ) {
-                    $fmv++;
-                    if ( $y eq '-' ) { $dmv++; }
-                    $mSeq   .= $x;
-                    $qSeq   .= chr($qx);
-                    $cigars .= 'M';
-                } elsif ( $y eq $r ) {
-                    $fmv++;
-                    if ( $x eq '-' ) { $dmv++; }
-                    $mSeq   .= $y;
-                    $qSeq   .= chr($qy);
-                    $cigars .= 'M';
                 } else {
                     $fmv++;
-                    if ( $x =~ $REisBase && $y !~ $REisBase ) {
-                        $cigars .= 'M';
-                        $mSeq   .= $x;
-                        $qSeq   .= chr($qx);
+                    $cigars .= 'M';
+
+                    if ( $x eq $r ) {
                         if ( $y eq '-' ) { $dmv++; }
+                        $mSeq .= $x;
+                        $qSeq .= chr($qx);
+                    } elsif ( $y eq $r ) {
+                        if ( $x eq '-' ) { $dmv++; }
+                        $mSeq .= $y;
+                        $qSeq .= chr($qy);
+                    } elsif ( $x eq '-' ) {    # x ≠ y, x & y not r
+                        $dmv++;
+                        $mSeq .= $y;
+                        $qSeq .= chr($qy);
+                    } elsif ( $y eq '-' ) {
+                        $dmv++;
+                        $mSeq .= $x;
+                        $qSeq .= chr($qx);
+                    } elsif ( $x =~ $REisBase && $y !~ $REisBase ) {    # This can be simplified if we restrict to ACGTN
+                        $mSeq .= $x;
+                        $qSeq .= chr($qx);
                     } elsif ( $x !~ $REisBase && $y =~ $REisBase ) {
-                        $cigars .= 'M';
-                        $mSeq   .= $y;
-                        $qSeq   .= chr($qy);
-                        if ( $x eq '-' ) { $dmv++; }
+                        $mSeq .= $y;
+                        $qSeq .= chr($qy);
                     } elsif ( $qx > ( $qy + 4 ) ) {
-                        $cigars .= 'M';
-                        $mSeq   .= $x;
-                        $qSeq   .= chr($qx);
-                        if ( $y eq '-' ) { $dmv++; }
+                        $mSeq .= $x;
+                        $qSeq .= chr($qx);
                     } elsif ( $qy > ( $qx + 4 ) ) {
-                        $cigars .= 'M';
-                        $mSeq   .= $y;
-                        $qSeq   .= chr($qy);
-                        if ( $x eq '-' ) { $dmv++; }
+                        $mSeq .= $y;
+                        $qSeq .= chr($qy);
                     } else {
-                        $cigars .= 'M';
-                        $mSeq   .= 'N';
-                        $qSeq   .= chr( int( avg( $qx, $qy ) ) );
+                        $mSeq .= 'N';
+                        $qSeq .= chr( int( avg( $qx, $qy ) ) );
                     }
                 }
             } elsif ( $x eq '.' && $y ne '.' ) {
