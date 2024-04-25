@@ -68,7 +68,7 @@ my $skipRemaining    = 0;    # Skips the rest of the loop when using saveStats
 my $keepHeader       = 0;
 my $maskAdapter      = 0;
 my $clipAdapter      = 0;
-my $uracilToThymine  = 0;
+my $canonicalBases   = 0;
 my $clippedMinLength = 0;
 my $fuzzyAdapter     = 0;
 
@@ -90,7 +90,7 @@ GetOptions(
             'mask-adapter|m=s'         => \$maskAdapter,
             'clip-adapter|c=s'         => \$clipAdapter,
             'fuzzy-adapter|Z'          => \$fuzzyAdapter,
-            'uracil-to-thymine|U'      => \$uracilToThymine,
+            'canonical-bases|U'        => \$canonicalBases,
             'enforce-clipped-length|E' => \$clippedMinLength,
             'read-side|R=i'            => \$readSide
 );
@@ -111,7 +111,7 @@ if ( -t STDIN && scalar @ARGV != 1 ) {
          . "\t\t-c|--clip-adapter <STR>\t\t\tClip adapter.\n"
          . "\t\t-m|--mask-adapter <STR>\t\t\tMask adapter.\n"
          . "\t\t-Z|--fuzzy-adapter\t\t\tAllow one mismatch.\n"
-         . "\t\t-U|--uracil-to-thymine\t\t\tCovert uracil to thymine.\n"
+         . "\t\t-U|--canonical-bases\t\t\tRe-encode FASTQ sequence to expected input: A, C, T, G, N\n"
          . "\t\t-E|--enforce-clipped-length\t\tThe minimum length threshold (-L) is enforced when adapter clipped (-c).\n"
          . "\t\t-R|--read-side <INT>\t\t\tIf FASTQ header is SRA format and missing a read identifier, alter the header."
          . "\n" );
@@ -263,8 +263,8 @@ while ( my $hdr = <> ) {
         next;
     }
 
-    if ($uracilToThymine) {
-        $seq =~ tr/uU/tT/;
+    if ($canonicalBases) {
+        $seq =~ tr/uryswkmbdhvURYSWKMBDHV/tnnnnnnnnnnTNNNNNNNNNN/;
     }
 
     if ($clipAdapter) {

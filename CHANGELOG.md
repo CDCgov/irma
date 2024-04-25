@@ -1,5 +1,13 @@
 # IRMA Changelog
 
+## V1.1.5 : 2024-04
+
+### Fixes
+
+- Fixes an edge case where merging the read-pair quality scores of an 'N' and '-' allele could cause BAM file creation to fail.
+- Upon failure, IRMA now reports the path it is checking for its scratch disk space to allow for better debugging and configuration.
+- IRMA now converts ambiguous bases to n or N so that it will be handled properly downstream.
+
 ## v1.1.4 : 2024-02
 
 ### Fixes
