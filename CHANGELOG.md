@@ -5,8 +5,8 @@
 ### Fixes
 
 - Fixes an edge case where merging the read-pair quality scores of an 'N' and '-' allele could cause BAM file creation to fail.
-- Upon failure, IRMA now reports the path it is checking for its scratch disk space to allow for better debugging and configuration.
-- IRMA now converts ambiguous bases to n or N so that it will be handled properly downstream.
+- Upon disk size check failure, IRMA now reports the path it is checking for its scratch disk space to allow for better debugging and configuration.
+- At the read level, IRMA now converts ambiguous base calls to 'n' or 'N' so that it will be handled properly downstream.
 
 ## v1.1.4 : 2024-02
 
