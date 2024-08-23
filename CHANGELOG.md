@@ -1,6 +1,12 @@
 # IRMA Changelog
 
-## V1.1.5 : 2024-04
+## v1.2.0 : 2024-08
+
+### Feature
+
+- First-party support for RSV has been added and tested. See [acknowledgements](IRMA_RES/modules/RSV/ACKNOWLEDGEMENTS.md).
+
+## v1.1.5 : 2024-04
 
 ### Fixes
 
