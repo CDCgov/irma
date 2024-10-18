@@ -24,6 +24,6 @@ MIN_FD=0.02             # minimum deletion variant frequency
 ALIGN_PROG="BLAT"        # rough alignment with HMM
 ASSEM_PROG="SSW"        # final assembly, if reads and template are greater than 28k each, consider MINIMAP2.
 
-PADDED_CONSENSUS=1
+PADDED_CONSENSUS=0
 CUSTOM_REF_FILE="SARS-CoV-2_spike.fasta"   # custom ref file
 REF_SET=$(dirname $REF_SET)/$CUSTOM_REF_FILE
