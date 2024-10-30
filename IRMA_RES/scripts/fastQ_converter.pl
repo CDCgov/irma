@@ -259,6 +259,7 @@ while ( my $hdr = <> ) {
     my $quality = <>;
     chomp($quality);
 
+    $id++;
     if ( length $seq < $minLength ) {
         next;
     }
@@ -309,7 +310,6 @@ while ( my $hdr = <> ) {
     my @a = unpack( "c* i*", $quality );
     my $q = 0;
     my $n = scalar(@a);
-    $id++;
 
     if ($useMedian) {
         my @sorted = sort(@a);
@@ -402,8 +402,8 @@ while ( my $hdr = <> ) {
 }
 
 if ( $logFile ne q{} ) {
-    my $reads_passing_length = $id;
-    print $LOG_OUT $logFile, "$logID\t", $reads_passing_length, "\t", $reads_passing_qc, "\t", $qualityThreshold, "\t",
+    my $observed_raw_reads = $id;
+    print $LOG_OUT $logFile, "$logID\t", $observed_raw_reads, "\t", $reads_passing_qc, "\t", $qualityThreshold, "\t",
       $minLength,
       "\t", $useMedian, "\n";
     close $LOG_OUT or croak("Cannot close file: $OS_ERROR\n");

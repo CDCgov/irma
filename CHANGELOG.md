@@ -1,5 +1,12 @@
 # IRMA Changelog
 
+## v1.2.1 : 2024-10
+
+### Fixes
+
+- The S-gene only SC2 configuration now has consensus padding turned off. The module is not compatible with this feature.
+- IRMA had reported reads passing only the length filter as the observed raw reads. This has been fixed.
+
 ## v1.2.0 : 2024-08
 
 ### Feature
