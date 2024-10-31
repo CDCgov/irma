@@ -1430,19 +1430,23 @@ function doPostProcessing() {
 
     ### READ COUNTS ###
     echo -e "Record\tReads\tPatterns\tPairsAndWidows" >> "$ppath"/READ_COUNTS.txt
+    local raw1=$(grep OBSERVED_RAW_READS_OR_R1 "$ppath"/QC_log.txt | cut -f2)
+    local raw2=0
     if [ "$PAIRED" -eq "1" ]; then
-        raw1=$(grep LEFT.log "$ppath"/QC_log.txt | "$spath"/sumField.pl -F 2)
-        raw2=$(grep RIGHT.log "$ppath"/QC_log.txt | "$spath"/sumField.pl -F 2)
-        echo -e "0-R1\t${raw1}\tNA\tNA" >> "$ppath"/READ_COUNTS.txt
-        echo -e "0-R2\t${raw2}\tNA\tNA" >> "$ppath"/READ_COUNTS.txt
+        raw2=$(grep OBSERVED_R2_READS "$ppath"/QC_log.txt | cut -f2)
     fi
-    raw1=$(cat "$ppath"/QC_log.txt | "$spath"/sumField.pl -F 2)
-    raw2=$(cat "$ppath"/QC_log.txt | "$spath"/sumField.pl -F 3)
-    raw3=$(($raw1 - $raw2))
-    read raw pats <<< $(grep '>' "$ppath"/R0.fa | cut -f2 -d'%' | "$spath"/sumField.pl -S)
-    echo -e "1-initial\t${raw1}\tNA\tNA" >> "$ppath"/READ_COUNTS.txt
-    echo -e "2-failQC\t${raw3}\tNA\tNA" >> "$ppath"/READ_COUNTS.txt
-    echo -e "2-passQC\t${raw}\t${pats}\tNA" >> "$ppath"/READ_COUNTS.txt
+
+    local initial=$((raw1 + raw2))
+    local passing_qc=$(grep READ_COUNT_PASSING_ALL_QUALITY_CONTROL_FILTERS "$ppath"/QC_log.txt | cut -f2)
+    local failqc=$((initial - passing_qc))
+    local passing_pats=$(grep READ_PATTERN_COUNT_PASSING "$ppath"/QC_log.txt | cut -f2)
+    {
+        echo -e "0-R1\t${raw1}\tNA\tNA"
+        echo -e "0-R2\t${raw2}\tNA\tNA"
+        echo -e "1-initial\t${initial}\tNA\tNA"
+        echo -e "2-failQC\t${failqc}\tNA\tNA"
+        echo -e "2-passQC\t${passing_qc}\t${passing_pats}\tNA"
+    } >> "$ppath"/READ_COUNTS.txt
 
     read raw1 pats1 <<< $(grep '>' "$matchp"/*.chim | cut -f2 -d'%' | "$spath"/sumField.pl -S)
     read raw2 pats2 <<< $(grep '>' "$matchp"/R${LAST_ROUND}.nomatch | cut -f2 -d'%' | "$spath"/sumField.pl -S)
