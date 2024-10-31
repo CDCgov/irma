@@ -254,17 +254,24 @@ if [ -n "$EXTERNAL_CONFIG" ]; then
     }
 fi
 
-if [ "${USE_IRMA_CORE:-0}" == "1" ]; then
-    IRMA_CORE="irma-core_$OS"
-    if [ -x "$spath/$IRMA_CORE" ]; then
-        MERGESAMPAIRS=("$spath/$IRMA_CORE" "merge-sam")
-        FASTQ_CONVERTER=("$spath/$IRMA_CORE" "fastq-converter")
-    elif command -v "$IRMA_CORE" > /dev/null 2>&1; then
-        MERGESAMPAIRS=("$(which "$IRMA_CORE")" "merge-sam")
-        FASTQ_CONVERTER=("$(which "$IRMA_CORE")" "fastq-converter")
-    else
-        echo "IRMA WARNING: configured with 'USE_IRMA_CORE=1' but none detected. Add the following to PATH: $IRMA_CORE"
-    fi
+IRMA_CORE=""
+IRMA_CORE_VERSION="irma-core 0.2.0"
+
+if [ -x "$spath/irma-core_$OS" ]; then
+    IRMA_CORE="$spath/irma-core_$OS"
+elif command -v "irma-core" > /dev/null 2>&1; then
+    IRMA_CORE=$(which irma-core)
+elif [ -x "$bpath/../irma-core/target/release/irma-core" ]; then
+    IRMA_CORE="$bpath/../irma-core/target/release/irma-core"
+    echo "IRMA WARNING: irma-core not found in PATH or scripts folder, using: $IRMA_CORE"
+else
+    echo "IRMA ERROR: irma-core not detected. Please install it and add it to your path."
+    exit 1
+fi
+
+if [ "$($IRMA_CORE --version)" != "$IRMA_CORE_VERSION" ]; then
+    echo "IRMA ERROR: irma-core version mismatch. Expected: $IRMA_CORE_VERSION"
+    exit 1
 fi
 
 [ -n "$LFASTM" ] && SECONDARY_SORT=$LFASTM
@@ -370,12 +377,13 @@ BLAT_OPTS="-oneOff=1 -minIdentity=${BLAT_IDENTITY:-80} -tileSize=10"
 
 # FASTQ converter/QC options
 
-FASTQ_CONV_OPTS="-U -Q -T ${QUAL_THRESHOLD:-0} -L ${MIN_LEN:-0} --keep-header"
-[ "${USE_MEDIAN:-1}" -eq "1" ] && FASTQ_CONV_OPTS+=" -M"
+FASTQ_CONV_OPTS=" --canonical-bases -min-read-quality ${QUAL_THRESHOLD:-0}"
+FASTQ_CONV_OPTS+=" --min-length ${MIN_LEN:-0} --keep-header"
+[ "${USE_MEDIAN:-1}" -eq "1" ] && FASTQ_CONV_OPTS+=" --use-median"
 if [ "$PAIRED" -eq "1" -a "$ADAPTER" != "" ]; then
-    FASTQ_CONV_OPTS+=" -c $ADAPTER"
-    [ "${ENFORCE_CLIPPED_LENGTH:-1}" -eq "1" ] && FASTQ_CONV_OPTS+=" -E"
-    [ "${FUZZY_ADAPTER:-1}" -eq "1" ] && FASTQ_CONV_OPTS+=" -Z"
+    FASTQ_CONV_OPTS+=" --clip-adapter $ADAPTER"
+    [ "${ENFORCE_CLIPPED_LENGTH:-1}" -eq "1" ] && FASTQ_CONV_OPTS+=" --enforce-clipped-length"
+    [ "${FUZZY_ADAPTER:-1}" -eq "1" ] && FASTQ_CONV_OPTS+=" --fuzzy-adapter"
 fi
 
 export IRMA_QUEUE
@@ -1685,18 +1693,21 @@ if [ "${ALLOW_DISK_CHECK:-1}" -eq "1" -a "$CAT" = "zcat" ]; then
 fi
 
 if [ "$PAIRED" -eq "1" ]; then
-    "$spath"/xflate.pl -C -Q -L INTER "$ppath"/R0.xfl \
-        <($CAT < "$LEFT" | "$PARALLEL" --nn --pipe -L4 -j$DOUBLE_LOCAL_PROC -q "${FASTQ_CONVERTER[0]}" ${FASTQ_CONVERTER[1]} $FASTQ_CONV_OPTS -R 1 -G "$ppath"/LEFT.log -g {#}) \
-        <($CAT < "$RIGHT" | "$PARALLEL" --nn --pipe -L4 -j$DOUBLE_LOCAL_PROC -q "${FASTQ_CONVERTER[0]}" ${FASTQ_CONVERTER[1]} $FASTQ_CONV_OPTS -R 2 -G "$ppath"/RIGHT.log -g {#}) \
+    # Note: intentionally splitting the options
+    # shellcheck disable=SC2086
+    "$IRMA_CORE" qc-trim-deflate $FASTQ_CONV_OPTS --log-file "$ppath"/QC_log.txt \
+        "$ppath"/R0.xfl \
+        <($CAT < "$LEFT") \
+        <($CAT < "$RIGHT") \
         > "$ppath"/R0.fa
-    catglob "$ppath"/{LEFT,RIGHT}.log > "$ppath"/QC_log.txt && rmglob "$ppath"/{LEFT,RIGHT}.log
-    time_stamp 'pre-processed'
 else
-    "$spath"/xflate.pl -C -Q -L INTER "$ppath"/R0.xfl \
-        <($CAT < "$LEFT" | "$PARALLEL" --nn --pipe -L4 -j$SINGLE_LOCAL_PROC -q "${FASTQ_CONVERTER[0]}" ${FASTQ_CONVERTER[1]} $FASTQ_CONV_OPTS -G "$ppath"/QC_log.txt -g {#}) \
+    # shellcheck disable=SC2086
+    "$IRMA_CORE" qc-trim-deflate $FASTQ_CONV_OPTS --log-file "$ppath"/QC_log.txt \
+        "$ppath"/R0.xfl \
+        <($CAT < "$LEFT") \
         > "$ppath"/R0.fa
-    time_stamp 'pre-processed'
 fi
+time_stamp 'pre-processed'
 
 # Turn off paired-end read merging.
 if [ "$PAIRED" -eq "1" -a "$NO_MERGE" -eq "1" ]; then
