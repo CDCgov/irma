@@ -180,8 +180,6 @@ MM2="$spath"/minimap2_$OS
 A2M="$Lspath"/align2model_$OS
 RSCRIPT="$(which Rscript)"
 BASH=bash
-MERGESAMPAIRS=("$spath/mergeSAMpairs.pl")
-FASTQ_CONVERTER=("$spath/fastQ_converter.pl")
 
 # select cat for reading reads
 if [ "${#LEFT}" -gt "2" ]; then
@@ -1074,7 +1072,7 @@ VPREFIX="$assemp"/V${iter}-${gene}-\$ID
 if [ "$PAIRED" -eq "1" ];then
 	MSAM="$assemp"/M${iter}-${gene}-\$ID.sam
 	MPREFIX="$assemp"/M${iter}-${gene}-\$ID
-	"${MERGESAMPAIRS[0]}" ${MERGESAMPAIRS[1]} -S "$ref" "\$SAM" "\$MPREFIX"
+	"${IRMA_CORE}" merge-sam --store-stats "$ref" "\$SAM" "\$MPREFIX"
 	"$spath"/varCallStats.pl "$ref" "\$MSAM" "\$VPREFIX"
 else
 	"$spath"/varCallStats.pl "$ref" "\$SAM" "\$VPREFIX"
