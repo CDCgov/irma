@@ -1384,12 +1384,12 @@ function doPostProcessing() {
                 gene=${name#*-}
                 if test -n "$(
                     shopt -s nullglob
-                    echo "$sortp"/R*-$gene.fa
+                    echo "$sortp"/R*-"$gene.fa"
                 )"; then
-                    cat "$sortp"/R*-$gene.fa > "$assemp"/$gene.fa
-                    "$spath"/xflate.pl -I -Q -R "$ppath"/R0.xfl "$assemp"/$gene.fa > "$assemp"/$gene.fastq &
+                    cat "$sortp"/R*-"$gene.fa" > "$assemp/$gene.fa"
+                    "$IRMA_CORE" xflate --inflate "$ppath"/R0.xfl "$assemp/$gene.fa" > "$assemp/$gene.fastq" &
                     pid+=($!)
-                    "$spath"/ordinalHeaders.pl -O "$gene" "$ref" > "$assemp"/F1-$gene.ref
+                    "$spath"/ordinalHeaders.pl -O "$gene" "$ref" > "$assemp/F1-$gene.ref"
                 fi
             done
         fi
@@ -1401,10 +1401,10 @@ function doPostProcessing() {
             # -G gets rid of alternative references
             for name in $("$spath"/finalRefs.pl -G "$refp"/R[1-9].refs); do
                 gene=${name#*-}
-                cat "$sortp"/R*-$gene.fa > "$assemp"/$gene.fa
-                "$spath"/xflate.pl -I -Q -R "$ppath"/R0.xfl "$assemp"/$gene.fa > "$assemp"/$gene.fastq &
+                cat "$sortp"/R*"-$gene.fa" > "$assemp/$gene.fa"
+                "$IRMA_CORE" xflate --inflate "$ppath"/R0.xfl "$assemp/$gene.fa" > "$assemp/$gene.fastq" &
                 pid+=($!)
-                head -n2 "$refp"/$name.ref > "$assemp"/F1-$gene.ref
+                head -n2 "$refp/$name.ref" > "$assemp/F1-$gene.ref"
             done
         fi
     fi
