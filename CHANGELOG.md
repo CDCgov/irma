@@ -1,5 +1,16 @@
 # IRMA Changelog
 
+## v1.3.0 : 2025-05
+
+### Changes
+
+- IRMA-core is now required to run IRMA and is packaged with it from now on.
+  Certain read preprocessing and merging steps are handled by IRMA-core.
+- IRMA now provides automatic core detection for local execution mode.
+  `SINGLE_LOCAL_PROC` can be still be used up to the available cores.
+  `LOCAL_PROCS_OVERRIDE` can be set to pick any number of cores.
+  `DOUBLE_LOCAL_PROC` has been removed or does nothing if set.
+
 ## v1.2.1 : 2024-10
 
 ### Fixes

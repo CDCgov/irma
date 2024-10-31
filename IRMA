@@ -3,8 +3,8 @@ PROGRAM="Iterative Refinement Meta-Assembler (IRMA)"
 AUTHOR="Samuel S. Shepard"
 EMAIL="vfn4@cdc.gov"
 AFFIL="CDC/DDID/NCIRD/ID"
-DATE="30 Oct 2024"
-VERSION="1.2.1"
+DATE="2 May 2025"
+VERSION="1.3.0-rc1"
 LICENSE="GPL version 3. This program comes with ABSOLUTELY NO WARRANTY. This is free software.
 You are welcome to redistribute it under certain conditions. See:  <http://www.gnu.org/licenses/>.
 Components of this pipeline have non-commercial restrictions. See: IRMA_RES/scripts/packaged-citations-licenses"
@@ -180,8 +180,6 @@ MM2="$spath"/minimap2_$OS
 A2M="$Lspath"/align2model_$OS
 RSCRIPT="$(which Rscript)"
 BASH=bash
-MERGESAMPAIRS=("$spath/mergeSAMpairs.pl")
-FASTQ_CONVERTER=("$spath/fastQ_converter.pl")
 
 # select cat for reading reads
 if [ "${#LEFT}" -gt "2" ]; then
@@ -254,18 +252,30 @@ if [ -n "$EXTERNAL_CONFIG" ]; then
     }
 fi
 
-if [ "${USE_IRMA_CORE:-0}" == "1" ]; then
-    IRMA_CORE="irma-core_$OS"
-    if [ -x "$spath/$IRMA_CORE" ]; then
-        MERGESAMPAIRS=("$spath/$IRMA_CORE" "merge-sam")
-        FASTQ_CONVERTER=("$spath/$IRMA_CORE" "fastq-converter")
-    elif command -v "$IRMA_CORE" > /dev/null 2>&1; then
-        MERGESAMPAIRS=("$(which "$IRMA_CORE")" "merge-sam")
-        FASTQ_CONVERTER=("$(which "$IRMA_CORE")" "fastq-converter")
-    else
-        echo "IRMA WARNING: configured with 'USE_IRMA_CORE=1' but none detected. Add the following to PATH: $IRMA_CORE"
-    fi
+IRMA_CORE=""
+IRMA_CORE_VERSION="irma-core 0.4.3"
+USE_IRMA_CORE=1
+
+if [ -x "$spath/irma-core_$OS" ]; then
+    IRMA_CORE="$spath/irma-core_$OS"
+elif command -v "irma-core" > /dev/null 2>&1; then
+    IRMA_CORE=$(which irma-core)
+elif [ -x "$bpath/../irma-core/target/release/irma-core" ]; then
+    IRMA_CORE="$bpath/../irma-core/target/release/irma-core"
+    echo "IRMA WARNING: irma-core not found in PATH or scripts folder, using: $IRMA_CORE"
+else
+    echo "IRMA ERROR: irma-core not detected. Please install it and add it to your path."
+    exit 1
 fi
+
+if [ "$($IRMA_CORE --version)" != "$IRMA_CORE_VERSION" ]; then
+    echo "IRMA ERROR: irma-core version mismatch. Expected: $IRMA_CORE_VERSION"
+    exit 1
+fi
+
+export IFX_LOCAL_PROCS=$SINGLE_LOCAL_PROC
+export LOCAL_PROCS_OVERRIDE
+read -r SINGLE_LOCAL_PROC DOUBLE_LOCAL_PROC <<< "$($IRMA_CORE num-procs --physical --cap-cores-using-env --include-half)"
 
 [ -n "$LFASTM" ] && SECONDARY_SORT=$LFASTM
 REF1_SET=$REF_SET
@@ -370,12 +380,13 @@ BLAT_OPTS="-oneOff=1 -minIdentity=${BLAT_IDENTITY:-80} -tileSize=10"
 
 # FASTQ converter/QC options
 
-FASTQ_CONV_OPTS="-U -Q -T ${QUAL_THRESHOLD:-0} -L ${MIN_LEN:-0} --keep-header"
-[ "${USE_MEDIAN:-1}" -eq "1" ] && FASTQ_CONV_OPTS+=" -M"
+FASTQ_CONV_OPTS=" --canonical-bases --min-read-quality ${QUAL_THRESHOLD:-0}"
+FASTQ_CONV_OPTS+=" --min-length ${MIN_LEN:-0} --keep-header"
+[ "${USE_MEDIAN:-1}" -eq "1" ] && FASTQ_CONV_OPTS+=" --use-median"
 if [ "$PAIRED" -eq "1" -a "$ADAPTER" != "" ]; then
-    FASTQ_CONV_OPTS+=" -c $ADAPTER"
-    [ "${ENFORCE_CLIPPED_LENGTH:-1}" -eq "1" ] && FASTQ_CONV_OPTS+=" -E"
-    [ "${FUZZY_ADAPTER:-1}" -eq "1" ] && FASTQ_CONV_OPTS+=" -Z"
+    FASTQ_CONV_OPTS+=" --clip-adapter $ADAPTER"
+    [ "${ENFORCE_CLIPPED_LENGTH:-1}" -eq "1" ] && FASTQ_CONV_OPTS+=" --enforce-clipped-length"
+    [ "${FUZZY_ADAPTER:-1}" -eq "1" ] && FASTQ_CONV_OPTS+=" --fuzzy-adapter"
 fi
 
 export IRMA_QUEUE
@@ -1066,7 +1077,7 @@ VPREFIX="$assemp"/V${iter}-${gene}-\$ID
 if [ "$PAIRED" -eq "1" ];then
 	MSAM="$assemp"/M${iter}-${gene}-\$ID.sam
 	MPREFIX="$assemp"/M${iter}-${gene}-\$ID
-	"${MERGESAMPAIRS[0]}" ${MERGESAMPAIRS[1]} -S "$ref" "\$SAM" "\$MPREFIX"
+	"${IRMA_CORE}" merge-sam --store-stats "$ref" "\$SAM" "\$MPREFIX"
 	"$spath"/varCallStats.pl "$ref" "\$MSAM" "\$VPREFIX"
 else
 	"$spath"/varCallStats.pl "$ref" "\$SAM" "\$VPREFIX"
@@ -1378,12 +1389,12 @@ function doPostProcessing() {
                 gene=${name#*-}
                 if test -n "$(
                     shopt -s nullglob
-                    echo "$sortp"/R*-$gene.fa
+                    echo "$sortp"/R*-"$gene.fa"
                 )"; then
-                    cat "$sortp"/R*-$gene.fa > "$assemp"/$gene.fa
-                    "$spath"/xflate.pl -I -Q -R "$ppath"/R0.xfl "$assemp"/$gene.fa > "$assemp"/$gene.fastq &
+                    cat "$sortp"/R*-"$gene.fa" > "$assemp/$gene.fa"
+                    "$IRMA_CORE" xflate --inflate "$ppath"/R0.xfl "$assemp/$gene.fa" > "$assemp/$gene.fastq" &
                     pid+=($!)
-                    "$spath"/ordinalHeaders.pl -O "$gene" "$ref" > "$assemp"/F1-$gene.ref
+                    "$spath"/ordinalHeaders.pl -O "$gene" "$ref" > "$assemp/F1-$gene.ref"
                 fi
             done
         fi
@@ -1395,10 +1406,10 @@ function doPostProcessing() {
             # -G gets rid of alternative references
             for name in $("$spath"/finalRefs.pl -G "$refp"/R[1-9].refs); do
                 gene=${name#*-}
-                cat "$sortp"/R*-$gene.fa > "$assemp"/$gene.fa
-                "$spath"/xflate.pl -I -Q -R "$ppath"/R0.xfl "$assemp"/$gene.fa > "$assemp"/$gene.fastq &
+                cat "$sortp"/R*"-$gene.fa" > "$assemp/$gene.fa"
+                "$IRMA_CORE" xflate --inflate "$ppath"/R0.xfl "$assemp/$gene.fa" > "$assemp/$gene.fastq" &
                 pid+=($!)
-                head -n2 "$refp"/$name.ref > "$assemp"/F1-$gene.ref
+                head -n2 "$refp/$name.ref" > "$assemp/F1-$gene.ref"
             done
         fi
     fi
@@ -1424,19 +1435,23 @@ function doPostProcessing() {
 
     ### READ COUNTS ###
     echo -e "Record\tReads\tPatterns\tPairsAndWidows" >> "$ppath"/READ_COUNTS.txt
+    local raw1=$(grep OBSERVED_RAW_READS_OR_R1 "$ppath"/QC_log.txt | cut -f2)
+    local raw2=0
     if [ "$PAIRED" -eq "1" ]; then
-        raw1=$(grep LEFT.log "$ppath"/QC_log.txt | "$spath"/sumField.pl -F 2)
-        raw2=$(grep RIGHT.log "$ppath"/QC_log.txt | "$spath"/sumField.pl -F 2)
-        echo -e "0-R1\t${raw1}\tNA\tNA" >> "$ppath"/READ_COUNTS.txt
-        echo -e "0-R2\t${raw2}\tNA\tNA" >> "$ppath"/READ_COUNTS.txt
+        raw2=$(grep OBSERVED_R2_READS "$ppath"/QC_log.txt | cut -f2)
     fi
-    raw1=$(cat "$ppath"/QC_log.txt | "$spath"/sumField.pl -F 2)
-    raw2=$(cat "$ppath"/QC_log.txt | "$spath"/sumField.pl -F 3)
-    raw3=$(($raw1 - $raw2))
-    read raw pats <<< $(grep '>' "$ppath"/R0.fa | cut -f2 -d'%' | "$spath"/sumField.pl -S)
-    echo -e "1-initial\t${raw1}\tNA\tNA" >> "$ppath"/READ_COUNTS.txt
-    echo -e "2-failQC\t${raw3}\tNA\tNA" >> "$ppath"/READ_COUNTS.txt
-    echo -e "2-passQC\t${raw}\t${pats}\tNA" >> "$ppath"/READ_COUNTS.txt
+
+    local initial=$((raw1 + raw2))
+    local passing_qc=$(grep READ_COUNT_PASSING_ALL_QUALITY_CONTROL_FILTERS "$ppath"/QC_log.txt | cut -f2)
+    local failqc=$((initial - passing_qc))
+    local passing_pats=$(grep READ_PATTERN_COUNT_PASSING "$ppath"/QC_log.txt | cut -f2)
+    {
+        echo -e "0-R1\t${raw1}\tNA\tNA"
+        echo -e "0-R2\t${raw2}\tNA\tNA"
+        echo -e "1-initial\t${initial}\tNA\tNA"
+        echo -e "2-failQC\t${failqc}\tNA\tNA"
+        echo -e "2-passQC\t${passing_qc}\t${passing_pats}\tNA"
+    } >> "$ppath"/READ_COUNTS.txt
 
     read raw1 pats1 <<< $(grep '>' "$matchp"/*.chim | cut -f2 -d'%' | "$spath"/sumField.pl -S)
     read raw2 pats2 <<< $(grep '>' "$matchp"/R${LAST_ROUND}.nomatch | cut -f2 -d'%' | "$spath"/sumField.pl -S)
@@ -1685,18 +1700,21 @@ if [ "${ALLOW_DISK_CHECK:-1}" -eq "1" -a "$CAT" = "zcat" ]; then
 fi
 
 if [ "$PAIRED" -eq "1" ]; then
-    "$spath"/xflate.pl -C -Q -L INTER "$ppath"/R0.xfl \
-        <($CAT < "$LEFT" | "$PARALLEL" --nn --pipe -L4 -j$DOUBLE_LOCAL_PROC -q "${FASTQ_CONVERTER[0]}" ${FASTQ_CONVERTER[1]} $FASTQ_CONV_OPTS -R 1 -G "$ppath"/LEFT.log -g {#}) \
-        <($CAT < "$RIGHT" | "$PARALLEL" --nn --pipe -L4 -j$DOUBLE_LOCAL_PROC -q "${FASTQ_CONVERTER[0]}" ${FASTQ_CONVERTER[1]} $FASTQ_CONV_OPTS -R 2 -G "$ppath"/RIGHT.log -g {#}) \
+    # Note: intentionally splitting the options
+    # shellcheck disable=SC2086
+    "$IRMA_CORE" qc-trim-deflate $FASTQ_CONV_OPTS --log-file "$ppath"/QC_log.txt \
+        "$ppath"/R0.xfl \
+        <($CAT < "$LEFT") \
+        <($CAT < "$RIGHT") \
         > "$ppath"/R0.fa
-    catglob "$ppath"/{LEFT,RIGHT}.log > "$ppath"/QC_log.txt && rmglob "$ppath"/{LEFT,RIGHT}.log
-    time_stamp 'pre-processed'
 else
-    "$spath"/xflate.pl -C -Q -L INTER "$ppath"/R0.xfl \
-        <($CAT < "$LEFT" | "$PARALLEL" --nn --pipe -L4 -j$SINGLE_LOCAL_PROC -q "${FASTQ_CONVERTER[0]}" ${FASTQ_CONVERTER[1]} $FASTQ_CONV_OPTS -G "$ppath"/QC_log.txt -g {#}) \
+    # shellcheck disable=SC2086
+    "$IRMA_CORE" qc-trim-deflate $FASTQ_CONV_OPTS --log-file "$ppath"/QC_log.txt \
+        "$ppath"/R0.xfl \
+        <($CAT < "$LEFT") \
         > "$ppath"/R0.fa
-    time_stamp 'pre-processed'
 fi
+time_stamp 'pre-processed'
 
 # Turn off paired-end read merging.
 if [ "$PAIRED" -eq "1" -a "$NO_MERGE" -eq "1" ]; then

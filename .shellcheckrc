@@ -1,2 +1,2 @@
-disable=SC2155,SC2015,SC2116
+disable=SC2155,SC2015,SC2116,SC2164
 external-sources=true

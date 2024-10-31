@@ -17,7 +17,6 @@ LIMIT_BLAT=$LIMIT_BLAT	# threshold before grid
 LIMIT_SSW=$LIMIT_SSW		# threshold before grid
 LIMIT_SAM=$LIMIT_SAM		# threshold before grid
 SINGLE_LOCAL_PROC=$SINGLE_LOCAL_PROC	# local maximum processes
-DOUBLE_LOCAL_PROC=$DOUBLE_LOCAL_PROC	# local maximum processes (double this number)
 ALLOW_TMP=$ALLOW_TMP		# if GRID_ON=0, try to use /tmp for working directory
 TMP=$TMP		# the scratch/tmpfs for working on the assemblies
 PACKAGED_FASTQ=${PACKAGED_FASTQ:-1}		# Create *.tar.gz for final fastq, otherwise use *.gz for each file
@@ -37,10 +36,10 @@ QUAL_THRESHOLD=$QUAL_THRESHOLD	# minimum read statistic
 MIN_LEN=$MIN_LEN		# minimum read length
 INCL_CHIM=$INCL_CHIM		# includes chimera or not [0,1]
 			# transposase adapter, clips 5' of the adapter on the forward strand and 3' on the reverse strand
-			# applicable to nexttera pair-end reads 
+			# applicable to nexttera pair-end reads
 ADAPTER="$ADAPTER"
 FUZZY_ADAPTER=${FUZZY_ADAPTER:-1}			# Allow 1 adapter mismatch
-ENFORCE_CLIPPED_LENGTH=${ENFORCE_CLIPPED_LENGTH:-1}	# Reads are filtered for minimum length post adapter trimming.	
+ENFORCE_CLIPPED_LENGTH=${ENFORCE_CLIPPED_LENGTH:-1}	# Reads are filtered for minimum length post adapter trimming.
 MERGE_SECONDARY=$MERGE_SECONDARY	# merge secondary data after the first round, good if no co-infections
 BLAT_IDENTITY=${BLAT_IDENTITY:-80}	# blat identity for read gathering, usually 80
 DO_SECONDARY=${DO_SECONDARY:-0}		# do secondary assembly
@@ -55,7 +54,7 @@ MIN_RP_RESIDUAL=${MIN_RP_RESIDUAL:-150}		# minimum read pattern count to continu
 MIN_RC_RESIDUAL=${MIN_RC_RESIDUAL:-150}		# minimum read count to continue doing residual assembly
 MIN_BLAT_MATCH=${MIN_BLAT_MATCH:-0}	# minimum blat match, default settings within the program practically limit to 30 bp, only useful if set higher.
 
-## SORT STEP 
+## SORT STEP
 SORT_PROG="${SORT_PROGS[@]}"	# [LABEL,BLAT]
 SORT_PROC=$SORT_PROC		# currently not used
 NONSEGMENTED=$NONSEGMENTED		# segmented! [0,1]
@@ -74,9 +73,9 @@ NO_MERGE=$NO_MERGE		# do not merge read pairs [0]
 ASSEM_PROG="$ASSEM_PROG"	# assembly program [SSW]
 ASSEM_PROC=$ASSEM_PROC		# grid maximum processes for assembly
 INS_T=$INS_T		# minimum frquenncy threshold for insertion refinement
-DEL_T=$DEL_T		# minimum frequency threshold for deletion refinement 
+DEL_T=$DEL_T		# minimum frequency threshold for deletion refinement
 INS_T_DEPTH=$INS_T_DEPTH		# minimum coverage depth for insertion refinement
-DEL_T_DEPTH=$DEL_T_DEPTH		# minimum coverage depth for deletion refinement 
+DEL_T_DEPTH=$DEL_T_DEPTH		# minimum coverage depth for deletion refinement
 SILENCE_COMPLEX_INDELS=${SILENCE_COMPLEX_INDELS:-0}	# silences reads with complex indels (having 4 indels with at least one greater than 9)
 MIN_AMBIG=$MIN_AMBIG		# minimum called SNV frequency for mixed base in amended consensus folder
 SSW_M=$SSW_M			# smith-waterman match score
@@ -105,5 +104,5 @@ MIN_TCC=$MIN_TCC		# minimum non-ambiguous column coverage
 MIN_CONF=$MIN_CONF		# minimum confidence not machine error
 
 # CONFIDENCE INTERVALS
-SIG_LEVEL=$SIG_LEVEL		# significance test level for variant calling (.90,.95,.99,.999). 
+SIG_LEVEL=$SIG_LEVEL		# significance test level for variant calling (.90,.95,.99,.999).
 EOF

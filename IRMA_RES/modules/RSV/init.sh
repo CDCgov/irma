@@ -1,9 +1,7 @@
 ### PERFORMANCE ###
-GRID_ON=0            # grid computation on [1,0] for on or off
-SINGLE_LOCAL_PROC=32 # local maximum processes
-DOUBLE_LOCAL_PROC=16 # local maximum processes (double this number)
-ALLOW_TMP=1          # if GRID_ON=0, try to use /tmp for working directory
-TMP=/tmp             # the scratch/tmpfs for working on the assemblies
+GRID_ON=0   # grid computation on [1,0] for on or off
+ALLOW_TMP=1 # if GRID_ON=0, try to use /tmp for working directory
+TMP=/tmp    # the scratch/tmpfs for working on the assemblies
 
 ### REFERENCE ###
 MIN_FA=1         # no alternative reference [0..1]
