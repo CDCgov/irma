@@ -375,7 +375,7 @@ BLAT_OPTS="-oneOff=1 -minIdentity=${BLAT_IDENTITY:-80} -tileSize=10"
 
 # FASTQ converter/QC options
 
-FASTQ_CONV_OPTS=" --canonical-bases -min-read-quality ${QUAL_THRESHOLD:-0}"
+FASTQ_CONV_OPTS=" --canonical-bases --min-read-quality ${QUAL_THRESHOLD:-0}"
 FASTQ_CONV_OPTS+=" --min-length ${MIN_LEN:-0} --keep-header"
 [ "${USE_MEDIAN:-1}" -eq "1" ] && FASTQ_CONV_OPTS+=" --use-median"
 if [ "$PAIRED" -eq "1" -a "$ADAPTER" != "" ]; then
