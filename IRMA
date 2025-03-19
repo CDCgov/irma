@@ -253,7 +253,7 @@ if [ -n "$EXTERNAL_CONFIG" ]; then
 fi
 
 IRMA_CORE=""
-IRMA_CORE_VERSION="irma-core 0.2.0"
+IRMA_CORE_VERSION="irma-core 0.3.0"
 
 if [ -x "$spath/irma-core_$OS" ]; then
     IRMA_CORE="$spath/irma-core_$OS"
