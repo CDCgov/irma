@@ -253,7 +253,7 @@ if [ -n "$EXTERNAL_CONFIG" ]; then
 fi
 
 IRMA_CORE=""
-IRMA_CORE_VERSION="irma-core 0.3.0"
+IRMA_CORE_VERSION="irma-core 0.3.1"
 
 if [ -x "$spath/irma-core_$OS" ]; then
     IRMA_CORE="$spath/irma-core_$OS"
@@ -271,6 +271,9 @@ if [ "$($IRMA_CORE --version)" != "$IRMA_CORE_VERSION" ]; then
     echo "IRMA ERROR: irma-core version mismatch. Expected: $IRMA_CORE_VERSION"
     exit 1
 fi
+
+export LOCAL_PROCS_OVERRIDE
+read -r SINGLE_LOCAL_PROC DOUBLE_LOCAL_PROC <<< "$($IRMA_CORE num-procs --logical --cap-cores-using-env --include-half)"
 
 [ -n "$LFASTM" ] && SECONDARY_SORT=$LFASTM
 REF1_SET=$REF_SET
