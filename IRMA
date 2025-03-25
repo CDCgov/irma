@@ -273,7 +273,7 @@ if [ "$($IRMA_CORE --version)" != "$IRMA_CORE_VERSION" ]; then
 fi
 
 export LOCAL_PROCS_OVERRIDE
-read -r SINGLE_LOCAL_PROC DOUBLE_LOCAL_PROC <<< "$($IRMA_CORE num-procs --logical --cap-cores-using-env --include-half)"
+read -r SINGLE_LOCAL_PROC DOUBLE_LOCAL_PROC <<< "$($IRMA_CORE num-procs --hybrid --cap-cores-using-env --include-half)"
 
 [ -n "$LFASTM" ] && SECONDARY_SORT=$LFASTM
 REF1_SET=$REF_SET
