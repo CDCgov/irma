@@ -254,6 +254,7 @@ fi
 
 IRMA_CORE=""
 IRMA_CORE_VERSION="irma-core 0.3.1"
+USE_IRMA_CORE=1
 
 if [ -x "$spath/irma-core_$OS" ]; then
     IRMA_CORE="$spath/irma-core_$OS"
