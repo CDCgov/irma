@@ -3,8 +3,8 @@ PROGRAM="Iterative Refinement Meta-Assembler (IRMA)"
 AUTHOR="Samuel S. Shepard"
 EMAIL="vfn4@cdc.gov"
 AFFIL="CDC/DDID/NCIRD/ID"
-DATE="30 Nov 2024"
-VERSION="1.3.0"
+DATE="2 May 2025"
+VERSION="1.3.0-rc1"
 LICENSE="GPL version 3. This program comes with ABSOLUTELY NO WARRANTY. This is free software.
 You are welcome to redistribute it under certain conditions. See:  <http://www.gnu.org/licenses/>.
 Components of this pipeline have non-commercial restrictions. See: IRMA_RES/scripts/packaged-citations-licenses"
@@ -253,7 +253,7 @@ if [ -n "$EXTERNAL_CONFIG" ]; then
 fi
 
 IRMA_CORE=""
-IRMA_CORE_VERSION="irma-core 0.4.0"
+IRMA_CORE_VERSION="irma-core 0.4.3"
 USE_IRMA_CORE=1
 
 if [ -x "$spath/irma-core_$OS" ]; then
@@ -273,7 +273,8 @@ if [ "$($IRMA_CORE --version)" != "$IRMA_CORE_VERSION" ]; then
     exit 1
 fi
 
-export LOCAL_PROCS_OVERRIDE=$SINGLE_LOCAL_PROC
+export IFX_LOCAL_PROCS=$SINGLE_LOCAL_PROC
+export LOCAL_PROCS_OVERRIDE
 read -r SINGLE_LOCAL_PROC DOUBLE_LOCAL_PROC <<< "$($IRMA_CORE num-procs --physical --cap-cores-using-env --include-half)"
 
 [ -n "$LFASTM" ] && SECONDARY_SORT=$LFASTM
