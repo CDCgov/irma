@@ -101,7 +101,7 @@ wait_check() {
 # variables
 OS="Linux"
 command -v uname > /dev/null 2>&1 && OS=$(uname -s)
-if [ "$OS" != "Linux" -a "$OS" != "Darwin" ]; then
+if [[ "$OS" != "Linux" && "$OS" != "Darwin" ]]; then
     time_stamp "Your $OS OS not yet supported."
     exit 0
 fi
@@ -115,15 +115,16 @@ if [ "$bpath" == "" ]; then
     bpath=$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 fi
 echo "${BASH_SOURCE[0]}"
-rpath="$bpath"/IRMA_RES # IRMA resources
-spath="$rpath"/scripts  # IRMA specific scripts/binaries
+rpath="$bpath/IRMA_RES"      # IRMA resources
+spath="$rpath/scripts"       # IRMA specific scripts
+vendorp="$rpath/third_party" # Third party binaries distributed with IRMA
 
 # process optional output diretory
-if [ "$(basename $RUN)" != "$RUN" ]; then
+if [ "$(basename "$RUN")" != "$RUN" ]; then
     if [ "${RUN:0:1}" == "/" ]; then
         destination_directory=$(dirname $RUN)
     else
-        destination_directory="$owd"/"$(dirname $RUN)"
+        destination_directory="$owd"/"$(dirname "$RUN")"
     fi
 
     if [ ! -d "$destination_directory" ]; then
@@ -136,7 +137,7 @@ if [ "$(basename $RUN)" != "$RUN" ]; then
             }
     fi
 
-    RUN=$(basename $RUN)
+    RUN=$(basename "$RUN")
 fi
 
 # make sure output directory is valid
@@ -158,28 +159,57 @@ function check_prgm() {
     }
 }
 
-# Check and find supporting code
-if [ -d "$bpath/LABEL_RES/scripts/" ]; then
-    Lspath="$bpath"/LABEL_RES/scripts
-    check_prgm "$bpath"/LABEL
-    LABEL="$bpath"/LABEL
-else
-    check_prgm LABEL
-    LABEL=$(which LABEL)
-    Lspath="$(dirname "$LABEL")/LABEL_RES/scripts"
+# Find LABEL
+if [ -x "$bpath/LABEL" ]; then
+    LABEL="$bpath/LABEL"
+elif command -v "LABEL" > /dev/null 2>&1; then
+    LABEL=$(command -v LABEL)
+elif [ -x "$bpath/../label/LABEL" ]; then
+    LABEL="$(dirname "$bpath")/label/LABEL"
 fi
 
+check_prgm "$LABEL"
 check_prgm Rscript
 check_prgm perl
 
-PARALLEL="$spath"/parallel
-SAMTOOLS="$spath"/samtools_$OS
-BLAT="$spath"/blat_$OS
-SSW="$spath"/ssw_$OS
-MM2="$spath"/minimap2_$OS
-A2M="$Lspath"/align2model_$OS
-RSCRIPT="$(which Rscript)"
+# Find LABEL resources
+Lvendorp="${LABEL}_RES/third_party"
+Lspath="${LABEL}_RES/scripts"
+if [[ ! -d "$Lvendorp" || ! -d "$Lspath" ]]; then
+    abort "IRMA requires LABEL v0.7.0 or later"
+fi
+
+IRMA_BIN_SUFFIX=$(uname -s)
+[[ "$IRMA_BIN_SUFFIX" == "Linux" ]] && IRMA_BIN_SUFFIX+="_$(uname -m)"
+function set_bin() {
+    unalias "$1" 2> /dev/null
+
+    command -v "$1" 2> /dev/null || {
+        local cmd="$vendorp/${1}"
+        if [ -x "$cmd" ]; then
+            echo "$cmd"
+        else
+            cmd+="_$IRMA_BIN_SUFFIX"
+            if [ -x "$cmd" ]; then
+                echo "$cmd"
+            else
+                die "Could could not find program: $1"
+            fi
+        fi
+    }
+}
+export -f set_bin
+
+PARALLEL=$(set_bin parallel)
+SAMTOOLS=$(set_bin samtools)
+BLAT=$(set_bin blat)
+SSW=$(set_bin ssw)
+MM2=$(set_bin minimap2)
+RSCRIPT=$(set_bin Rscript)
+A2M="$Lvendorp/align2model_$IRMA_BIN_SUFFIX"
 BASH=bash
+
+check_prgm "$A2M"
 
 # select cat for reading reads
 if [ "${#LEFT}" -gt "2" ]; then
@@ -193,7 +223,7 @@ else
 fi
 
 # check for module
-MODULE=$(echo ${MODULE_CONFIG} | cut -f1 -d'-')
+MODULE=$(echo "$MODULE_CONFIG" | cut -f1 -d'-')
 if [ ! -d "$rpath/modules/$MODULE" ]; then
     echo "IRMA ERROR: $MODULE module not found in '$rpath/modules'."
     exit 1
@@ -259,7 +289,7 @@ USE_IRMA_CORE=1
 if [ -x "$spath/irma-core_$OS" ]; then
     IRMA_CORE="$spath/irma-core_$OS"
 elif command -v "irma-core" > /dev/null 2>&1; then
-    IRMA_CORE=$(which irma-core)
+    IRMA_CORE=$(command -v irma-core)
 elif [ -x "$bpath/../irma-core/target/release/irma-core" ]; then
     IRMA_CORE="$bpath/../irma-core/target/release/irma-core"
     echo "IRMA WARNING: irma-core not found in PATH or scripts folder, using: $IRMA_CORE"
@@ -280,12 +310,12 @@ read -r SINGLE_LOCAL_PROC DOUBLE_LOCAL_PROC <<< "$($IRMA_CORE num-procs --physic
 [ -n "$LFASTM" ] && SECONDARY_SORT=$LFASTM
 REF1_SET=$REF_SET
 
-# selection of zip utility
-if command -v "$spath"/pigz_$OS > /dev/null 2>&1; then
-    ZIP="$spath"/pigz_$OS
-    Z_OPTS="-p $DOUBLE_LOCAL_PROC -4"
-elif command -v pigz > /dev/null 2>&1; then
+# selection of Zip utility. PIGZ still optional.
+if command -v pigz > /dev/null 2>&1; then
     ZIP="pigz"
+    Z_OPTS="-p $DOUBLE_LOCAL_PROC -4"
+elif command -v "$vendorp/pigz_$IRMA_BIN_SUFFIX" > /dev/null 2>&1; then
+    ZIP="$vendorp/pigz_$IRMA_BIN_SUFFIX"
     Z_OPTS="-p $DOUBLE_LOCAL_PROC -4"
 elif command -v gzip > /dev/null 2>&1; then
     ZIP="gzip"
@@ -1668,8 +1698,6 @@ function setPrograms() {
     if [ -z "${DEL_TYPES[0]}" ]; then
         if [ "$ALIGN_PROG" == "BLAT" ]; then
             DEL_TYPE="NNN"
-            #	elif [ "$( perl -se '$t=shift;print ($t >= 1.0 ? 1 : 0)' ${DEL_T:-0.50} )" -eq "1" ];then
-            #		DEL_TYPE="REF"
         else
             DEL_TYPE="DEL"
         fi
@@ -1880,11 +1908,11 @@ if [ "${DO_SECONDARY:-0}" -eq "1" -a -n "$(
     for residual_fasta in "$original_path"/residual_assembly/*.fasta; do
         gene=$(basename "$residual_fasta" .fasta)
         if [ -r "$phmms/${gene}_hmm.mod" ]; then
-            cat "$residual_fasta" <("$spath"/ordinalHeaders.pl -O default <("$Lspath"/selectSequences.pl "$DEF_SET" -I "$gene")) > "$ppath"/${gene}.patch.fa
+            cat "$residual_fasta" <("$spath"/ordinalHeaders.pl -O default <("$spath"/selectSequences.pl "$DEF_SET" -I "$gene")) > "$ppath/${gene}.patch.fa"
             cd "$ppath"
-            "$A2M" ${gene}.patch -db ${gene}.patch.fa -modelfile "$phmms"/${gene}_hmm.mod -sw 0 > /dev/null 2>&1
+            "$A2M" "${gene}.patch" -db "${gene}.patch.fa" -modelfile "$phmms/${gene}_hmm.mod" -sw 0 > /dev/null 2>&1
             cd - > /dev/null
-            "$spath"/makePatchworkConsensus.pl "$ppath"/${gene}.patch.a2m default -N "$gene" >> "$REF_SET"
+            "$spath"/makePatchworkConsensus.pl "$ppath/${gene}.patch.a2m" default -N "$gene" >> "$REF_SET"
         else
             cat "$residual_fasta" >> "$REF_SET"
         fi
