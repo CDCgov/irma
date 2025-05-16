@@ -41,7 +41,7 @@
 use strict;
 use warnings;
 use English qw(-no_match_vars);
-use Carp qw(croak);
+use Carp    qw(croak);
 use Getopt::Long;
 
 my ( $skipHeader, $insertsToRef, $showOriginal, $skipComments, $reprintComments, $checkComments ) = ( 0, 0, 0, 0, 0, 0 );

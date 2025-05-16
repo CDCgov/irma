@@ -1,13 +1,12 @@
 #!/bin/bash
 PROGRAM="Iterative Refinement Meta-Assembler (IRMA)"
 AUTHOR="Samuel S. Shepard"
-EMAIL="vfn4@cdc.gov"
+EMAIL="sshepard@cdc.gov"
 AFFIL="CDC/DDID/NCIRD/ID"
 DATE="2 May 2025"
-VERSION="1.3.0-rc1"
-LICENSE="GPL version 3. This program comes with ABSOLUTELY NO WARRANTY. This is free software.
-You are welcome to redistribute it under certain conditions. See:  <http://www.gnu.org/licenses/>.
-Components of this pipeline have non-commercial restrictions. See: IRMA_RES/scripts/packaged-citations-licenses"
+VERSION="1.3.0-rc2"
+LICENSE="Licensed under Apache 2 with a Public Domain copyright. This program comes with ABSOLUTELY NO WARRANTY. See notices in <README.md>.
+Distributed, third-party components have non-commercial restrictions. See: <IRMA_RES/third_party/MANIFEST.md>"
 
 function print_usage_and_quit() {
     echo -e "$PROGRAM, v$VERSION ($DATE)"
@@ -102,9 +101,11 @@ wait_check() {
 OS="Linux"
 command -v uname > /dev/null 2>&1 && OS=$(uname -s)
 if [[ "$OS" != "Linux" && "$OS" != "Darwin" ]]; then
-    time_stamp "Your $OS OS not yet supported."
+    time_stamp "Your $OS OS is not yet supported. IRMA only supports macOS or Linux at this time."
     exit 0
 fi
+IRMA_BIN_SUFFIX=$OS
+[[ "$IRMA_BIN_SUFFIX" == "Linux" ]] && IRMA_BIN_SUFFIX+="_$(uname -m)"
 
 R=1        # current round
 LANG=POSIX # collation
@@ -179,8 +180,6 @@ if [[ ! -d "$Lvendorp" || ! -d "$Lspath" ]]; then
     abort "IRMA requires LABEL v0.7.0 or later"
 fi
 
-IRMA_BIN_SUFFIX=$(uname -s)
-[[ "$IRMA_BIN_SUFFIX" == "Linux" ]] && IRMA_BIN_SUFFIX+="_$(uname -m)"
 function set_bin() {
     unalias "$1" 2> /dev/null
 
@@ -286,8 +285,8 @@ IRMA_CORE=""
 IRMA_CORE_VERSION="irma-core 0.4.3"
 USE_IRMA_CORE=1
 
-if [ -x "$spath/irma-core_$OS" ]; then
-    IRMA_CORE="$spath/irma-core_$OS"
+if [ -x "$spath/irma-core_$IRMA_BIN_SUFFIX" ]; then
+    IRMA_CORE="$spath/irma-core_$IRMA_BIN_SUFFIX"
 elif command -v "irma-core" > /dev/null 2>&1; then
     IRMA_CORE=$(command -v irma-core)
 elif [ -x "$bpath/../irma-core/target/release/irma-core" ]; then

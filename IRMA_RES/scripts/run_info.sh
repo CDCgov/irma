@@ -1,3 +1,9 @@
+# run_info.sh
+#
+# Samuel S. Shepard
+#
+# Description: write configuration for the run in a more human readable format
+
 [ "$USE_MEDIAN" == "-M" -o "$USE_MEDIAN" -eq "1" ] && USE_MEDIAN=1 || USE_MEDIAN=0
 if [ "$MATCH_PROG" == "BLAT" ]; then
     MATCH_OPTS=" ($BLAT_OPTS)"

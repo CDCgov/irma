@@ -1,13 +1,17 @@
 #!/usr/bin/env perl
-# Sam Shepard - 3.16.2015
+# catSAMfiles
+#
+# Samuel S. Shepard - 2015
+#
+# Description: concatenate SAM records without the header
 
-while($line=<>) {
-	print $line;
-	if ( $line !~ /^@/ ) { last; }	
+while ( $line = <> ) {
+    print $line;
+    if ( $line !~ /^@/ ) { last; }
 }
 
-while($line=<>) {
-	if ( $line !~ /^@/ ) {
-		print $line;
-	}
+while ( $line = <> ) {
+    if ( $line !~ /^@/ ) {
+        print $line;
+    }
 }

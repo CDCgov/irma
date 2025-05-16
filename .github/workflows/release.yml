@@ -1,0 +1,151 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+permissions: {}
+
+env:
+  CARGO_TERM_COLOR: always
+  RELEASE_PKG: irma
+  RELEASE_BASE: flu-amd
+  REGISTRY: ghcr.io
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract Changelog
+        id: extract_changelog
+        shell: bash
+        run: |
+          CHANGELOG_CONTENT=$(perl .github/scripts/last_release_notes.pl)
+          echo -e "changelog<<EOF\n$CHANGELOG_CONTENT\nEOF" >> $GITHUB_OUTPUT
+
+      - name: Create Source Code Archive
+        id: create_archive
+        shell: bash
+        run: |
+          ARCHIVE_NAME="$RUNNER_TEMP/${{ env.RELEASE_PKG }}-${{ github.ref_name }}-universal.zip"
+          base=${{ env.RELEASE_BASE }}
+          pkg=${{ env.RELEASE_PKG }}
+
+          ./.package-label.sh \
+          && ./.package-core.sh \
+          && cd .. \
+          && mv $pkg $base \
+          && zip -r "${ARCHIVE_NAME}" ./$base -x "$base/.*" -x "$base/Dockerfile*" \
+          && echo "archive_name=${ARCHIVE_NAME}" >> $GITHUB_OUTPUT \
+          && mv $base $pkg
+
+      - name: Create Release
+        id: create_release
+        shell: bash
+        run: |
+          gh release create "${{ github.ref_name }}" "${{ steps.create_archive.outputs.archive_name }}" \
+          --title "${{ github.ref_name }}" \
+          --notes "${{ steps.extract_changelog.outputs.changelog }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-release-images:
+    name: Build and Push Release Image
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository }}
+          tags: |
+            type=raw,value=latest-${{ matrix.arch }}
+
+      - name: Build and push Docker image
+        id: buildpush
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+
+  create-image-release-manifest:
+    name: Create Release Manifest
+    needs: build-release-images
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+    steps:
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create and push manifests
+        shell: bash
+        run: |
+          REPO=$(echo "${{ env.REGISTRY }}/${{ github.repository }}" | tr '[A-Z]' '[a-z]')
+          VERSION=${REPO}:${{ github.ref_name }}
+          LATEST=${REPO}:latest
+
+          docker manifest create $VERSION --amend ${LATEST}-amd64 --amend ${LATEST}-arm64 \
+            && docker manifest push $VERSION
+
+          docker manifest create $LATEST --amend ${LATEST}-amd64 --amend ${LATEST}-arm64 \
+            && docker manifest push $LATEST
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Push to DockerHub
+        shell: bash
+        run: |
+          GHCR_REPO=$(echo "${{ env.REGISTRY }}/${{ github.repository }}" | tr '[A-Z]' '[a-z]')
+          DOCKERHUB_REPO=cdcgov/$(echo "${{ github.repository }}" | tr '[A-Z]' '[a-z]')
+          VERSION_TAG="${{ github.ref_name }}"
+
+          # Pull manifests from GHCR
+          docker pull ${GHCR_REPO}:${VERSION_TAG}
+          docker pull ${GHCR_REPO}:latest
+
+          # Tag for DockerHub
+          docker tag ${GHCR_REPO}:${VERSION_TAG} ${DOCKERHUB_REPO}:${VERSION_TAG}
+          docker tag ${GHCR_REPO}:latest ${DOCKERHUB_REPO}:latest
+
+          # Push to DockerHub
+          docker push ${DOCKERHUB_REPO}:${VERSION_TAG}
+          docker push ${DOCKERHUB_REPO}:latest

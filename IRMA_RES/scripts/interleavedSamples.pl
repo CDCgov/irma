@@ -42,7 +42,7 @@ use strict;
 use English qw(-no_match_vars);
 use File::Basename;
 use Getopt::Long qw(:config no_auto_abbrev);
-use Carp qw(croak);
+use Carp         qw(croak);
 
 my ( $numberGroups, $fraction, $extension );
 my ( $byReadPairs, $readZipped, $underscoreHeader, $fastQ, $removeEmptyFiles, $silenceSummary ) = ( 0, 0, 0, 0, 0, 0 );

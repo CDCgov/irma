@@ -1,5 +1,9 @@
 #!/usr/bin/env perl
-# Sam Shepard
+# disk_check.pl
+#
+# Samuel S. Shepard
+#
+# Description: check to see if we have enough disk space to process a run
 
 use English qw(-no_match_vars);
 

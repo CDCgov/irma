@@ -1,23 +1,9 @@
 #!/usr/bin/env perl
 # selectSequences - Version 1.1
-# Subsets fasta data using inclusion or exclusion pattern searches (w.r.t. the header).
 #
-# Copyright (C) 2012, Centers for Disease Control & Prevention
-# Author: Samuel S. Shepard (vfn4@cdc.gov)
+# Samuel S. Shepard - 2012
 #
-# GPL version 3
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# Description: Subsets fasta data using inclusion or exclusion pattern searches (w.r.t. the header).
 
 ####################
 # PROCESS parameters

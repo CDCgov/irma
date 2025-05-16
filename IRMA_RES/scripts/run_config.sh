@@ -1,3 +1,9 @@
+# run_config.sh
+#
+# Samuel S. Shepard
+#
+# Description: replicate read configuration for the run
+
 cat << EOF > "$ppath"/logs/${MODULE}-$RUN.sh
 ### BACKGROUND INFO ###
 # $PROGRAM, v$VERSION, $DATE

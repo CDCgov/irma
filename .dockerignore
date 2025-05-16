@@ -1,0 +1,6 @@
+.*
+Dockerfile
+IRMA_RES/ppath/*
+!.dockerclean.sh
+!.package-label.sh
+!.package-core.sh

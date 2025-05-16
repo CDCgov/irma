@@ -1,15 +1,37 @@
 # IRMA Changelog
 
-## v1.3.0 : 2025-05
+## [1.3.0] : 2025-05
+
+### Added
+
+- Created a Dockerfile for building Linux x86_64 and aarch64 containers
+- Added Github actions for generating containers and packaged binaries on release
 
 ### Changes
 
+- IRMA has been relicensed under Apache 2. We have more clearly separated third
+  party software that is distributed with IRMA under other licenses and
+  conditions. See <IRMA_RES/third_party/MANIFEST.md> for more details.
+- LABEL v0.7.0 is now required to run IRMA.
 - IRMA-core is now required to run IRMA and is packaged with it from now on.
-  Certain read preprocessing and merging steps are handled by IRMA-core.
+  Certain read preprocessing and merging steps are now handled by IRMA-core.
 - IRMA now provides automatic core detection for local execution mode.
   `SINGLE_LOCAL_PROC` can be still be used up to the available cores.
   `LOCAL_PROCS_OVERRIDE` can be set to pick any number of cores.
   `DOUBLE_LOCAL_PROC` has been removed or does nothing if set.
+- Third-party binaries have been standardized to newer versions and generally
+  support Linux, macOS on both aarch64 and x86_64. Use of LABEL classification
+  on macOS still requires Rosetta.
+- IRMA's updated SSW (v1.2.5M for modified) supports soft clipping
+- Documentation has been updated for Github
+
+### Fixes
+
+- IRMA no longer uses `which`, which could sometimes cause warnings in some
+  environments.
+- The pinned SSW had a bug that shifted quality scores in reverse-complemented
+  reads that were also clipped by the alignment. The newest version fixes this
+  bug.
 
 ## v1.2.1 : 2024-10
 
@@ -249,3 +271,8 @@
 - changed ADAPTER clipping to masking
 
 ## v0.6.0 : 2016-03-09  (test release)
+
+
+<!-- Versions -->
+
+[1.3.0]: https://github.com/CDCgov/label/compare/v0.2.1...v1.3.0

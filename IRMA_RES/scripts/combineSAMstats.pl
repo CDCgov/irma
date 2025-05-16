@@ -1,6 +1,9 @@
 #!/usr/bin/env perl
 # combineSAMstats.pl
-# Sam Shepard - 2020.10
+#
+# Sam Shepard - 2020
+#
+# Description: combine assembly statistics for iterative final assembly generation
 
 use Storable;
 use POSIX;
