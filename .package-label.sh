@@ -1,6 +1,6 @@
 #!/bin/bash
 
-version=${PINNED_LABEL:-v0.7.0}
+version=$PINNED_LABEL
 archive=label-${version}-universal.zip
 url=https://github.com/CDCgov/label/releases/download/${version}/$archive
 

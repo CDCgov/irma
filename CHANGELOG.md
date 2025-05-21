@@ -1,6 +1,6 @@
 # IRMA Changelog
 
-## [1.3.0] : 2025-05
+## [1.3.0] : 2025-06
 
 ### Added
 
@@ -12,7 +12,7 @@
 - IRMA has been relicensed under Apache 2. We have more clearly separated third
   party software that is distributed with IRMA under other licenses and
   conditions. See <IRMA_RES/third_party/MANIFEST.md> for more details.
-- LABEL v0.7.0 is now required to run IRMA.
+- LABEL v0.7.0+ is now required to run IRMA.
 - IRMA-core is now required to run IRMA and is packaged with it from now on.
   Certain read preprocessing and merging steps are now handled by IRMA-core.
 - IRMA now provides automatic core detection for local execution mode.
@@ -24,14 +24,16 @@
   on macOS still requires Rosetta.
 - IRMA's updated SSW (v1.2.5M for modified) supports soft clipping
 - Documentation has been updated for Github
+- IRMA's QC_log.txt has been completely re-formatted and updated.
 
 ### Fixes
 
 - IRMA no longer uses `which`, which could sometimes cause warnings in some
   environments.
-- The pinned SSW had a bug that shifted quality scores in reverse-complemented
-  reads that were also clipped by the alignment. The newest version fixes this
-  bug.
+- The previously pinned version of SSW had a bug that shifted quality scores in
+  reverse-complemented reads that were also clipped by the alignment (<8%
+  observed). The newest version fixes this bug and another rare alignment
+  correctness error (<0.01%).
 
 ## v1.2.1 : 2024-10
 

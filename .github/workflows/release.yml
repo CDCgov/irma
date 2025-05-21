@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+'
+      - test
 
 permissions: {}
 
@@ -12,6 +13,8 @@ env:
   RELEASE_PKG: irma
   RELEASE_BASE: flu-amd
   REGISTRY: ghcr.io
+  PINNED_LABEL: v0.7.1
+  PINNED_CORE: v0.5.0
 
 jobs:
   create-release:
@@ -27,9 +30,7 @@ jobs:
       - name: Extract Changelog
         id: extract_changelog
         shell: bash
-        run: |
-          CHANGELOG_CONTENT=$(perl .github/scripts/last_release_notes.pl)
-          echo -e "changelog<<EOF\n$CHANGELOG_CONTENT\nEOF" >> $GITHUB_OUTPUT
+        run: perl .github/scripts/last_release_notes.pl > $RUNNER_TEMP/release_notes.md
 
       - name: Create Source Code Archive
         id: create_archive
@@ -51,9 +52,12 @@ jobs:
         id: create_release
         shell: bash
         run: |
+          [[ "${{ github.ref_name }}" == "test" ]] && latest="--latest=false" || latest=
+
           gh release create "${{ github.ref_name }}" "${{ steps.create_archive.outputs.archive_name }}" \
           --title "${{ github.ref_name }}" \
-          --notes "${{ steps.extract_changelog.outputs.changelog }}"
+          --notes-file "$RUNNER_TEMP/release_notes.md" \
+          $latest
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -122,8 +126,10 @@ jobs:
           docker manifest create $VERSION --amend ${LATEST}-amd64 --amend ${LATEST}-arm64 \
             && docker manifest push $VERSION
 
-          docker manifest create $LATEST --amend ${LATEST}-amd64 --amend ${LATEST}-arm64 \
-            && docker manifest push $LATEST
+          if [[ "${{ github.ref_name }}" != "test" ]];then
+            docker manifest create $LATEST --amend ${LATEST}-amd64 --amend ${LATEST}-arm64 \
+              && docker manifest push $LATEST
+          fi
 
       - name: Login to DockerHub
         uses: docker/login-action@v3
@@ -138,14 +144,12 @@ jobs:
           DOCKERHUB_REPO=cdcgov/$(echo "${{ github.repository }}" | tr '[A-Z]' '[a-z]')
           VERSION_TAG="${{ github.ref_name }}"
 
-          # Pull manifests from GHCR
           docker pull ${GHCR_REPO}:${VERSION_TAG}
-          docker pull ${GHCR_REPO}:latest
-
-          # Tag for DockerHub
           docker tag ${GHCR_REPO}:${VERSION_TAG} ${DOCKERHUB_REPO}:${VERSION_TAG}
-          docker tag ${GHCR_REPO}:latest ${DOCKERHUB_REPO}:latest
-
-          # Push to DockerHub
           docker push ${DOCKERHUB_REPO}:${VERSION_TAG}
-          docker push ${DOCKERHUB_REPO}:latest
+
+          if [[ "${{ github.ref_name }}" != "test" ]];then
+            docker pull ${GHCR_REPO}:latest
+            docker tag ${GHCR_REPO}:latest ${DOCKERHUB_REPO}:latest
+            docker push ${DOCKERHUB_REPO}:latest
+          fi

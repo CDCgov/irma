@@ -1,6 +1,6 @@
 #!/bin/bash
-version=${PINNED_CORE:-v0.5.0}
-archive=irma-core-${version}-integrated.zip
+version=$PINNED_CORE
+archive=irma-core-integrated-${version}.zip
 url=https://github.com/CDCgov/irma-core/releases/download/${version}/$archive
 
 cd IRMA_RES/scripts \

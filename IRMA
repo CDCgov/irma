@@ -3,10 +3,10 @@ PROGRAM="Iterative Refinement Meta-Assembler (IRMA)"
 AUTHOR="Samuel S. Shepard"
 EMAIL="sshepard@cdc.gov"
 AFFIL="CDC/DDID/NCIRD/ID"
-DATE="2 May 2025"
-VERSION="1.3.0-rc2"
+DATE="30 May 2025"
+VERSION="1.3.0"
 LICENSE="Licensed under Apache 2 with a Public Domain copyright. This program comes with ABSOLUTELY NO WARRANTY. See notices in <README.md>.
-Distributed, third-party components have non-commercial restrictions. See: <IRMA_RES/third_party/MANIFEST.md>"
+Distributed, third-party components have non-commercial restrictions! See: <IRMA_RES/third_party/MANIFEST.md>"
 
 function print_usage_and_quit() {
     echo -e "$PROGRAM, v$VERSION ($DATE)"
@@ -282,7 +282,7 @@ if [ -n "$EXTERNAL_CONFIG" ]; then
 fi
 
 IRMA_CORE=""
-IRMA_CORE_VERSION="irma-core 0.4.3"
+IRMA_CORE_VERSION="irma-core 0.5.0"
 USE_IRMA_CORE=1
 
 if [ -x "$spath/irma-core_$IRMA_BIN_SUFFIX" ]; then
@@ -407,15 +407,16 @@ SSW_OPTS="-x $SSW_X -m $SSW_M -o $SSW_O -e $SSW_E"
 MM2_OPTS="-A ${MM2_A:-$SSW_M} -B ${MM2_B:-$SSW_X} -O ${MM2_O:-$SSW_O} -E ${MM2_E:-$SSW_E}"
 BLAT_OPTS="-oneOff=1 -minIdentity=${BLAT_IDENTITY:-80} -tileSize=10"
 
-# FASTQ converter/QC options
+# IRMA-core preprocess args
 
-FASTQ_CONV_OPTS=" --canonical-bases --min-read-quality ${QUAL_THRESHOLD:-0}"
-FASTQ_CONV_OPTS+=" --min-length ${MIN_LEN:-0} --keep-header"
-[ "${USE_MEDIAN:-1}" -eq "1" ] && FASTQ_CONV_OPTS+=" --use-median"
+PREPROCESS_OPTS=" --min-read-quality ${QUAL_THRESHOLD:-0}"
+PREPROCESS_OPTS+=" --min-length ${MIN_LEN:-0}"
+[ "${USE_MEDIAN:-1}" -eq "1" ] && PREPROCESS_OPTS+=" --use-median"
 if [ "$PAIRED" -eq "1" -a "$ADAPTER" != "" ]; then
-    FASTQ_CONV_OPTS+=" --clip-adapter $ADAPTER"
-    [ "${ENFORCE_CLIPPED_LENGTH:-1}" -eq "1" ] && FASTQ_CONV_OPTS+=" --enforce-clipped-length"
-    [ "${FUZZY_ADAPTER:-1}" -eq "1" ] && FASTQ_CONV_OPTS+=" --fuzzy-adapter"
+    PREPROCESS_OPTS+=" --adapter-trim $ADAPTER"
+    [ "${FUZZY_ADAPTER:-1}" -eq "1" ] && PREPROCESS_OPTS+=" --a-fuzzy"
+    [ "${ENFORCE_CLIPPED_LENGTH:-1}" -eq "1" ] && PREPROCESS_OPTS+=" --enforce-clipped-length"
+
 fi
 
 export IRMA_QUEUE
@@ -1378,15 +1379,8 @@ function ASSEMBLE_REPORT() {
         done
     fi
 
-    # The SAMTOOLS for MacOS is from 2015 has different usage than the 2021
-    # version for Linux. This can be removed when the Darwin version is upgraded
-    # or obviated.
-    local SAM_SORT=("$SAMTOOLS" sort "${final}.bam" -o "${final}.bam")
-    [[ "$spath/samtools_Darwin" == "$SAMTOOLS" ]] \
-        && SAM_SORT=("$SAMTOOLS" sort "${final}.bam" "${final}")
-
     "$SAMTOOLS" view -bS "${final}.sam" > "${final}.bam" 2> "${final}.bam.log" \
-        && "${SAM_SORT[@]}" >> "${final}.bam.log" 2>&1 \
+        && "$SAMTOOLS" sort "${final}.bam" -o "${final}.bam" >> "${final}.bam.log" 2>&1 \
         && "$SAMTOOLS" index "${final}.bam" >> "${final}.bam.log" 2>&1 \
         && rm "${final}.bam.log" \
         || {
@@ -1729,14 +1723,14 @@ fi
 if [ "$PAIRED" -eq "1" ]; then
     # Note: intentionally splitting the options
     # shellcheck disable=SC2086
-    "$IRMA_CORE" qc-trim-deflate $FASTQ_CONV_OPTS --log-file "$ppath"/QC_log.txt \
+    "$IRMA_CORE" preprocess $PREPROCESS_OPTS --log-file "$ppath"/QC_log.txt \
         "$ppath"/R0.xfl \
         <($CAT < "$LEFT") \
         <($CAT < "$RIGHT") \
         > "$ppath"/R0.fa
 else
     # shellcheck disable=SC2086
-    "$IRMA_CORE" qc-trim-deflate $FASTQ_CONV_OPTS --log-file "$ppath"/QC_log.txt \
+    "$IRMA_CORE" preprocess $PREPROCESS_OPTS --log-file "$ppath"/QC_log.txt \
         "$ppath"/R0.xfl \
         <($CAT < "$LEFT") \
         > "$ppath"/R0.fa

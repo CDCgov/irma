@@ -2,6 +2,34 @@
 
 IRMA is a highly configurable next-generation sequencing assembly pipeline for virus genomes. Seed references are refined and edited as reads are matched, sorted, and aligned across virus genomes or gene segments. More information can be found on the [IRMA website](https://wonder.cdc.gov/amd/flu/irma/) or you can read the [manuscript]. If you use IRMA in a paper, please [cite](CITATION.bib) us.
 
+Visit the [CHANGELOG](CHANGELOG.md) to see recent changes.
+
+## Table of contents
+
+- [IRMA - the Iterative Refinement Meta-Assembler](#irma---the-iterative-refinement-meta-assembler)
+  - [Table of contents](#table-of-contents)
+  - [Usage](#usage)
+  - [Installation and Requirements](#installation-and-requirements)
+    - [Via Archive](#via-archive)
+    - [Via Container](#via-container)
+    - [Via MIRA](#via-mira)
+  - [Third Party Software](#third-party-software)
+    - [In IRMA proper](#in-irma-proper)
+    - [Co-distributed under LABEL](#co-distributed-under-label)
+  - [Contributing](#contributing)
+  - [Semantic Versioning](#semantic-versioning)
+    - [Major](#major)
+    - [Minor](#minor)
+    - [Patch](#patch)
+  - [Notices](#notices)
+    - [Contact Info](#contact-info)
+    - [Public Domain Standard Notice](#public-domain-standard-notice)
+    - [License Standard Notice](#license-standard-notice)
+    - [Privacy Standard Notice](#privacy-standard-notice)
+    - [Contributing Standard Notice](#contributing-standard-notice)
+    - [Records Management Standard Notice](#records-management-standard-notice)
+  - [Additional Standard Notices](#additional-standard-notices)
+
 ## Usage
 
 IRMA takes a `module`-`configuration` name, one or two fastq, and a project name. The project name can be a full path. For example:
@@ -17,7 +45,7 @@ Options:
 
 More usage information: <https://wonder.cdc.gov/amd/flu/irma/run.html>
 
-## INSTALLATION & REQUIREMENTS
+## Installation and Requirements
 
 We recommend a multi-core machine with no fewer than 8 cores (16 or more threads work best) and at least 16 GB of RAM.  IRMA runtime is impacted by the number of cores available on a machine. In addition software requirements include:
 
@@ -40,7 +68,7 @@ Download the latest archive via our [releases page](https://github.com/CDCgov/ir
    ./IRMA FLU tests/test2.fastq.gz test_project
    ```
 
-### Via Docker
+### Via Container
 
 Simply run:
 
@@ -114,7 +142,44 @@ We aggregate and provide [builds of 3rd party software](IRMA_RES/third_party/) f
 
 ## Contributing
 
-New feature integration is mainly being moved to the [irma-core](https://github.com/CDCgov/irma-core) project (support by [Zoe](https://github.com/CDCgov/zoe)), which is a mandatory component of IRMA as of v1.3.0. The IRMA repo itself will continue to address fixes needed for the Perl, R, and BASH code base, albeit some pieces may be obviated in future versions by IRMA-core. This repo will also continue to be responsible for data updates and other module artifacts and for the overall build and release.
+New feature integration is mainly being moved to the [irma-core](https://github.com/CDCgov/irma-core) project (supported by [Zoe](https://github.com/CDCgov/zoe)), which is a mandatory component of IRMA as of v1.3.0. The IRMA repo itself will continue to address fixes needed for the Perl, R, and BASH code base, albeit some pieces may be obviated in future versions by IRMA-core or other changes. This repo will also continue to be responsible for data updates and other module artifacts and for the overall build and release.
+
+## Semantic Versioning
+
+We elect to define semantic versioning for IRMA explicitly. Some of our choices
+may differ from other interpretations of SemVer; our have been made for
+practicality reasons.
+
+### Major
+
+- Breaking changes to the command line interface (CLI)
+- Breaking changes to data output that are typically processed downstream
+  (tables, FASTA, BAM, etc.)
+- Breaking changes to configuration format or changes to a configuration that
+  would cause IRMA to abort
+- Breaking changes to supported data inputs
+
+### Minor
+
+- Adding new, non-breaking features
+- Changes that break undocumented/unintended behaviors for generating data
+  without altering output data formats or structure
+- Changes in figures or figure generation
+- Changes in *module* or *program* configuration defaults
+- Re-mapping or obviating an existing configuration field without breaking
+  anything defined in **Major**.
+- Changes to the structure of saved, intermediate data (as some people rely on
+  this)
+
+### Patch
+
+- Bug fixes
+- Minor performance improvements
+- Non-breaking updates to dependencies
+- Log or error improvements
+- Changes in *config file* defaults
+- Changes in module data meant to correct a performance or correctness issue
+- Removing an experimental configuration field without causing an abort
 
 ## Notices
 
