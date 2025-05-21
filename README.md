@@ -1,5 +1,3 @@
-***This document is under governance review. When the review completes as appropriate per local and agency processes, the project team will be allowed to remove this notice. This material is draft.***
-
 # IRMA - the Iterative Refinement Meta-Assembler
 
 IRMA is a highly configurable next-generation sequencing assembly pipeline for virus genomes. Seed references are refined and edited as reads are matched, sorted, and aligned across virus genomes or gene segments. More information can be found on the [IRMA website](https://wonder.cdc.gov/amd/flu/irma/) or you can read the [manuscript]. If you use IRMA in a paper, please [cite](CITATION.bib) us.
