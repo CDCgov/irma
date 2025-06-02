@@ -18,11 +18,11 @@
 - IRMA now provides automatic core detection for local execution mode.
   `SINGLE_LOCAL_PROC` can be still be used up to the available cores.
   `LOCAL_PROCS_OVERRIDE` can be set to pick any number of cores.
-  `DOUBLE_LOCAL_PROC` has been removed or does nothing if set.
 - Third-party binaries have been standardized to newer versions and generally
   support Linux, macOS on both aarch64 and x86_64. Use of LABEL classification
   on macOS still requires Rosetta.
-- IRMA's updated SSW (v1.2.5M for modified) supports soft clipping
+- IRMA's updated, third-party SSW (v1.2.5M for modified) now provides soft
+  clipping. This can slightly increase the size of intermediate data.
 - Documentation has been updated for Github
 - IRMA's QC_log.txt has been completely re-formatted and updated.
 
@@ -34,6 +34,18 @@
   reverse-complemented reads that were also clipped by the alignment (<8%
   observed). The newest version fixes this bug and another rare alignment
   correctness error (<0.01%).
+
+### Deprecations and Removals
+
+- `DOUBLE_LOCAL_PROC` has been *removed* and will only issue a warning if set.
+- `USE_IRMA_CORE` is *deprecated* and will be removed in a future version.
+
+### New Known Issues
+
+- Some users have noted H1 swine misclassification via BLAT (LABEL can be used
+  as a workaround). We will address this with a reference seed update.
+- Merged-pair BAM files do not show clipping information. We will add clipping
+  information for merged-pair reads in a future release.
 
 ## v1.2.1 : 2024-10
 

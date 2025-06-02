@@ -281,6 +281,8 @@ if [ -n "$EXTERNAL_CONFIG" ]; then
     }
 fi
 
+source "$spath/deprecated_or_removed.sh"
+
 IRMA_CORE=""
 IRMA_CORE_VERSION="irma-core 0.5.0"
 USE_IRMA_CORE=1

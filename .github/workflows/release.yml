@@ -55,7 +55,7 @@ jobs:
           [[ "${{ github.ref_name }}" == "test" ]] && latest="--latest=false" || latest=
 
           gh release create "${{ github.ref_name }}" "${{ steps.create_archive.outputs.archive_name }}" \
-          --title "${{ github.ref_name }}" \
+          --title "IRMA v${{ github.ref_name }}" \
           --notes-file "$RUNNER_TEMP/release_notes.md" \
           $latest
         env:
@@ -141,15 +141,15 @@ jobs:
         shell: bash
         run: |
           GHCR_REPO=$(echo "${{ env.REGISTRY }}/${{ github.repository }}" | tr '[A-Z]' '[a-z]')
-          DOCKERHUB_REPO=cdcgov/$(echo "${{ github.repository }}" | tr '[A-Z]' '[a-z]')
+          DOCKERHUB_REPO=cdcgov/$(echo "${{ github.repository }}" | cut -d'/' -f2 | tr '[A-Z]' '[a-z]')
           VERSION_TAG="${{ github.ref_name }}"
 
-          docker pull ${GHCR_REPO}:${VERSION_TAG}
-          docker tag ${GHCR_REPO}:${VERSION_TAG} ${DOCKERHUB_REPO}:${VERSION_TAG}
-          docker push ${DOCKERHUB_REPO}:${VERSION_TAG}
+          [[ "${{ github.ref_name }}" == "test" ]] && DOCKERHUB_REPO+="-dev"
+
+          echo "Copying ${GHCR_REPO}:${VERSION_TAG} to ${DOCKERHUB_REPO}:${VERSION_TAG}"
+          docker buildx imagetools create ${GHCR_REPO}:${VERSION_TAG} --tag ${DOCKERHUB_REPO}:${VERSION_TAG}
 
           if [[ "${{ github.ref_name }}" != "test" ]];then
-            docker pull ${GHCR_REPO}:latest
-            docker tag ${GHCR_REPO}:latest ${DOCKERHUB_REPO}:latest
-            docker push ${DOCKERHUB_REPO}:latest
+            echo "Copying ${GHCR_REPO}:latest to ${DOCKERHUB_REPO}:latest"
+            docker buildx imagetools create ${GHCR_REPO}:latest --tag ${DOCKERHUB_REPO}:latest
           fi
