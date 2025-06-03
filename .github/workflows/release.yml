@@ -13,8 +13,6 @@ env:
   RELEASE_PKG: irma
   RELEASE_BASE: flu-amd
   REGISTRY: ghcr.io
-  PINNED_LABEL: v0.7.1
-  PINNED_CORE: v0.5.0
 
 jobs:
   create-release:

@@ -14,3 +14,4 @@ if [ -d "LABEL_RES/third_party" ]; then
 fi
 
 rm IRMA_RES/scripts/irma-core_*{Darwin,$kill_arch}
+ln -s "IRMA_RES/scripts/irma-core_Linux_$(uname -m)" irma-core

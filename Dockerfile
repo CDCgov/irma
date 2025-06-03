@@ -1,15 +1,8 @@
 FROM debian:bookworm-slim AS builder
 
-
 RUN apt-get update --allow-releaseinfo-change --fix-missing \
     && DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y wget git unzip zip ca-certificates \
     && update-ca-certificates
-
-
-ENV PINNED_LABEL=v0.7.1
-ENV PINNED_CORE=v0.5.0
-
-ARG core_branch
 
 WORKDIR /app
 COPY . .

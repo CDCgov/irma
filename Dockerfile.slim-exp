@@ -1,5 +1,4 @@
 # Smaller, but not as well tested
-
 FROM redhat/ubi8 AS builder1
 
 SHELL ["/bin/bash", "-c"]
@@ -55,10 +54,6 @@ RUN yum update \
     && yum install -y wget git unzip zip \
     && yum update -y ca-certificates \
     && update-ca-trust
-
-
-ENV PINNED_LABEL=v0.7.1
-ENV PINNED_CORE=v0.5.0
 
 ARG core_branch
 
