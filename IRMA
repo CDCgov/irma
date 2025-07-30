@@ -167,9 +167,10 @@ elif command -v "LABEL" > /dev/null 2>&1; then
     LABEL=$(command -v LABEL)
 elif [ -x "$bpath/../label/LABEL" ]; then
     LABEL="$(dirname "$bpath")/label/LABEL"
+else
+    check_prgm LABEL
 fi
 
-check_prgm "$LABEL"
 check_prgm Rscript
 check_prgm perl
 
