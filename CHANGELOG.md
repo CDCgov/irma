@@ -1,5 +1,11 @@
 # IRMA Changelog
 
+## [1.X.Y]: TBD
+
+### Fixes
+
+- `LOCAL_PROCS_OVERRIDE` will now be sanitized if passed via an external config
+
 ## [1.3.0] : 2025-06
 
 ### Added

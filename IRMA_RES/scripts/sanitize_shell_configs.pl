@@ -8,7 +8,7 @@
 
 use strict;
 use warnings;
-use Carp    qw(croak);
+use Carp qw(croak);
 use English qw(-no_match_vars);
 
 my $bool      = '[01]';
@@ -112,7 +112,8 @@ my %valid_config = (
                      SSW_X                    => $integer,
                      TMP                      => $path,
                      USE_MEDIAN               => $bool,
-                     USE_IRMA_CORE            => $bool
+                     USE_IRMA_CORE            => $bool,
+                     LOCAL_PROCS_OVERRIDE     => $integer
 );
 
 open( my $CONFIG, '<', $ARGV[0] ) or die "Error: cannot open file '$ARGV[0]' for reading. See: $OS_ERROR\n";
