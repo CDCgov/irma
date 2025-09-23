@@ -5,6 +5,7 @@
 ### Fixes
 
 - `LOCAL_PROCS_OVERRIDE` will now be sanitized if passed via an external config
+- Some rows from the run_info log used spaces as a delimiter incorrectly.
 
 ## [1.3.0] : 2025-06
 
