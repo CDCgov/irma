@@ -14,3 +14,4 @@ IRMA_RES/modules/*/*/*debug*
 IRMA_RES/modules/FLU/config/ref
 ._*
 IRMA_RES/.commit
+IRMA_RES/scripts/irma-core_*
