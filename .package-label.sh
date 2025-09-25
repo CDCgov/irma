@@ -1,6 +1,6 @@
 #!/bin/bash
 
-default_label_version=v0.7.1
+default_label_version=v0.7.2
 
 version=${PINNED_LABEL:-$default_label_version}
 archive=label-${version}-universal.zip

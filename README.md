@@ -125,7 +125,6 @@ We aggregate and provide [builds of 3rd party software](IRMA_RES/third_party/) f
 - [GNU Parallel]
 - [SHOGUN] version 1.1.0 (2.1+ is not compatible)
   - Artifacts: `shogun` (cmdline_static)
-  - Exception: apple/arm64 requires **Rosetta2**
   - Purpose: executes the SVM decision phase.
   - License: [GPL v3]
 - [SAM] version 3.5
