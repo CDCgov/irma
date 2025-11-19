@@ -3,16 +3,16 @@ FROM redhat/ubi8 AS builder1
 
 SHELL ["/bin/bash", "-c"]
 
-RUN yum update \
+RUN yum update -y \
     && yum install -y make gcc gcc-c++ gcc-gfortran perl diffutils \
     zlib-devel bzip2-devel xz-devel pcre2-devel libcurl-devel \
     wget
 
 WORKDIR /buildr
 
-RUN wget https://cran.r-project.org/src/base/R-4/R-4.5.0.tar.gz && tar -xzf R-4.5.0.tar.gz
+RUN wget https://cran.r-project.org/src/base/R-4/R-4.5.2.tar.gz && tar -xzf R-4.5.2.tar.gz
 
-WORKDIR /buildr/R-4.5.0
+WORKDIR /buildr/R-4.5.2
 
 RUN ./configure --prefix=/usr/local --with-readline=no --with-x=no \
     --without-libdeflate-compression --without-recommended-packages --without-tcltk \
@@ -35,7 +35,7 @@ FROM redhat/ubi8 AS builder2
 WORKDIR /micro
 
 # Install all dependencies in /micro
-RUN yum update \
+RUN yum update -y \
     && yum install \
     --installroot /micro \
     --releasever 8 \
@@ -50,7 +50,7 @@ RUN rm -rf /micro/lib64/python3.*
 
 FROM redhat/ubi8 AS builder3
 
-RUN yum update \
+RUN yum update -y \
     && yum install -y wget git unzip zip \
     && yum update -y ca-certificates \
     && update-ca-trust
