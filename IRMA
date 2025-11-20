@@ -1625,15 +1625,15 @@ function doPostProcessing() {
     )" ] && mv "$ppath"/*.txt "$ppath"/tables
 
     rmglob "$ppath"/R0.xfl "$matchp"/R*.nomatch "$refp"/R*.refs
-    mv "$refp" "$ppath"/intermediate/0-ITERATIVE-REFERENCES
-    mv "$matchp" "$ppath"/intermediate/1-MATCH_$MATCH_PROG
-    mv "$sortp" "$ppath"/intermediate/2-SORT_$SORT_PROG
-    mv "$alignp" "$ppath"/intermediate/3-ALIGN_$ALIGN_PROG
-    mv "$assemp" "$ppath"/intermediate/4-ASSEMBLE_$ASSEM_PROG
+    mv "$refp" "$ppath/intermediate/0-ITERATIVE-REFERENCES"
+    mv "$matchp" "$ppath/intermediate/1-MATCH_$MATCH_PROG"
+    mv "$sortp" "$ppath/intermediate/2-SORT_$SORT_PROG"
+    mv "$alignp" "$ppath/intermediate/3-ALIGN_$ALIGN_PROG"
+    mv "$assemp" "$ppath/intermediate/4-ASSEMBLE_$ASSEM_PROG"
 }
 
 function setPrograms() {
-    local i=$(($R - 1))
+    local i=$((R - 1))
 
     BLAT_OPTS="-oneOff=1 -minIdentity=${BLAT_IDENTITY:-80} -tileSize=10"
     if [ -z "${MATCH_PROGS[$i]}" ]; then
@@ -1642,7 +1642,7 @@ function setPrograms() {
         MATCH_PROG=${MATCH_PROGS[$i]}
     else
         MATCH_PROG="BLAT"
-        MATCH_PROGS[$i]="BLAT"
+        MATCH_PROGS[i]="BLAT"
         time_stamp "match program '${MATCH_PROGS[$i]}' requested but not found. Using $MATCH_PROG"
     fi
 
@@ -1652,7 +1652,7 @@ function setPrograms() {
         SORT_PROG=${SORT_PROGS[$i]}
     else
         SORT_PROG="BLAT"
-        SORT_PROGS[$i]="BLAT"
+        SORT_PROGS[i]="BLAT"
         time_stamp "sort program '${SORT_PROGS[$i]}' requested but not found. Using $SORT_PROG"
     fi
 
@@ -1662,19 +1662,19 @@ function setPrograms() {
         ALIGN_PROG=${ALIGN_PROGS[$i]}
     else
         ALIGN_PROG="SAM"
-        ALIGN_PROGS[$i]="SAM"
+        ALIGN_PROGS[i]="SAM"
         time_stamp "align program '${ALIGN_PROGS[$i]}' requested but not found. Trying $ALIGN_PROG"
     fi
 
     # check for profiles
-    if [ "$phmms" == "none" -a "$ALIGN_PROG" == "SAM" ]; then
+    if [[ "$phmms" == "none" && "$ALIGN_PROG" == "SAM" ]]; then
         time_stamp "align program is SAM but cannot find pHMM directory. Using BLAT"
         ALIGN_PROG="BLAT"
-        ALIGN_PROGS[$i]="BLAT"
+        ALIGN_PROGS[i]="BLAT"
     fi
 
     if [ "$ASSEM_PROG" == "MINIMAP2" ]; then
-        if [ "$(perl -se '$t=shift;print ($t != 1.0 ? 1 : 0)' ${MIN_FA:-0})" -eq "1" ]; then
+        if [ "$(perl -se '$t=shift;print ($t != 1.0 ? 1 : 0)' "${MIN_FA:-0}")" -eq "1" ]; then
             time_stamp "$ASSEM_PROG may not be used with alternative consensus. Turning it off."
             MIN_FA=1.0
         fi
@@ -1692,7 +1692,7 @@ function setPrograms() {
         DEL_TYPE=${DEL_TYPES[$i]}
     else
         DEL_TYPE="NNN"
-        DEL_TYPES[$i]="NNN"
+        DEL_TYPES[i]="NNN"
         time_stamp "deletion type '${DEL_TYPES[$i]}' requested but not found. Trying $DEL_TYPE"
     fi
 }
@@ -1702,7 +1702,8 @@ time_stamp "started run '$RUN'"
 [ -r "$mpath/primers" ] && time_stamp "NOTE: primer-trimmed reads expected as input for amplicon sequencing"
 
 # optionally check for disk space
-if [ "${ALLOW_DISK_CHECK:-1}" -eq "1" -a "$CAT" = "zcat" ]; then
+# assumes a zipped input
+if [ "${ALLOW_DISK_CHECK:-1}" -eq "1" ]; then
     MSG="$("$spath"/disk_check.pl "$ppath" "$LEFT" "$RIGHT")"
     STATUS=$?
     if [ "$STATUS" -eq "0" ]; then
@@ -1725,7 +1726,7 @@ fi
 time_stamp 'pre-processed'
 
 # Turn off paired-end read merging.
-if [ "$PAIRED" -eq "1" -a "$NO_MERGE" -eq "1" ]; then
+if [[ "$PAIRED" -eq "1" && "$NO_MERGE" -eq "1" ]]; then
     time_stamp "WARNING, setting NO_MERGE for PE reads. Coverage depth will appear inflated."
     PAIRED=0
 fi
@@ -1740,29 +1741,28 @@ fi
 setPrograms # set the programs
 
 # Guard the final assembler program
-if [ "$ASSEM_PROG" != "SSW" -a "$ASSEM_PROG" != "MINIMAP2" ]; then
+if [[ "$ASSEM_PROG" != "SSW" && "$ASSEM_PROG" != "MINIMAP2" ]]; then
     time_stamp "final assembly program '$ASSEM_PROG' requested but not found. Using SSW"
     ASSEM_PROG="SSW"
 fi
 
-if [ "$NO_SORT_REFS" -eq "1" ]; then
+if [[ "$ASSEM_REF" -eq "1" && "$NO_SORT_REFS" -eq "1" ]]; then
     "$spath"/partitionByField.pl -H -X .ref "$REF_SET" "$refp"/R0-
-    cat "$refp"/R0-*.ref > "$refp"/R0.refs
     time_stamp 'using supplied reference set as-is'
 elif [ "$ASSEM_REF" -eq "1" ]; then
     mkdir "$sortp"/R0
     # Sort out the references
     if [ "$SORT_PROG" == "LABEL" ]; then
-        doLABEL "$REF_SET" $MODULE $LABEL_MODULE "$sortp"/R0 $LIMIT_LABEL
+        doLABEL "$REF_SET" "$MODULE" "$LABEL_MODULE" "$sortp"/R0 "$LIMIT_LABEL"
         cat "$sortp"/R0/SORTED_*.tab > "$sortp"/R0/SORT_result.txt 2> /dev/null
     elif [ "$SORT_PROG" == "BLAT" ]; then
         if [ -r "$DEF_SET" ]; then
-            doBLAT "$DEF_SET" "$REF_SET" R0 $MODULE "$sortp"/R0 $SORT_PROC $LIMIT_BLAT
-            cat "$sortp"/R0/R0-${MODULE}_????.class > "$sortp"/R0/SORT_result.txt
-            rmglob "$sortp"/R0/R0-${MODULE}_????.class
+            doBLAT "$DEF_SET" "$REF_SET" R0 "$MODULE" "$sortp"/R0 "$SINGLE_LOCAL_PROC" "$LIMIT_BLAT"
+            cat "$sortp/R0/R0-${MODULE}"_????.class > "$sortp"/R0/SORT_result.txt
+            rmglob "$sortp/R0/R0-${MODULE}"_????.class
             if [ ! -s "$sortp/R0/SORT_result.txt" ]; then
                 time_stamp "BLAT could not identify any references, trying LABEL."
-                doLABEL "$REF_SET" $MODULE $LABEL_MODULE "$sortp"/R0 $LIMIT_LABEL
+                doLABEL "$REF_SET" "$MODULE" "$LABEL_MODULE" "$sortp"/R0 "$LIMIT_LABEL"
                 cat "$sortp"/R0/SORTED_*.tab > "$sortp"/R0/SORT_result.txt
                 [ ! -s "$sortp/R0/SORT_result.txt" ] && die 'LABEL could not identify the custom reference either, exiting'
             fi
@@ -1774,8 +1774,14 @@ elif [ "$ASSEM_REF" -eq "1" ]; then
     options=""
     [ "$SORT_PROG" == "BLAT" ] && options+=" -G"
     [ "$BAN_GROUPS" != "" ] && options+=" -B $BAN_GROUPS"
+
+    # Note: intentionally splitting the options
+    # shellcheck disable=SC2086
     "$spath"/parseSORTresults.pl "$sortp"/R0/SORT_result.txt "$REF_SET" "$refp"/R0 $options
     cd "$sortp"/R0
+
+    # Note: intentionally splitting the options
+    # shellcheck disable=SC2086
     tar -cf - SORT_result.txt | "$ZIP" $Z_OPTS - > "$sortp"/R0.tar.gz
     cd - > /dev/null
     rm -rf "$sortp"/R0
@@ -1787,7 +1793,7 @@ elif [ "$ASSEM_REF" -eq "1" ]; then
         for fasta in "$refp"/R0-*.fa; do
             name=$(basename "$fasta" .fa)
             gene=${name#*-}
-            "$spath"/ordinalHeaders.pl -N "$gene" "$fasta" > "$refp"/${name}.ref
+            "$spath"/ordinalHeaders.pl -N "$gene" "$fasta" > "$refp/${name}.ref"
         done
         cat "$refp"/R0-*.ref > "$refp"/R0.refs
         rmglob "$refp"/R0-*.fa
@@ -1807,17 +1813,12 @@ fi
 ln "$ppath"/R0.fa "$ppath"/R0.fa.bak
 ln "$ppath"/R0.xfl "$ppath"/R0.xfl.bak
 QUERY_SET="$ppath"/R0.fa
-while [ $R -le $MAX_ROUNDS ]; do
+for ((R = 1; R <= MAX_ROUNDS; R++)); do
     setPrograms
     doRound "$QUERY_SET" "R$R" || break
     MIN_RC=1
     MIN_RP=1
-
-    if [ -s "$QUERY_SET" ]; then
-        ((R++))
-    else
-        break
-    fi
+    [ ! -s "$QUERY_SET" ] && break
 done
 doPostProcessing || die 'aborted'
 
@@ -1853,10 +1854,10 @@ if [ -s "$ppath/residual_assembly/R0.fa" ]; then
 fi
 
 # Do secondary assembly if able
-if [ "${DO_SECONDARY:-0}" -eq "1" -a -n "$(
+if [[ "${DO_SECONDARY:-0}" -eq "1" && -n "$(
     shopt -s nullglob
     echo "$original_path"/residual_assembly/*.fasta
-)" ]; then
+)" ]]; then
     time_stamp "performing SECONDARY assembly"
     ppath="$original_path"/secondary_assembly
     mkdir "$ppath"
@@ -1870,11 +1871,11 @@ if [ "${DO_SECONDARY:-0}" -eq "1" -a -n "$(
     MIN_RC=${MIN_RC_RESIDUAL:-150}
     BLAT_IDENTITY=96
     MATCH_PROG=BLAT
-    MATCH_PROGS=($MATCH_PROG)
+    MATCH_PROGS=(BLAT)
     SORT_PROG=BLAT
-    SORT_PROGS=($SORT_PROG)
+    SORT_PROGS=(BLAT)
     ALIGN_PROG=BLAT
-    ALIGN_PROGS=($ALIGN_PROG)
+    ALIGN_PROGS=(BLAT)
     SKIP_E=1
     REF_SET="$ppath"/GENES/R0.refs
     QUERY_SET="$ppath"/R0.fa
