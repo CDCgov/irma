@@ -1,6 +1,6 @@
 # IRMA Changelog
 
-## [1.3.2]: TBD
+## [1.3.2]: 2026-03-27
 
 ## Changes
 
@@ -11,6 +11,10 @@
 
 - `NO_SORT_REFS` is now only allowed for `ASSEM_REF` as intended.
 - Disk check now properly evaluates if a `gz` file is used.
+
+### Experimental
+
+- Added `CORE` as an experimental option to `ASSEM_PROG`.
 
 ## [1.3.1]: 2025-09-26
 

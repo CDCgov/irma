@@ -1003,6 +1003,58 @@ EOL
 }
 
 # shellcheck disable=SC2317,SC2329
+function ASSEM_RUN_CORE() {
+    local iter=$1
+    local gene=$2
+    local ref=$3
+    local procs=$4
+    local doGrid=$5
+    local script="$assemp"/F${iter}-${gene}
+
+    local options=""
+    [ "$ASSEM_REF" -eq "1" ] && options+=" -G"
+    [ "${SILENCE_COMPLEX_INDELS:-0}" -eq "1" ] && options+=" -S"
+    [[ "$CORE_METHOD" == "3pass" ]] && CORE_METHOD="--method 3pass" || CORE_METHOD=""
+
+    ###
+    cat > "${script}.sh" << EOL
+#!/bin/bash
+LANG=$LANG
+shopt -u nocaseglob;shopt -u nocasematch
+
+if [ "\$#" -eq "1" ];then
+	ID=\$(printf %04d \$1)
+else
+	ID=\$(printf %04d \$SGE_TASK_ID)
+fi
+FASTQ="$assemp"/${gene}_\$ID.fastq
+SAM="$assemp"/F${iter}-${gene}-\$ID.sam
+STAT="$assemp"/F${iter}-${gene}-\$ID.sto
+
+"$IRMA_CORE" aligner --profile-from-ref --single-thread --header --ignore-n --best-match $CORE_METHOD --rev-comp $SSW_OPTS "$ref" "\$FASTQ" --output "\$SAM"
+# Winnowing is not required
+"$spath"/samStats.pl $options "$ref" "\$SAM" "\$STAT"
+EOL
+    ###
+
+    # ASSEMBLE on grid vs local
+    chmod 755 "${script}.sh"
+    if [ "$doGrid" -eq "1" ]; then
+        # shellcheck disable=SC2086
+        qsub $IRMA_QUEUE -t "1-$procs:1" -N "F${iter}-$gene" -sync y -wd "$assemp" -j y -o "${script}.o" "${script}.sh" > /dev/null 2>&1 \
+            && rm "${script}.o" \
+            || {
+                time_stamp "qsub of 'F${iter}-$gene' failed. Switching to master node."
+                "$PARALLEL" --nn --workdir "$ppath" -j "$SINGLE_LOCAL_PROC" -q "$BASH" "${script}.sh" {} ::: $(seq "$procs")
+            }
+    else
+        "$PARALLEL" --nn --workdir "$ppath" -j "$procs" -q "$BASH" "${script}.sh" {} ::: $(seq "$procs")
+    fi
+    "$spath"/catSAMfiles.pl "$assemp/F${iter}-${gene}-"*.sam > "$assemp/F${iter}-$gene.sam"
+    rm "${script}.sh"
+}
+
+# shellcheck disable=SC2317,SC2329
 function ASSEM_RUN_MM2() {
     local iter=$1
     local gene=$2
@@ -1228,6 +1280,9 @@ function REFINE_ASSEMBLY_CALL_VARIANTS() {
     elif [ "$ASSEM_PROG" == "MINIMAP2" ]; then
         local ASSEM_FUNCTION="ASSEM_RUN_MM2"
         local ASSEM_SCORE="ASSEM_SCORE_MM2"
+    elif [ "$ASSEM_PROG" == "CORE" ]; then
+        local ASSEM_FUNCTION="ASSEM_RUN_CORE"
+        local ASSEM_SCORE="ASSEM_SCORE_SSW"
     else
         return 1
     fi
@@ -1772,9 +1827,11 @@ fi
 setPrograms # set the programs
 
 # Guard the final assembler program
-if [[ "$ASSEM_PROG" != "SSW" && "$ASSEM_PROG" != "MINIMAP2" ]]; then
+if [[ "$ASSEM_PROG" != "SSW" && "$ASSEM_PROG" != "MINIMAP2" && "$ASSEM_PROG" != "CORE" ]]; then
     time_stamp "final assembly program '$ASSEM_PROG' requested but not found. Using SSW"
     ASSEM_PROG="SSW"
+elif [[ "$ASSEM_PROG" == "CORE" ]]; then
+    warn "final assembly program '$ASSEM_PROG' is experimental and may be removed in the future."
 fi
 
 if [[ "$ASSEM_REF" -eq "1" && "$NO_SORT_REFS" -eq "1" ]]; then

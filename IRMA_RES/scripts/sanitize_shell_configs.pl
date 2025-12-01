@@ -8,7 +8,7 @@
 
 use strict;
 use warnings;
-use Carp qw(croak);
+use Carp    qw(croak);
 use English qw(-no_match_vars);
 
 my $bool      = '[01]';
@@ -26,11 +26,12 @@ my %valid_config = (
                      ALLOW_DISK_CHECK         => $bool,
                      ALLOW_TMP                => $bool,
                      ASSEM_PROC               => $integer,
-                     ASSEM_PROG               => 'SSW|MINIMAP2',
+                     ASSEM_PROG               => 'SSW|MINIMAP2|CORE',
                      ASSEM_REF                => $bool,
                      AUTO_F                   => $bool,
                      BAN_GROUPS               => '\w+',
                      BLAT_IDENTITY            => $integer,
+                     CORE_METHOD              => '[a-z0-9]+',
                      CUSTOM_REF_FILE          => $path,
                      DEF_SET                  => $path,
                      DEL_T                    => $float,
@@ -112,7 +113,6 @@ my %valid_config = (
                      SSW_X                    => $integer,
                      TMP                      => $path,
                      USE_MEDIAN               => $bool,
-                     USE_IRMA_CORE            => $bool,
                      LOCAL_PROCS_OVERRIDE     => $integer
 );
 
