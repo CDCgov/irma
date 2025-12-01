@@ -1,5 +1,12 @@
 # IRMA Changelog
 
+## [1.4.0]: TBD
+
+### Fixes
+
+- `NO_SORT_REFS` is now only allowed for `ASSEM_REF` as intended.
+- Disk check now properly evaluates if a `gz` file is used.
+
 ## [1.3.1]: 2025-09-26
 
 ### Fixes
@@ -302,5 +309,6 @@
 
 <!-- Versions -->
 
+[1.3.1]: https://github.com/CDCgov/label/compare/v0.3.1...v1.4.0
 [1.3.1]: https://github.com/CDCgov/label/compare/v0.3.0...v1.3.1
 [1.3.0]: https://github.com/CDCgov/label/compare/v0.2.1...v1.3.0
