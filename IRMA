@@ -274,7 +274,7 @@ fi
 source "$spath/deprecated_or_removed.sh"
 
 IRMA_CORE=""
-IRMA_CORE_VERSION="irma-core 0.6.2"
+IRMA_CORE_VERSION="irma-core 0.9.1"
 # shellcheck disable=SC2034
 USE_IRMA_CORE=1
 
@@ -1339,7 +1339,7 @@ function ASSEMBLE_REPORT() {
             return 1
         }
     # shellcheck disable=SC2086 ## Note: PHASE_DISTANCE is optional and experimental ##
-    "$spath"/addPhaseField.pl "${final}-variants.txt" <("$spath"/phases.R "${final}-EXPENRD.sqm" $PHASE_DISTANCE)
+    "$IRMA_CORE" phase "${final}-variants.txt" "${final}-EXPENRD.sqm" ${PHASE_DISTANCE:+-t "$PHASE_DISTANCE"}
     if [ "$n" -gt "1" ]; then
         "$RSCRIPT" --vanilla "$spath"/coverageDiagram.R "$RUN" "$gene" "$final-coverage.txt" "$final-variants.txt" "$final-pairingStats.txt" "$final-coverageDiagram.pdf" > /dev/null 2>&1
         if [ "$n" -gt "2" ]; then

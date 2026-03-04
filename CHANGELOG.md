@@ -1,6 +1,11 @@
 # IRMA Changelog
 
-## [1.4.0]: TBD
+## [1.3.2]: TBD
+
+## Changes
+
+- IRMA-core pinned to v0.9.1 which integrates a new `phase` process to replace
+  the R scripts
 
 ### Fixes
 
@@ -309,7 +314,7 @@
 
 <!-- Versions -->
 
-[1.4.0]: https://github.com/CDCgov/irma/compare/v1.3.1...v1.4.0
+[1.3.2]: https://github.com/CDCgov/irma/compare/v1.3.1...v1.3.2
 [1.3.1]: https://github.com/CDCgov/irma/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/CDCgov/irma/compare/v1.2.1...v1.3.0
 

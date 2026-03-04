@@ -7,7 +7,7 @@
 
 args <- commandArgs(TRUE)
 if (length(args) != 6) {
-    cat("Usage:\n\tRscript ./sqmHeatmap.R <run> <gene> <COVG.txt> <VARS.txt> <STATS.txt> <out.pdf>\n")
+    cat("Usage:\n\tRscript ./coverageDiagram.R <run> <gene> <COVG.txt> <VARS.txt> <STATS.txt> <out.pdf>\n")
     q()
 }
 
