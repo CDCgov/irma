@@ -20,8 +20,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
       - uses: actions/checkout@v6
 
@@ -53,7 +51,7 @@ jobs:
           [[ "${{ github.ref_name }}" == "test" ]] && latest="--latest=false" || latest=
 
           gh release create "${{ github.ref_name }}" "${{ steps.create_archive.outputs.archive_name }}" \
-          --title "IRMA v${{ github.ref_name }}" \
+          --title "IRMA ${{ github.ref_name }}" \
           --notes-file "$RUNNER_TEMP/release_notes.md" \
           $latest
         env:
@@ -91,7 +89,7 @@ jobs:
 
       - name: Extract metadata for Docker
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ github.repository }}
           tags: |

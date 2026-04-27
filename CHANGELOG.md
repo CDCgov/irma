@@ -2,7 +2,7 @@
 
 ## [1.3.2]: 2026-03-27
 
-## Changes
+### Changes
 
 - IRMA-core pinned to v0.9.1 which integrates a new `phase` process to replace
   the relevant R/Perl scripts
