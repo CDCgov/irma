@@ -3,8 +3,8 @@ PROGRAM="Iterative Refinement Meta-Assembler (IRMA)"
 AUTHOR="Samuel S. Shepard"
 EMAIL="sshepard@cdc.gov"
 AFFIL="CDC/DDID/NCIRD/ID"
-DATE="1 Dec 2025"
-VERSION="1.4.0-dev"
+DATE="27 Apr 2026"
+VERSION="1.3.2"
 LICENSE="Licensed under Apache 2 with a Public Domain copyright. This program comes with ABSOLUTELY NO WARRANTY. See notices in <README.md>.
 Distributed, third-party components have non-commercial restrictions! See: <IRMA_RES/third_party/MANIFEST.md>"
 

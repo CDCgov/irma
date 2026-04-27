@@ -11,7 +11,9 @@ RUN ./.package-label.sh \
     && ./.dockerclean.sh \
     && rm ./.*.sh
 
-FROM debian:bookworm-slim AS base
+FROM dhi.io/debian-base:bookworm AS base
+
+USER 0
 
 ARG APT_MIRROR_NAME=
 RUN if [ -n "$APT_MIRROR_NAME" ]; then sed -i.bak -E '/security/! s^https?://.+?/(debian|ubuntu)^http://'"$APT_MIRROR_NAME"'/\1^' /etc/apt/sources.list && grep '^deb' /etc/apt/sources.list; fi
@@ -23,6 +25,8 @@ RUN apt-get update --allow-releaseinfo-change --fix-missing \
 
 WORKDIR /app
 COPY  --from=builder /app /app
+
+USER nonroot
 
 ENV PATH="/app:${PATH}"
 WORKDIR /data

@@ -6,6 +6,7 @@
 
 - IRMA-core pinned to v0.9.1 which integrates a new `phase` process to replace
   the R scripts
+- Dockerfile uses a hardened, rootless image (requires dhi.io login)
 
 ### Fixes
 
