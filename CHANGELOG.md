@@ -5,13 +5,15 @@
 ## Changes
 
 - IRMA-core pinned to v0.9.1 which integrates a new `phase` process to replace
-  the R scripts
+  the relevant R/Perl scripts
 - Dockerfile uses a hardened, rootless image (requires dhi.io login)
 
 ### Fixes
 
 - `NO_SORT_REFS` is now only allowed for `ASSEM_REF` as intended.
 - Disk check now properly evaluates if a `gz` file is used.
+- Fixes warnings for sparse PE samples where the partitions were less than pairs
+  of data
 
 ### Experimental
 

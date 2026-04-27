@@ -1359,17 +1359,20 @@ function ASSEMBLE_REPORT() {
     local final="$ppath"/$gene
     local fastq="$assemp"/$gene.fastq
     local size=$(($(wc -l < "$fastq") / 4))
+    local effective_size=$size
     local doGrid=0
     local procs=0
 
+    # Accounts for pairs instead of records when data is sparse for PE
+    [ "$PAIRED" -eq "1" ] && effective_size=$((size / 2))
+
     # SCOPE
-    if [[ "$size" -gt "$LIMIT_SSW" && "$GRID_ON" -eq "1" ]]; then
+    if [[ "$size" -gt "$LIMIT_SSW" && "$effective_size" -gt "$ASSEM_PROC" && "$GRID_ON" -eq "1" ]]; then
         procs=$ASSEM_PROC
         doGrid=1
     else
         doGrid=0
-        #if [ "$size" -gt "$SINGLE_LOCAL_PROC" -a "$ASSEM_PROG" != "MINIMAP2" ];then
-        if [ "$size" -gt "$SINGLE_LOCAL_PROC" ]; then
+        if [ "$effective_size" -gt "$SINGLE_LOCAL_PROC" ]; then
             procs=$SINGLE_LOCAL_PROC
         else
             procs=1
