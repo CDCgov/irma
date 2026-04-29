@@ -3,5 +3,5 @@ if [ -n "$DOUBLE_LOCAL_PROC" ]; then
 fi
 
 if [ -n "$USE_IRMA_CORE" ]; then
-    echo "IRMA WARNING: 'USE_IRMA_CORE' is set. This experimental variable will be removed in a future version."
+    echo "IRMA WARNING: 'USE_IRMA_CORE' is set. This experimental variable has been removed."
 fi

@@ -1,0 +1,28 @@
+stages:
+  - prepare
+  - test
+
+image: ghcr.io/cdcgov/irma/test-env:latest
+
+cache: {}
+
+package:
+  stage: prepare
+  tags:
+    - docker
+  script:
+    - ./.package-core.sh
+    - ./.package-label.sh
+  artifacts:
+    paths:
+      - IRMA_RES/
+      - LABEL_RES/
+      - LABEL
+    expire_in: 12 hour
+
+irma-test:
+  stage: test
+  tags:
+    - docker
+  script:
+    - .tests/smoketest.sh

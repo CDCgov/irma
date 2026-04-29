@@ -1,0 +1,44 @@
+FROM debian:bookworm-slim AS builder
+
+RUN apt-get update --allow-releaseinfo-change --fix-missing \
+    && DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y \
+        wget git unzip zip ca-certificates \
+        g++ make bison \
+    && update-ca-certificates
+
+WORKDIR /build
+
+RUN wget -O bash.tar.gz "https://ftp.gnu.org/gnu/bash/bash-3.2.57.tar.gz" \
+    && BASH_SHA256="3fa9daf85ebf35068f090ce51283ddeeb3c75eb5bc70b1a4a7cb05868bfe06a4" \
+    && echo "${BASH_SHA256} bash.tar.gz" | sha256sum -c - \
+    && tar xzf bash.tar.gz --strip-components=1
+
+RUN echo 'ac_cv_func_working_mktime=no' > config.cache \
+    && ./configure --cache-file=config.cache --build $(uname -m)-unknown-linux-gnu --enable-static-link \
+    && make \
+    && strip bash \
+    && mv bash bash3.2
+
+FROM ncbi/sra-tools AS samples
+
+WORKDIR /samples
+
+RUN fasterq-dump SRR38262444
+
+FROM debian:bookworm-slim AS base
+
+ARG APT_MIRROR_NAME=
+RUN if [ -n "$APT_MIRROR_NAME" ]; then sed -i.bak -E '/security/! s^https?://.+?/(debian|ubuntu)^http://'"$APT_MIRROR_NAME"'/\1^' /etc/apt/sources.list && grep '^deb' /etc/apt/sources.list; fi
+RUN apt-get update --allow-releaseinfo-change --fix-missing \
+    && DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y \
+    wget zip perl r-base \
+    && apt clean autoclean \
+    && apt autoremove --yes \
+    && rm -rf /var/lib/{apt,dpkg,cache,log}/
+
+WORKDIR /samples
+
+COPY --from=samples /samples /samples
+COPY --from=builder /build/bash3.2 /usr/local/bin
+
+WORKDIR /data
