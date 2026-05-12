@@ -1678,7 +1678,10 @@ function doPostProcessing() {
     if [[ "$(grep '3-match' "$ppath"/READ_COUNTS.txt -c)" -gt "0" && "$(grep '3-nomatch' "$ppath"/READ_COUNTS.txt -c)" -gt "0" ]]; then
         local cntmatch=$(grep '3-match' "$ppath"/READ_COUNTS.txt | cut -f3)
         local altmatch=$(grep '3-altmatch' "$ppath"/READ_COUNTS.txt | cut -f3)
-        local factor=$((${cntmatch:-1} / ${altmatch:-1}))
+        ((altmatch)) || altmatch=1
+
+        # If primary is X times more than secondary, we cannot do residual
+        local factor=$((${cntmatch:-1} / altmatch))
         if [ "${factor:-0}" -lt "${RESIDUAL_ASSEMBLY_FACTOR:-400}" ]; then
             time_stamp "residual read pattern ratio non-trivial (${factor:-0}x < ${RESIDUAL_ASSEMBLY_FACTOR:-400}x)"
             local alt_ppath="$original_path"/residual_assembly
