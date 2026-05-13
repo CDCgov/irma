@@ -3,8 +3,8 @@ PROGRAM="Iterative Refinement Meta-Assembler (IRMA)"
 AUTHOR="Samuel S. Shepard"
 EMAIL="sshepard@cdc.gov"
 AFFIL="CDC/DDID/NCIRD/ID"
-DATE="27 Apr 2026"
-VERSION="1.3.2"
+DATE="14 MAY 2026"
+VERSION="1.3.3"
 LICENSE="Licensed under Apache 2 with a Public Domain copyright. This program comes with ABSOLUTELY NO WARRANTY. See notices in <README.md>.
 Distributed, third-party components have non-commercial restrictions! See: <IRMA_RES/third_party/MANIFEST.md>"
 
@@ -348,17 +348,18 @@ if [[ "$MAX_ROUNDS" -eq "1" && "$ASSEM_REF" -eq "1" ]]; then
     ALIGN_PROGS[0]="NONE"
 fi
 
+WHOAMI_DIR=$(whoami 2> /dev/null || echo "container-user")
 # define ppath
 TOKEN=$(perl -e '@chars = ("A".."Z","0".."9","a".."z");print $chars[int(rand(scalar(@chars)))] for 1..32;')
 if [[ "$ALLOW_TMP" -eq "1" && "${GRID_ON:-0}" -eq "0" ]]; then
     if [ -z "$TMP" ]; then
         abort "ALLOW_TMP=1 but TMP var was unspecified!"
     else
-        ppath="$TMP"/$(whoami)/IRMAv$VERSION/${RUN}-${TOKEN}
+        ppath="$TMP"/$WHOAMI_DIR/IRMAv$VERSION/${RUN}-${TOKEN}
     fi
 else
     if [[ "${GRID_PATH:-0}" != "0" && "${GRID_ON:-0}" -eq "1" ]]; then
-        ppath="$GRID_PATH"/$(whoami)/IRMAv$VERSION/${RUN}-${TOKEN}
+        ppath="$GRID_PATH"/$WHOAMI_DIR/IRMAv$VERSION/${RUN}-${TOKEN}
     else
         ppath="$rpath"/ppath/${RUN}-${TOKEN}
     fi

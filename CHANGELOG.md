@@ -1,10 +1,11 @@
 # IRMA Changelog
 
-## [1.3.3]: 2026-05-13
+## [1.3.3]: 2026-05-14
 
 ### Fixes
 
 - Regression fixed for zero alternative match data affecting post-processing
+- Fix working directory path error for when image user isn't found
 
 ## [1.3.2]: 2026-03-27
 

@@ -48,12 +48,12 @@ jobs:
         id: create_release
         shell: bash
         run: |
-          [[ "${{ github.ref_name }}" == "test" ]] && latest="--latest=false" || latest=
+          [[ "${{ github.ref_name }}" == "test" ]] && test_opts="--latest=false --draft" || test_opts=
 
           gh release create "${{ github.ref_name }}" "${{ steps.create_archive.outputs.archive_name }}" \
           --title "IRMA ${{ github.ref_name }}" \
           --notes-file "$RUNNER_TEMP/release_notes.md" \
-          $latest
+          $test_opts
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
