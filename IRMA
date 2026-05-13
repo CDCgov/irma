@@ -1560,6 +1560,7 @@ function doPostProcessing() {
     read -r raw2 pats2 <<< "$(grep '>' "$matchp"/R${LAST_ROUND}.nomatch | cut -f2 -d'%' | "$spath"/sumField.pl -S)"
     echo -e "3-chimeric\t${raw1}\t${pats1}\tNA" >> "$ppath"/READ_COUNTS.txt
     echo -e "3-nomatch\t${raw2}\t${pats2}\tNA" >> "$ppath"/READ_COUNTS.txt
+    local nomatch_reads=$raw2
 
     if test -n "$(
         shopt -s nullglob
@@ -1661,28 +1662,29 @@ function doPostProcessing() {
         done
     fi
 
+    local read_count=0 patt_count=0 pair_count=0 match_pats=0
     if [ "$(grep '^4-' "$ppath"/READ_COUNTS.txt.tmp -c)" -gt "0" ]; then
-        x=$(grep '^4-' "$ppath"/READ_COUNTS.txt.tmp | "$spath"/sumField.pl -F 2)
-        y=$(grep '^4-' "$ppath"/READ_COUNTS.txt.tmp | "$spath"/sumField.pl -F 3)
-        z=$(grep '^4-' "$ppath"/READ_COUNTS.txt.tmp | "$spath"/sumField.pl -F 4)
-        echo -e "3-match\t$x\t$y\t$z" >> "$ppath"/READ_COUNTS.txt
+        read_count=$(grep '^4-' "$ppath"/READ_COUNTS.txt.tmp | "$spath"/sumField.pl -F 2)
+        patt_count=$(grep '^4-' "$ppath"/READ_COUNTS.txt.tmp | "$spath"/sumField.pl -F 3)
+        pair_count=$(grep '^4-' "$ppath"/READ_COUNTS.txt.tmp | "$spath"/sumField.pl -F 4)
+        echo -e "3-match\t$read_count\t$patt_count\t$pair_count" >> "$ppath"/READ_COUNTS.txt
+        match_pats=$patt_count
     fi
 
+    local altmatch_pats=0
     if [ "$(grep '^5-' "$ppath"/READ_COUNTS.txt.tmp -c)" -gt "0" ]; then
-        x=$(grep '^5-' "$ppath"/READ_COUNTS.txt.tmp | "$spath"/sumField.pl -F 2)
-        y=$(grep '^5-' "$ppath"/READ_COUNTS.txt.tmp | "$spath"/sumField.pl -F 3)
-        echo -e "3-altmatch\t$x\t$y\tNA" >> "$ppath"/READ_COUNTS.txt
+        read_count=$(grep '^5-' "$ppath"/READ_COUNTS.txt.tmp | "$spath"/sumField.pl -F 2)
+        patt_count=$(grep '^5-' "$ppath"/READ_COUNTS.txt.tmp | "$spath"/sumField.pl -F 3)
+        echo -e "3-altmatch\t$read_count\t$patt_count\tNA" >> "$ppath"/READ_COUNTS.txt
+        altmatch_pats=$patt_count
     fi
 
-    # Check to see if a residual assembly may be possible, if so, store data
-    if [[ "$(grep '3-match' "$ppath"/READ_COUNTS.txt -c)" -gt "0" && "$(grep '3-nomatch' "$ppath"/READ_COUNTS.txt -c)" -gt "0" ]]; then
-        local cntmatch=$(grep '3-match' "$ppath"/READ_COUNTS.txt | cut -f3)
-        local altmatch=$(grep '3-altmatch' "$ppath"/READ_COUNTS.txt | cut -f3)
-        ((altmatch)) || altmatch=1
-
+    # Check if a residual assembly is both wanted and possible.
+    # If so, store data
+    if [[ "${RESIDUAL_ASSEMBLY_FACTOR:-0}" -gt "0" && "$match_pats" -gt "0" && "$altmatch_pats" -gt "0" && "$nomatch_reads" -gt "0" ]]; then
         # If primary is X times more than secondary, we cannot do residual
-        local factor=$((${cntmatch:-1} / altmatch))
-        if [ "${factor:-0}" -lt "${RESIDUAL_ASSEMBLY_FACTOR:-400}" ]; then
+        local factor=$((match_pats / altmatch_pats))
+        if [ "$factor" -lt "$RESIDUAL_ASSEMBLY_FACTOR" ]; then
             time_stamp "residual read pattern ratio non-trivial (${factor:-0}x < ${RESIDUAL_ASSEMBLY_FACTOR:-400}x)"
             local alt_ppath="$original_path"/residual_assembly
             mkdir "$alt_ppath"

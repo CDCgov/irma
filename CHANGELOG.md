@@ -1,5 +1,11 @@
 # IRMA Changelog
 
+## [1.3.3]: 2026-05-13
+
+### Fixes
+
+- Regression fixed for zero alternative match data affecting post-processing
+
 ## [1.3.2]: 2026-03-27
 
 ### Changes
@@ -318,10 +324,9 @@
 
 ## v0.6.0 : 2016-03-09  (test release)
 
-
 <!-- Versions -->
 
+[1.3.3]: https://github.com/CDCgov/irma/compare/v1.3.2...v1.3.3
 [1.3.2]: https://github.com/CDCgov/irma/compare/v1.3.1...v1.3.2
 [1.3.1]: https://github.com/CDCgov/irma/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/CDCgov/irma/compare/v1.2.1...v1.3.0
-
