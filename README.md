@@ -53,7 +53,7 @@ We recommend a multi-core machine with no fewer than 8 cores (16 or more threads
 - R 3.6+
 - BASH 3+
 - Linux: RHEL 8+ or any recent Ubuntu like Bookworm
-- *OR* macOS 10.14 on intel, macOS 11 on arm64 (Rosetta 2 required for LABEL)
+- *OR* macOS 10.14 on intel (with a Haswell CPU or newer), macOS 11 on arm64
 
 ### Via Archive
 

@@ -1,5 +1,16 @@
 # IRMA Changelog
 
+## [1.3.4]: 2026-06-05
+
+### Changes
+
+- macOS + Intel (in IRMA-core) now assumes AVX2 is available
+
+### Fixes
+
+- Fixes an error with FASTQ deduplication / inflation for when tabs are in FASTQ
+  headers
+
 ## [1.3.3]: 2026-05-14
 
 ### Fixes
