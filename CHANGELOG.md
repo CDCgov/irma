@@ -9,7 +9,8 @@
 ### Fixes
 
 - Fixes an error with FASTQ deduplication / inflation for when tabs are in FASTQ
-  headers
+  headers. In particular, this resolves issues related to FASTQ created under
+  [ONT v26.01](https://software-docs.nanoporetech.com/output-specifications/26.01/read_formats/fastq/).
 
 ## [1.3.3]: 2026-05-14
 
@@ -338,6 +339,7 @@
 
 <!-- Versions -->
 
+[1.3.4]: https://github.com/CDCgov/irma/compare/v1.3.3...v1.3.4
 [1.3.3]: https://github.com/CDCgov/irma/compare/v1.3.2...v1.3.3
 [1.3.2]: https://github.com/CDCgov/irma/compare/v1.3.1...v1.3.2
 [1.3.1]: https://github.com/CDCgov/irma/compare/v1.3.0...v1.3.1
