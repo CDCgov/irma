@@ -12,6 +12,7 @@ Visit the [CHANGELOG](CHANGELOG.md) to see recent changes.
   - [Installation and Requirements](#installation-and-requirements)
     - [Via Archive](#via-archive)
     - [Via Container](#via-container)
+      - [Verifying images on `ghcr.io`](#verifying-images-on-ghcrio)
     - [Via MIRA](#via-mira)
   - [Third Party Software](#third-party-software)
     - [In IRMA proper](#in-irma-proper)
@@ -77,7 +78,27 @@ Simply run:
 docker run --rm -itv $(pwd):/data ghcr.io/cdcgov/irma:latest IRMA # more args
 
 ## From Dockerhub
-docker run --rm -itv $(pwd):/data docker/cdcgov/irma:latest LABEL # more args
+docker run --rm -itv $(pwd):/data docker.io/cdcgov/irma:latest IRMA # more args
+```
+
+#### Verifying images on `ghcr.io`
+
+While we publish to both `ghcr.io` and Docker Hub, please use the former for
+cryptographic verification of the image signature and SLSA build provenance
+attestation. Verification with Sigstore [cosign](https://github.com/sigstore/cosign):
+
+```bash
+# Replace with the version of interest
+TAG=latest
+
+cosign verify --new-bundle-format ghcr.io/cdcgov/irma:$TAG \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  --certificate-identity-regexp '^https://github[.]com/CDCgov/irma/[.]github/workflows/release[.]yml@refs/tags/.+$'
+
+cosign verify-attestation --new-bundle-format --type slsaprovenance1 \
+  ghcr.io/cdcgov/irma:$TAG \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  --certificate-identity-regexp '^https://github[.]com/CDCgov/irma/[.]github/workflows/release[.]yml@refs/tags/.+$'
 ```
 
 ### Via MIRA
