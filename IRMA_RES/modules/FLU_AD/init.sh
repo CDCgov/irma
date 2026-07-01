@@ -1,6 +1,6 @@
 ### PERFORMANCE ###
 GRID_ON=0   # grid computation on [1,0] for on or off
-ALLOW_TMP=0 # if GRID_ON=0, try to use /tmp for working directory
+ALLOW_TMP=1 # if GRID_ON=0, try to use /tmp for working directory
 TMP=/tmp    # the scratch/tmpfs for working on the assemblies
 
 ### REFERENCE ###
@@ -44,7 +44,7 @@ ASSEM_PROG="SSW" # assembly program [SSW]
 ASSEM_PROC=20    # grid maximum processes for assembly
 INS_T=0.25       # minimum frquenncy threshold for insertion refinement
 DEL_T=0.60       # minimum frequency threshold for deletion refinement
-MIN_AMBIG=0.25   # minimum called SNV frequency for mixed base in amended consensus folder
+MIN_AMBIG=0.20   # minimum called SNV frequency for mixed base in amended consensus folder
 
 ### VARIANT CALLING ###
 # HEURISTICS
