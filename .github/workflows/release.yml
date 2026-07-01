@@ -9,7 +9,6 @@ on:
 permissions: {}
 
 env:
-  CARGO_TERM_COLOR: always
   RELEASE_PKG: irma
   RELEASE_BASE: flu-amd
   REGISTRY: ghcr.io
@@ -26,34 +25,35 @@ jobs:
       - name: Extract Changelog
         id: extract_changelog
         shell: bash
-        run: perl .github/scripts/last_release_notes.pl > $RUNNER_TEMP/release_notes.md
+        run: perl .github/scripts/last_release_notes.pl > "$RUNNER_TEMP/release_notes.md"
 
       - name: Create Source Code Archive
         id: create_archive
         shell: bash
         run: |
           ARCHIVE_NAME="$RUNNER_TEMP/${{ env.RELEASE_PKG }}-${{ github.ref_name }}-universal.zip"
-          base=${{ env.RELEASE_BASE }}
-          pkg=${{ env.RELEASE_PKG }}
+          base="${{ env.RELEASE_BASE }}"
+          pkg="${{ env.RELEASE_PKG }}"
 
           ./.package-label.sh \
           && ./.package-core.sh \
           && cd .. \
-          && mv $pkg $base \
-          && zip -r "${ARCHIVE_NAME}" ./$base -x "$base/.*" -x "$base/Dockerfile*" \
-          && echo "archive_name=${ARCHIVE_NAME}" >> $GITHUB_OUTPUT \
-          && mv $base $pkg
+          && mv "$pkg" "$base" \
+          && zip -r "${ARCHIVE_NAME}" "./$base" -x "$base/.*" -x "$base/Dockerfile*" \
+          && echo "archive_name=${ARCHIVE_NAME}" >> "$GITHUB_OUTPUT" \
+          && mv "$base" "$pkg"
 
       - name: Create Release
         id: create_release
         shell: bash
         run: |
-          [[ "${{ github.ref_name }}" == "test" ]] && test_opts="--latest=false --draft" || test_opts=
+          test_opts=()
+          [[ "${{ github.ref_name }}" == "test" ]] && test_opts=(--latest=false --draft)
 
           gh release create "${{ github.ref_name }}" "${{ steps.create_archive.outputs.archive_name }}" \
-          --title "IRMA ${{ github.ref_name }}" \
-          --notes-file "$RUNNER_TEMP/release_notes.md" \
-          $test_opts
+            --title "IRMA ${{ github.ref_name }}" \
+            --notes-file "$RUNNER_TEMP/release_notes.md" \
+            "${test_opts[@]}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -93,7 +93,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ github.repository }}
           tags: |
-            type=raw,value=latest-${{ matrix.arch }}
+            type=raw,value=${{ github.ref_name }}-${{ matrix.arch }}
 
       - name: Build and push Docker image
         id: buildpush
@@ -122,16 +122,15 @@ jobs:
       - name: Create and push manifests
         shell: bash
         run: |
-          REPO=$(echo "${{ env.REGISTRY }}/${{ github.repository }}" | tr '[A-Z]' '[a-z]')
-          VERSION=${REPO}:${{ github.ref_name }}
-          LATEST=${REPO}:latest
+          REPO=$(echo "${{ env.REGISTRY }}/${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          VERSION="${REPO}:${{ github.ref_name }}"
+          LATEST="${REPO}:latest"
 
-          docker manifest create $VERSION --amend ${LATEST}-amd64 --amend ${LATEST}-arm64 \
-            && docker manifest push $VERSION
+          docker buildx imagetools create --tag "$VERSION" \
+            "${VERSION}-amd64" "${VERSION}-arm64"
 
-          if [[ "${{ github.ref_name }}" != "test" ]];then
-            docker manifest create $LATEST --amend ${LATEST}-amd64 --amend ${LATEST}-arm64 \
-              && docker manifest push $LATEST
+          if [[ "${{ github.ref_name }}" != "test" ]]; then
+            docker buildx imagetools create --tag "$LATEST" "$VERSION"
           fi
 
       - name: Login to DockerHub
@@ -143,16 +142,16 @@ jobs:
       - name: Push to DockerHub
         shell: bash
         run: |
-          GHCR_REPO=$(echo "${{ env.REGISTRY }}/${{ github.repository }}" | tr '[A-Z]' '[a-z]')
-          DOCKERHUB_REPO=cdcgov/$(echo "${{ github.repository }}" | cut -d'/' -f2 | tr '[A-Z]' '[a-z]')
+          GHCR_REPO=$(echo "${{ env.REGISTRY }}/${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          DOCKERHUB_REPO=cdcgov/$(echo "${{ github.repository }}" | cut -d'/' -f2 | tr '[:upper:]' '[:lower:]')
           VERSION_TAG="${{ github.ref_name }}"
 
           [[ "${{ github.ref_name }}" == "test" ]] && DOCKERHUB_REPO+="-dev"
 
           echo "Copying ${GHCR_REPO}:${VERSION_TAG} to ${DOCKERHUB_REPO}:${VERSION_TAG}"
-          docker buildx imagetools create ${GHCR_REPO}:${VERSION_TAG} --tag ${DOCKERHUB_REPO}:${VERSION_TAG}
+          docker buildx imagetools create "${GHCR_REPO}:${VERSION_TAG}" --tag "${DOCKERHUB_REPO}:${VERSION_TAG}"
 
-          if [[ "${{ github.ref_name }}" != "test" ]];then
+          if [[ "${{ github.ref_name }}" != "test" ]]; then
             echo "Copying ${GHCR_REPO}:latest to ${DOCKERHUB_REPO}:latest"
-            docker buildx imagetools create ${GHCR_REPO}:latest --tag ${DOCKERHUB_REPO}:latest
+            docker buildx imagetools create "${GHCR_REPO}:latest" --tag "${DOCKERHUB_REPO}:latest"
           fi
