@@ -1,5 +1,19 @@
 # IRMA Changelog
 
+## [1.3.5]: 2026-07-01
+
+### Changes
+
+- Dockerfile provenance attestations are now included for container image
+  artifacts. The deployment image is now based on Debian 13 (trixie).
+
+### Fixes
+
+- DPKG metadata is no longer incorrectly deleted for container images (bug
+  exposed in v1.3.2)
+- The FLU_AD module now matches FLU for ALLOW_TMP (crashes containers) and
+  MIN_AMBIG in its defaults.
+
 ## [1.3.4]: 2026-06-05
 
 ### Changes
