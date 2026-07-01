@@ -4,3 +4,9 @@ IRMA_RES/ppath/*
 !.dockerclean.sh
 !.package-label.sh
 !.package-core.sh
+
+IRMA_RES/scripts/irma-core_*
+/LABEL
+/LABEL_RES
+/smoketest
+/debug
