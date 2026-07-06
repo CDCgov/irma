@@ -1,6 +1,6 @@
 # IRMA Changelog
 
-## [1.3.5]: 2026-07-01
+## [1.3.5]: 2026-07-06
 
 ### Changes
 
@@ -353,6 +353,7 @@
 
 <!-- Versions -->
 
+[1.3.5]: https://github.com/CDCgov/irma/compare/v1.3.4...v1.3.5
 [1.3.4]: https://github.com/CDCgov/irma/compare/v1.3.3...v1.3.4
 [1.3.3]: https://github.com/CDCgov/irma/compare/v1.3.2...v1.3.3
 [1.3.2]: https://github.com/CDCgov/irma/compare/v1.3.1...v1.3.2

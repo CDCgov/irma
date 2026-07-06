@@ -25,4 +25,5 @@ irma-test:
   tags:
     - docker
   script:
+    - perl .github/scripts/check_versions_changelog.pl
     - .tests/smoketest.sh
