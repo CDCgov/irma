@@ -1,5 +1,15 @@
 # IRMA Changelog
 
+## [1.3.6]: 2026-07-10
+
+### Changes
+
+- Plotting is now performed via [IRMA-viz](github.com/cdcgov/IRMA-viz)
+- Plots will be now be `svg` files instead of `pdf`
+- By default, only the `EXPENRD` matrix will be used to make a heatmap for a
+  segment if more than one variants are found. `JACCARD`, `MUTUALD`, and
+  `NJOINTP` plots can be toggled on in `IRMA_RES/irma-viz-config.toml`
+
 ## [1.3.5]: 2026-07-06
 
 ### Changes
@@ -353,6 +363,7 @@
 
 <!-- Versions -->
 
+[1.3.6]: https://github.com/CDCgov/irma/compare/v1.3.5...v1.3.6
 [1.3.5]: https://github.com/CDCgov/irma/compare/v1.3.4...v1.3.5
 [1.3.4]: https://github.com/CDCgov/irma/compare/v1.3.3...v1.3.4
 [1.3.3]: https://github.com/CDCgov/irma/compare/v1.3.2...v1.3.3

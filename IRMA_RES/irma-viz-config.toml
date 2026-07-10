@@ -1,0 +1,22 @@
+[output_options]
+output_format = "pdf" # either "pdf" or "svg"
+
+[plot_toggles]
+read_percentages = true
+clustermap = true
+heuristics = true
+coverage = true
+
+[heuristics_options]
+enabled_plots = { allele_quality = true, quality_subplot = true, allele_frequency = true, frequency_subplot = true, coverage_depth_hist = true, confidence_hist = true }
+
+[coverage_options]
+variant_color = "nucleotide" # either "nucleotide" for original configuration, or "frequency" for possible change
+
+[percent_options]
+viz_option = "pie" # either "sankey" or "pie"
+
+[cluster_options]
+cluster_option = "clustermap" # either "clustermap" or "tree"
+matrix_types = { expenrd = true, jaccard = true, mutuald = true, njointp = true }
+tree_height = 0.78 # Tree height for agglomerative clustering of variant sites

@@ -15,6 +15,7 @@ IRMA_RES/modules/FLU/config/ref
 ._*
 IRMA_RES/.commit
 IRMA_RES/scripts/irma-core_*
+IRMA_RES/scripts/irma-viz_*
 /test*
 .tests/*log
 /*test

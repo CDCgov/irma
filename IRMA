@@ -4,7 +4,7 @@ AUTHOR="Samuel S. Shepard"
 EMAIL="sshepard@cdc.gov"
 AFFIL="CDC/DDID/NCIRD/ID"
 DATE="06 JUL 2026"
-VERSION="1.3.5"
+VERSION="1.3.6"
 LICENSE="Licensed under Apache 2 with a Public Domain copyright. This program comes with ABSOLUTELY NO WARRANTY. See notices in <README.md>.
 Distributed, third-party components have non-commercial restrictions! See: <IRMA_RES/third_party/MANIFEST.md>"
 
@@ -119,6 +119,7 @@ echo "${BASH_SOURCE[0]}"
 rpath="$bpath/IRMA_RES"      # IRMA resources
 spath="$rpath/scripts"       # IRMA specific scripts
 vendorp="$rpath/third_party" # Third party binaries distributed with IRMA
+IRMA_VIZ_CONFIG="$rpath/irma-viz-config.toml"
 
 # process optional output diretory
 if [ "$(basename "$RUN")" != "$RUN" ]; then
@@ -171,7 +172,6 @@ else
     check_prgm LABEL
 fi
 
-check_prgm Rscript
 check_prgm perl
 
 # Find LABEL resources
@@ -205,11 +205,11 @@ SAMTOOLS=$(set_bin samtools)
 BLAT=$(set_bin blat)
 SSW=$(set_bin ssw)
 MM2=$(set_bin minimap2)
-RSCRIPT=$(set_bin Rscript)
 A2M="$Lvendorp/align2model_$IRMA_BIN_SUFFIX"
 BASH=bash
 
 check_prgm "$A2M"
+[ -r "$IRMA_VIZ_CONFIG" ] || abort "Missing irma-viz config: $IRMA_VIZ_CONFIG"
 
 # check for module
 MODULE=$(echo "$MODULE_CONFIG" | cut -f1 -d'-')
@@ -292,6 +292,29 @@ fi
 
 if [ "$($IRMA_CORE --version)" != "$IRMA_CORE_VERSION" ]; then
     echo "IRMA ERROR: irma-core version mismatch. Expected: $IRMA_CORE_VERSION"
+    exit 1
+fi
+
+
+IRMA_VIZ=""
+IRMA_VIZ_VERSION="irma-viz 0.2.0"
+
+if [ -x "$spath/irma-viz_$IRMA_BIN_SUFFIX" ]; then
+    IRMA_VIZ="$spath/irma-viz_$IRMA_BIN_SUFFIX"
+elif command -v "irma-viz" > /dev/null 2>&1; then
+    IRMA_VIZ=$(command -v irma-viz)
+elif [ -x "$rpath/irma-viz" ]; then
+    IRMA_VIZ="$rpath/irma-viz"
+elif [ -x "$bpath/../irma-viz/target/prod/irma-viz" ]; then
+    IRMA_VIZ="$bpath/../irma-viz/target/prod/irma-viz"
+    echo "IRMA WARNING: irma-viz not found in PATH or IRMA resources, using: $IRMA_VIZ"
+else
+    echo "IRMA ERROR: irma-viz not detected. Please install it and add it to your path."
+    exit 1
+fi
+
+if [ "$($IRMA_VIZ --version)" != "$IRMA_VIZ_VERSION" ]; then
+    echo "IRMA ERROR: irma-viz version mismatch. Expected: $IRMA_VIZ_VERSION"
     exit 1
 fi
 
@@ -1392,23 +1415,13 @@ function ASSEMBLE_REPORT() {
     REFINE_ASSEMBLY_CALL_VARIANTS "$gene" "$procs" $doGrid "$final" || return 1
     doPHASING "$gene" "$final" || return 1
 
-    local n=$(wc -l < "${final}-variants.txt") \
+    [ -r "${final}-variants.txt" ] \
         || {
             time_stamp "missing variant file for $gene"
             return 1
         }
     # shellcheck disable=SC2086 ## Note: PHASE_DISTANCE is optional and experimental ##
     "$IRMA_CORE" phase "${final}-variants.txt" "${final}-EXPENRD.sqm" ${PHASE_DISTANCE:+-t "$PHASE_DISTANCE"}
-    if [ "$n" -gt "1" ]; then
-        "$RSCRIPT" --vanilla "$spath"/coverageDiagram.R "$RUN" "$gene" "$final-coverage.txt" "$final-variants.txt" "$final-pairingStats.txt" "$final-coverageDiagram.pdf" > /dev/null 2>&1
-        if [ "$n" -gt "2" ]; then
-            "$PARALLEL" --nn -q "$RSCRIPT" --vanilla "$spath"/sqmHeatmap.R "${final}"-{}.sqm "${final}"-{}.pdf 2 ::: EXPENRD JACCARD MUTUALD NJOINTP > /dev/null
-        fi
-    else
-        "$RSCRIPT" --vanilla "$spath"/simpleCoverageDiagram.R "$RUN" "$gene" "$final-coverage.txt" "$final-coverageDiagram.pdf" > /dev/null 2>&1
-    fi
-
-    "$RSCRIPT" --vanilla "$spath"/heuristicDiagram.R "$MIN_AQ" "$MIN_F" "$MIN_TCC" "$MIN_CONF" "${final}-allAlleles.txt" "${final}-heuristics.pdf" > /dev/null 2>&1
 
     local options="-C $MIN_C -N $RUN -F $MIN_AMBIG"
     local acpath="$ppath"/amended_consensus
@@ -1705,21 +1718,27 @@ function doPostProcessing() {
     # adjust counts, prim is from primary if this is secondary
     [ -r "$ppath/READ_COUNTS.txt.prim" ] && cat "$ppath"/READ_COUNTS.txt.prim >> "$ppath"/READ_COUNTS.txt && rm "$ppath"/READ_COUNTS.txt.prim
     [ -r "$ppath/READ_COUNTS.txt.tmp" ] && cat "$ppath"/READ_COUNTS.txt.tmp >> "$ppath"/READ_COUNTS.txt && rm "$ppath"/READ_COUNTS.txt.tmp
-    "$RSCRIPT" --vanilla "$spath"/percentages.R "$RUN" "$ppath"/READ_COUNTS.txt "$ppath"/READ_PERCENTAGES.pdf $PAIRED > /dev/null 2>&1
-
-    # save figures
-    [ ! -d "$ppath"/figures ] && mkdir "$ppath"/figures
-    [ -n "$(
-        shopt -s nullglob
-        echo "$ppath"/*.pdf
-    )" ] && mv "$ppath"/*.pdf "$ppath"/figures
-
     # save tables
     [ ! -d "$ppath"/tables ] && mkdir "$ppath"/tables
     [ -n "$(
         shopt -s nullglob
         echo "$ppath"/*.txt
     )" ] && mv "$ppath"/*.txt "$ppath"/tables
+
+
+    # create plots
+    paired=false
+    [ "$PAIRED" -eq "1" ] && paired=true
+
+    "$IRMA_VIZ" \
+        --config "$IRMA_VIZ_CONFIG" \
+        --input-root "$ppath" \
+        --min-variant-average-quality "$MIN_AQ" \
+        --min-variant-frequency "$MIN_F" \
+        --min-variant-depth "$MIN_TCC" \
+        --min-confidence-not-sequencer-error "$MIN_CONF" \
+        --paired "$paired" \
+        && time_stamp "IRMA-viz plots created" || die "IRMA visualization failed"
 
     rmglob "$ppath"/R0.xfl "$matchp"/R*.nomatch "$refp"/R*.refs
     mv "$refp" "$ppath/intermediate/0-ITERATIVE-REFERENCES"

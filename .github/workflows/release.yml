@@ -37,6 +37,7 @@ jobs:
 
           ./.package-label.sh \
           && ./.package-core.sh \
+          && ./.package-viz.sh \
           && cd .. \
           && mv "$pkg" "$base" \
           && zip -r "${ARCHIVE_NAME}" "./$base" -x "$base/.*" -x "$base/Dockerfile*" \

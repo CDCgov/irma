@@ -8,6 +8,7 @@ WORKDIR /app
 COPY . .
 RUN ./.package-label.sh \
     && ./.package-core.sh \
+    && ./.package-viz.sh \
     && ./.dockerclean.sh \
     && rm ./.*.sh
 

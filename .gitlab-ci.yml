@@ -12,6 +12,7 @@ package:
     - docker
   script:
     - ./.package-core.sh
+    - ./.package-viz.sh
     - ./.package-label.sh
   artifacts:
     paths:
