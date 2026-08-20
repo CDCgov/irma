@@ -17,7 +17,7 @@ FROM dhi.io/debian-base:trixie-dev AS base
 ARG APT_MIRROR_NAME=
 RUN if [ -n "$APT_MIRROR_NAME" ]; then sed -i.bak -E '/security/! s^https?://.+?/(debian|ubuntu)^http://'"$APT_MIRROR_NAME"'/\1^' /etc/apt/sources.list && grep '^deb' /etc/apt/sources.list; fi
 RUN apt-get update --allow-releaseinfo-change --fix-missing \
-    && DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y procps zip perl r-base \
+    && DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y procps zip perl \
     && apt clean autoclean \
     && apt autoremove --yes \
     && rm -rf /var/lib/apt/lists/* /var/cache/* /var/log/* /tmp/* /var/tmp/*

@@ -1,14 +1,15 @@
 # IRMA Changelog
 
-## [1.3.6]: 2026-07-10
+## [1.4.0]: TBD
 
 ### Changes
 
-- Plotting is now performed via [IRMA-viz](github.com/cdcgov/IRMA-viz)
-- Plots will be now be `svg` files instead of `pdf`
-- By default, only the `EXPENRD` matrix will be used to make a heatmap for a
-  segment if more than one variants are found. `JACCARD`, `MUTUALD`, and
-  `NJOINTP` plots can be toggled on in `IRMA_RES/irma-viz-config.toml`
+- IRMA now generates figures with [IRMA-viz]. Figure generation defaults can be
+  overriden in the [TOML configuration file](./IRMA_RES/irma-viz-config.toml).
+  In the next minor release we expect to change
+  output from PDF to SVG as well as remove some little used plots.
+- Thanks to previous work with variant phasing and figure generation, R is no longer
+  an IRMA dependency.
 
 ## [1.3.5]: 2026-07-06
 
@@ -363,6 +364,7 @@
 
 <!-- Versions -->
 
+[1.4.0]: https://github.com/CDCgov/irma/compare/v1.3.6...v1.4.0
 [1.3.6]: https://github.com/CDCgov/irma/compare/v1.3.5...v1.3.6
 [1.3.5]: https://github.com/CDCgov/irma/compare/v1.3.4...v1.3.5
 [1.3.4]: https://github.com/CDCgov/irma/compare/v1.3.3...v1.3.4
@@ -370,3 +372,5 @@
 [1.3.2]: https://github.com/CDCgov/irma/compare/v1.3.1...v1.3.2
 [1.3.1]: https://github.com/CDCgov/irma/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/CDCgov/irma/compare/v1.2.1...v1.3.0
+
+[IRMA-viz]: https://github.com/cdcgov/irma-viz

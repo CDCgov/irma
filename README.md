@@ -51,7 +51,6 @@ More usage information: <https://wonder.cdc.gov/amd/flu/irma/run.html>
 We recommend a multi-core machine with no fewer than 8 cores (16 or more threads work best) and at least 16 GB of RAM.  IRMA runtime is impacted by the number of cores available on a machine. In addition software requirements include:
 
 - Perl 5.16
-- R 3.6+
 - BASH 3+
 - Linux: RHEL 8+ or any recent Ubuntu like Bookworm
 - *OR* macOS 10.14 on intel (with a Haswell CPU or newer), macOS 11 on arm64
