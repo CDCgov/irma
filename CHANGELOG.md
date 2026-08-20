@@ -2,14 +2,21 @@
 
 ## [1.4.0]: TBD
 
-### Changes
+### Features
 
 - IRMA now generates figures with [IRMA-viz]. Figure generation defaults can be
   overriden in the [TOML configuration file](./IRMA_RES/irma-viz-config.toml).
-  In the next minor release we expect to change
-  output from PDF to SVG as well as remove some little used plots.
+  In the next minor release we expect to change output from PDF to SVG as well
+  as remove some little used plots.
+
+### Changes
+
 - Thanks to previous work with variant phasing and figure generation, R is no longer
   an IRMA dependency.
+
+### Fixes
+
+- Makes variant phase numbering deterministic by bumping to IRMA-core v0.10.1
 
 ## [1.3.5]: 2026-07-06
 

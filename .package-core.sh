@@ -1,6 +1,6 @@
 #!/bin/bash
 
-default_irma_core=v0.10.0
+default_irma_core=v0.10.1
 
 version=${PINNED_CORE:-$default_irma_core}
 archive=irma-core-integrated-${version}.zip
