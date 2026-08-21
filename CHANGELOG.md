@@ -13,13 +13,23 @@
 
 - Thanks to previous work with variant phasing and figure generation, R is no longer
   an IRMA dependency.
+- Quality scores are now used to break plurality consensus ties.
 - The `allAlleles` table now reports canonical total depths (AGTC + '-') for all
-  alleles. Statistics for 'N' alleles are not calculated nor are minor variant
+  alleles. Statistics for 'N' consensus alleles are not calculated nor are minor variant
   calculations considered for 'N' consensus sites to avoid confusion.
 
 ### Fixes
 
 - Makes variant phase numbering deterministic by bumping to IRMA-core v0.10.1
+- Removes many non-determinisms throughout reference editing, classification,
+  and consensus callings.
+- Fixes latent bugs for large read-gathering rounds and final reference passing.
+
+### Removed
+
+- Removes unused options for `call.pl` and cleans up calling
+- Removes experimental feature `MIN_DROPOUT_EDGE_DEPTH`
+- Removes experimental "slim" ubi8-micro Dockerfile
 
 ## [1.3.5]: 2026-07-06
 

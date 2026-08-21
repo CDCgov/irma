@@ -5,3 +5,7 @@ fi
 if [ -n "$USE_IRMA_CORE" ]; then
     echo "IRMA WARNING: 'USE_IRMA_CORE' is set. This experimental variable has been removed."
 fi
+
+if [ -n "$MIN_DROPOUT_EDGE_DEPTH" ]; then
+    echo "IRMA WARNING: 'MIN_DROPOUT_EDGE_DEPTH' is set. This experimental variable has been removed."
+fi
