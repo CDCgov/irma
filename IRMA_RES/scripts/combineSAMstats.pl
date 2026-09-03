@@ -8,7 +8,10 @@
 use Storable;
 use POSIX;
 use Getopt::Long;
+use English qw(-no_match_vars);
+
 Getopt::Long::Configure('no_ignore_case');
+
 GetOptions(
             'name|N=s'                      => \$name,
             'insertion-threshold|I=f'       => \$insertionThreshold,
@@ -23,7 +26,7 @@ GetOptions(
 );
 
 if ( scalar(@ARGV) < 2 ) {
-    $message = "Usage:\t$0 [options] <REF> <STAT1> <...>\n";
+    $message = "Usage:\t$PROGRAM_NAME [options] <REF> <STAT1> <...>\n";
     $message .= "\t\t-N|--name <STR>\t\t\t\tName of consensus sequence.\n";
     $message .=
       "\t\t-I|--insertion-threshold <#>\t\tInsertion frequency where consensus is altered. Default = 0.15 or 15%.\n";
@@ -44,13 +47,13 @@ if ( scalar(@ARGV) < 2 ) {
     die( $message . "\n" );
 }
 
-open( REF, '<', $ARGV[0] ) or die("$0 ERROR: cannot open REF $ARGV[0] for reading.\n");
-$/ = ">";
+open( REF, '<', $ARGV[0] ) or die("$PROGRAM_NAME ERROR: cannot open REF $ARGV[0] for reading.\n");
+local $RS = ">";
 while ( $record = <REF> ) {
     chomp($record);
-    @lines    = split( /\r\n|\n|\r/, $record );
+    @lines    = split( /\r\n|\n|\r/smx, $record );
     $REF_NAME = shift(@lines);
-    $REF_SEQ  = join( '', @lines );
+    $REF_SEQ  = join( q{}, @lines );
     if ( length($REF_SEQ) < 1 ) {
         next;
     }
@@ -58,7 +61,7 @@ while ( $record = <REF> ) {
     last;
 }
 close(REF);
-if ( !defined($N) ) { die("$0 ERROR: no reference found in $ARGV[0].\n"); }
+if ( !defined($N) ) { die("$PROGRAM_NAME ERROR: no reference found in $ARGV[0].\n"); }
 
 # Insert if >= thresholds
 # Given as >= T AND >= C
@@ -90,10 +93,10 @@ $storeStats    = defined($storeStats)    ? 1 : 0;
 @statRef  = ();
 %insTable = ();
 
-for ( $i = 1; $i < scalar(@ARGV); $i++ ) {
+for my $i ( 1 .. $#ARGV ) {
     @statRef = @{ retrieve( $ARGV[$i] ) };
-    for $p ( 0 .. ( $N - 1 ) ) {
-        foreach $base ( keys( %{ $statRef[0][$p] } ) ) {
+    for my $p ( 0 .. ( $N - 1 ) ) {
+        foreach my $base ( keys( %{ $statRef[0][$p] } ) ) {
             $bigTable[$p]{$base} += $statRef[0][$p]{$base};
         }
         if ( %{ $statRef[1]{$p} } ) {
@@ -104,12 +107,12 @@ for ( $i = 1; $i < scalar(@ARGV); $i++ ) {
     }
 }
 
-@cons = @totals = ();
+my ( @cons, @totals ) = ();
 for my $p ( 0 .. ( $N - 1 ) ) {
     $total = 0;
-    $con   = '';
+    $con   = q{};
     my $max;
-    foreach $allele ( keys( %{ $bigTable[$p] } ) ) {
+    foreach my $allele ( keys( %{ $bigTable[$p] } ) ) {
         $count = $bigTable[$p]{$allele};
         $total += $count;
         if ( !defined($max) || $count > $max ) {
@@ -122,7 +125,7 @@ for my $p ( 0 .. ( $N - 1 ) ) {
 }
 
 if ( $minDropoutEdgeSupport > 0 ) {
-    my $plurality_sequence = join( '', ( map { $_ eq '' ? '.' : $_ } @cons ) );
+    my $plurality_sequence = join( q{}, ( map { $_ eq q{} ? '.' : $_ } @cons ) );
     while ( $plurality_sequence =~ m/([ATGCNatcgn]{6}[.]{91,}[ATCGNatcgn]{6})/g ) {
         for my $p ( $-[1] .. ( $+[1] - 1 ) ) {
             if ( $totals[$p] < $minDropoutEdgeSupport ) {
@@ -132,8 +135,8 @@ if ( $minDropoutEdgeSupport > 0 ) {
     }
 }
 
-$header    = $header2     = '';
-$consensus = $alternative = '';
+my ( $header,    $hader2 )      = ( q{}, q{} );
+my ( $consensus, $alternative ) = ( q{}, q{} );
 if ($name) {
     $header  = '>' . $name . "\n";
     $header2 = $header;
@@ -219,6 +222,6 @@ for my $p ( 0 .. ( $N - 1 ) ) {
 
 # print the consensus sequences
 print $header, $consensus, "\n";
-if ( $alternative ne '' && $alternative ne $consensus ) {
+if ( $alternative ne q{} && $alternative ne $consensus ) {
     print $header2, $alternative, "\n";
 }
