@@ -1000,7 +1000,7 @@ else
 fi
 FASTQ="$assemp"/${gene}_\$ID.fastq
 SAM="$assemp"/F${iter}-${gene}-\$ID.sam
-STAT="$assemp"/F${iter}-${gene}-\$ID.sto
+STAT="$assemp"/F${iter}-${gene}-\$ID.tsv
 
 "$SSW" -s -c -h -r $SSW_OPTS "$ref" "\$FASTQ" > "\$SAM" 2> /dev/null
 "$spath"/winnowSAM.pl -I "\$SAM"
@@ -1052,7 +1052,7 @@ else
 fi
 FASTQ="$assemp"/${gene}_\$ID.fastq
 SAM="$assemp"/F${iter}-${gene}-\$ID.sam
-STAT="$assemp"/F${iter}-${gene}-\$ID.sto
+STAT="$assemp"/F${iter}-${gene}-\$ID.tsv
 
 "$IRMA_CORE" aligner --profile-from-ref --single-thread --header --ignore-n --best-match $CORE_METHOD --rev-comp $SSW_OPTS "$ref" "\$FASTQ" --output "\$SAM"
 # Winnowing is not required
@@ -1109,7 +1109,7 @@ else
 fi
 FASTQ="$assemp"/${gene}_\$ID.fastq
 SAM="$assemp"/F${iter}-${gene}-\$ID.sam
-STAT="$assemp"/F${iter}-${gene}-\$ID.sto
+STAT="$assemp"/F${iter}-${gene}-\$ID.tsv
 
 "$MM2" -a --secondary=no -t $threads $MM2_OPTS "$ref" "\$FASTQ" > "\$SAM" 2> /dev/null
 "$spath"/winnowSAM.pl -F 14 -I "\$SAM"
@@ -1343,7 +1343,7 @@ function REFINE_ASSEMBLY_CALL_VARIANTS() {
         currentScore=$($ASSEM_SCORE "$theSAM")
         echo -e "$currentScore\t$theSAM" >> "$log"
 
-        theStats=("$assemp/F${iter}-$gene-"*.sto)
+        theStats=("$assemp/F${iter}-$gene-"*.tsv)
         if [ "$lastScore" -lt "$currentScore" ]; then
             if [ "$iter" -lt "$MAX_ITER_ASSEM" ]; then
                 # generate next reference

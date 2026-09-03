@@ -5,7 +5,6 @@
 #
 # Description: combine assembly statistics for iterative final assembly generation
 
-use Storable;
 use POSIX;
 use Getopt::Long;
 use English qw(-no_match_vars);
@@ -89,22 +88,28 @@ $markDeletions = defined($markDeletions) ? 1 : 0;
 $storeStats    = defined($storeStats)    ? 1 : 0;
 
 # Aggregate data
-@bigTable = ();
-@statRef  = ();
-%insTable = ();
+@agg_counts       = ();
+@agg_quals        = ();
+%agg_inserts      = ();
+%agg_insert_quals = ();
 
+local $RS = "\n";
 for my $i ( 1 .. $#ARGV ) {
-    @statRef = @{ retrieve( $ARGV[$i] ) };
-    for my $p ( 0 .. ( $N - 1 ) ) {
-        foreach my $base ( keys( %{ $statRef[0][$p] } ) ) {
-            $bigTable[$p]{$base} += $statRef[0][$p]{$base};
-        }
-        if ( %{ $statRef[1]{$p} } ) {
-            foreach $insert ( keys( %{ $statRef[1]{$p} } ) ) {
-                $insTable{$p}{$insert} += $statRef[1]{$p}{$insert};
-            }
+    open( my $STAT, '<', $ARGV[$i] ) or die("$PROGRAM_NAME ERROR: cannot open STAT $ARGV[$i] for reading.\n");
+    while ( my $line = <$STAT> ) {
+        chomp($line);
+        my ( $type, $pos, $allele, $partition_count, $partition_enc_qualities ) = split( "\t", $line );
+        if ( $type eq 'M' ) {
+            $agg_counts[$pos]{$allele} += $partition_count;
+            $agg_quals[$pos]{$allele}  += $partition_enc_qualities;
+        } elsif ( $type eq 'I' ) {
+            $agg_inserts{$pos}{$allele}      += $partition_count;
+            $agg_insert_quals{$pos}{$allele} += $partition_enc_qualities;
+        } else {
+            die("$PROGRAM_NAME ERROR: unrecognized record type '$type' in $ARGV[$i].\n");
         }
     }
+    close($STAT);
 }
 
 my ( @cons, @totals ) = ();
@@ -112,8 +117,8 @@ for my $p ( 0 .. ( $N - 1 ) ) {
     $total = 0;
     $con   = q{};
     my $max;
-    foreach my $allele ( keys( %{ $bigTable[$p] } ) ) {
-        $count = $bigTable[$p]{$allele};
+    foreach my $allele ( keys( %{ $agg_counts[$p] } ) ) {
+        $count = $agg_counts[$p]{$allele};
         $total += $count;
         if ( !defined($max) || $count > $max ) {
             $max = $count;
@@ -149,13 +154,13 @@ for my $p ( 0 .. ( $N - 1 ) ) {
         $consensus .= $cons[$p];
 
         # alternative non-gap
-        @alleles = keys( %{ $bigTable[$p] } );
+        @alleles = keys( %{ $agg_counts[$p] } );
         if ( scalar(@alleles) > 1 ) {
-            @sortedAlleles = sort { $bigTable[$p]{$b} <=> $bigTable[$p]{$a} } @alleles;
+            @sortedAlleles = sort { $agg_counts[$p]{$b} <=> $agg_counts[$p]{$a} } @alleles;
             if ( $sortedAlleles[1] eq '-' ) {
                 $alternative .= $cons[$p];
             } else {
-                $altCount = $bigTable[$p]{ $sortedAlleles[1] };
+                $altCount = $agg_counts[$p]{ $sortedAlleles[1] };
                 $altFreq  = $altCount / $totals[$p];
 
                 if ( $altFreq < $alternativeThreshold || $altCount < $alternativeCount ) {
@@ -170,18 +175,18 @@ for my $p ( 0 .. ( $N - 1 ) ) {
 
         # Plurality consensus is '-'
     } else {
-        $freq    = $bigTable[$p]{ $cons[$p] } / $totals[$p];
-        @alleles = keys( %{ $bigTable[$p] } );
+        $freq    = $agg_counts[$p]{ $cons[$p] } / $totals[$p];
+        @alleles = keys( %{ $agg_counts[$p] } );
 
         # Ignore deletion if below threshold and there exists another allele
-        if ( ( $bigTable[$p]{ $cons[$p] } < $deletionDepthThreshold || $freq < $deletionThreshold ) && scalar(@alleles) > 1 )
-        {
-            @sortedAlleles = sort { $bigTable[$p]{$b} <=> $bigTable[$p]{$a} } @alleles;
+        if ( ( $agg_counts[$p]{ $cons[$p] } < $deletionDepthThreshold || $freq < $deletionThreshold )
+             && scalar(@alleles) > 1 ) {
+            @sortedAlleles = sort { $agg_counts[$p]{$b} <=> $agg_counts[$p]{$a} } @alleles;
             $consensus .= $sortedAlleles[1];
 
             # alternative non-gap
             if ( scalar(@alleles) > 2 ) {
-                $altCount = $bigTable[$p]{ $sortedAlleles[2] };
+                $altCount = $agg_counts[$p]{ $sortedAlleles[2] };
                 $altFreq  = $altCount / $totals[$p];
 
                 if ( $altFreq < $alternativeThreshold || $altCount < $alternativeCount ) {
@@ -204,16 +209,16 @@ for my $p ( 0 .. ( $N - 1 ) ) {
         }
     }
 
-    if ( defined( $insTable{$p} ) ) {
-        @sortedIns = sort { $insTable{$p}{$b} <=> $insTable{$p}{$a} } keys( %{ $insTable{$p} } );
+    if ( defined( $agg_inserts{$p} ) ) {
+        @sortedIns = sort { $agg_inserts{$p}{$b} <=> $agg_inserts{$p}{$a} } keys( %{ $agg_inserts{$p} } );
         if ( $p < ( $N - 1 ) ) {
             $avgTotal = int( ( $totals[$p] + $totals[$p + 1] ) / 2 );
         } else {
             $avgTotal = $totals[$p];
         }
 
-        $freq = $insTable{$p}{ $sortedIns[0] } / $avgTotal;
-        if ( $freq >= $insertionThreshold && $insTable{$p}{ $sortedIns[0] } >= $insertionDepthThreshold ) {
+        $freq = $agg_inserts{$p}{ $sortedIns[0] } / $avgTotal;
+        if ( $freq >= $insertionThreshold && $agg_inserts{$p}{ $sortedIns[0] } >= $insertionDepthThreshold ) {
             $consensus   .= lc( $sortedIns[0] );
             $alternative .= lc( $sortedIns[0] );
         }

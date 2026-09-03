@@ -5,7 +5,6 @@
 #
 # Description: tabulate SAM assembly statistics
 
-use Storable;
 use Getopt::Long;
 GetOptions( 'ignore-annotation|G' => \$ignoreAnnotation, 'silence-complex-indel|S' => \$silenceBadIndels );
 if ( scalar(@ARGV) != 3 ) {
@@ -35,8 +34,10 @@ if ( $ignoreAnnotation && $REF_NAME =~ /^([^{]+)\{[^}]*}/ ) {
 $silenceBadIndels = defined($silenceBadIndels) ? 1 : 0;
 
 open( SAM, '<', $ARGV[1] ) or die("$0 ERROR: cannot open SAM $ARGV[1] for reading.\n");
-$/     = "\n";
-@table = ();
+$/ = "\n";
+
+my ( @counts, @enc_qualities, %insert_counts, %insert_enc_qualities ) = ();
+
 while ( $line = <SAM> ) {
     chomp($line);
     if ( substr( $line, 0, 1 ) eq '@' ) {
@@ -65,18 +66,26 @@ while ( $line = <SAM> ) {
             $op  = $2;
             if ( $op eq 'M' ) {
                 for ( 1 .. $inc ) {
-                    $table[0][$rpos]{ substr( $seq, $qpos, 1 ) }++;
+                    my $query_allele = substr( $seq, $qpos, 1 );
+                    $counts[$rpos]{$query_allele}++;
+                    $enc_qualities[$rpos]{$query_allele} += ord( substr( $qual, $qpos, 1 ) );
                     $qpos++;
                     $rpos++;
                 }
             } elsif ( $op eq 'D' ) {
                 for ( 1 .. $inc ) {
-                    $table[0][$rpos]{'-'}++;
+                    $counts[$rpos]{'-'}++;
+                    $enc_qualities[$rpos]{'-'} = 0;
                     $rpos++;
                 }
             } elsif ( $op eq 'I' ) {
                 $insert = lc( substr( $seq, $qpos, $inc ) );
-                $table[1]{ $rpos - 1 }{$insert}++;
+                $insert_counts{ $rpos - 1 }{$insert}++;
+
+                # Sum the encoded insertion qualities into a 32-bit integer.
+                # Note that 2^32 >> 126 * expected virus lengths. The value is
+                # normalized downstream if needed
+                $insert_enc_qualities{ $rpos - 1 }{$insert} += unpack( "%32C*", substr( $qual, $qpos, $inc ) );
                 $qpos += $inc;
             } elsif ( $op eq 'N' ) {
                 $rpos += $inc;
@@ -92,4 +101,24 @@ while ( $line = <SAM> ) {
     }
 }
 close(SAM);
-store( \@table, $ARGV[2] );
+
+my $OUT;
+open( $OUT, '>', $ARGV[2] ) or die("$0 ERROR: cannot open OUT $ARGV[2] for writing.\n");
+for my $rpos ( 0 .. $#counts ) {
+    next if ( !defined $counts[$rpos] );
+    foreach my $allele ( keys( %{ $counts[$rpos] } ) ) {
+        print $OUT join( "\t", 'M', $rpos, $allele, $counts[$rpos]{$allele}, $enc_qualities[$rpos]{$allele} ), "\n";
+    }
+}
+
+foreach my $rpos_upstream ( keys(%insert_counts) ) {
+    foreach my $insert ( keys( %{ $insert_counts{$rpos_upstream} } ) ) {
+        print $OUT join( "\t",
+                         'I', $rpos_upstream, $insert,
+                         $insert_counts{$rpos_upstream}{$insert},
+                         $insert_enc_qualities{$rpos_upstream}{$insert} ),
+          "\n";
+    }
+}
+close($OUT);
+
