@@ -1313,7 +1313,6 @@ function REFINE_ASSEMBLY_CALL_VARIANTS() {
     # DEFINE local variables
     local log="$assemp"/$gene.log
     local COMBINE_SAM_OPTS="-N $gene -I $INS_T -D $DEL_T -A $MIN_FA -C $MIN_CA -i ${INS_T_DEPTH:-1} -d ${DEL_T_DEPTH:-1}"
-    [ "${MIN_DROPOUT_EDGE_DEPTH:-0}" -gt "0" ] && COMBINE_SAM_OPTS+=" -E $MIN_DROPOUT_EDGE_DEPTH"
     local theRef=""
     local -a theStats=()
     local newRef=""

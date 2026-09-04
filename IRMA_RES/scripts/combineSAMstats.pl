@@ -21,7 +21,6 @@ GetOptions(
             'alternative-count|C=i'         => \$alternativeCount,
             'store-stats|S=s'               => \$storeStats,
             'mark-deletions|M'              => \$markDeletions,
-            'min-dropout-edge-support|E=i'  => \$minDropoutEdgeSupport
 );
 
 if ( scalar(@ARGV) < 2 ) {
@@ -41,9 +40,9 @@ if ( scalar(@ARGV) < 2 ) {
     $message .= "\t\t-S|--store-stats <FILE>\t\t\tSave aggregate stats to a .sto file.\n";
     $message .=
       "\t\t-M|--mark-deletions\t\t\tOutput '-' for deletions in the consensus instead ommitting the deleted states.\n";
-    $message .=
-"\t\t-E|--min-dropout-edge-support\t\tMinimum site coverage depth in order mask dropouts (91+) with flanking regions (6bp) with N.\n";
     die( $message . "\n" );
+
+    # TODO: revisit minimum dropout edge feature in Rust port
 }
 
 open( REF, '<', $ARGV[0] ) or die("$PROGRAM_NAME ERROR: cannot open REF $ARGV[0] for reading.\n");
@@ -77,12 +76,6 @@ if ( !defined($deletionDepthThreshold) ) { $deletionDepthThreshold = 1; }
 if ( !defined($alternativeThreshold) ) { $alternativeThreshold = 2; }
 if ( !defined($alternativeCount) )     { $alternativeCount     = LONG_MAX; }
 
-if ( !defined($minDropoutEdgeSupport) || $minDropoutEdgeSupport < 0 ) {
-    $minDropoutEdgeSupport = 0;
-} else {
-    $minDropoutEdgeSupport = int($minDropoutEdgeSupport);
-}
-
 # Flags
 $markDeletions = defined($markDeletions) ? 1 : 0;
 $storeStats    = defined($storeStats)    ? 1 : 0;
@@ -112,35 +105,23 @@ for my $i ( 1 .. $#ARGV ) {
     close($STAT);
 }
 
-my ( @cons, @totals ) = ();
+my @alpha      = split( q{}, 'AaCcGgTtUuRrYySsWwKkMmBbDdHhVvNn-.' );
+my %base_order = ();
+@base_order{@alpha} = 0 .. $#alpha;
+
+my @totals = ();
 for my $p ( 0 .. ( $N - 1 ) ) {
-    $total = 0;
-    $con   = q{};
-    my $max;
-    foreach my $allele ( keys( %{ $agg_counts[$p] } ) ) {
-        $count = $agg_counts[$p]{$allele};
+
+    # Different from call.pl
+    # includes all counts for sake of deletion editing
+    my $total = 0;
+    foreach my $count ( values( %{ $agg_counts[$p] } ) ) {
         $total += $count;
-        if ( !defined($max) || $count > $max ) {
-            $max = $count;
-            $con = $allele;
-        }
     }
-    $cons[$p]   = $con;
     $totals[$p] = $total;
 }
 
-if ( $minDropoutEdgeSupport > 0 ) {
-    my $plurality_sequence = join( q{}, ( map { $_ eq q{} ? '.' : $_ } @cons ) );
-    while ( $plurality_sequence =~ m/([ATGCNatcgn]{6}[.]{91,}[ATCGNatcgn]{6})/g ) {
-        for my $p ( $-[1] .. ( $+[1] - 1 ) ) {
-            if ( $totals[$p] < $minDropoutEdgeSupport ) {
-                $cons[$p] = 'N';
-            }
-        }
-    }
-}
-
-my ( $header,    $hader2 )      = ( q{}, q{} );
+my ( $header,    $header2 )     = ( q{}, q{} );
 my ( $consensus, $alternative ) = ( q{}, q{} );
 if ($name) {
     $header  = '>' . $name . "\n";
@@ -149,53 +130,56 @@ if ($name) {
     $header  = ">consensus\n";
     $header2 = ">alternative\n";
 }
+
+my ( @sorted_alleles, $cons );
 for my $p ( 0 .. ( $N - 1 ) ) {
-    if ( $cons[$p] ne '-' ) {
-        $consensus .= $cons[$p];
+    @sorted_alleles = sort {
+        $agg_counts[$p]{$b}                        <=> $agg_counts[$p]{$a}                      # desc count
+          or $agg_quals[$p]{$b}                    <=> $agg_quals[$p]{$a}                       # desc quality
+          or ( $base_order{$a} // scalar(@alpha) ) <=> ( $base_order{$b} // scalar(@alpha) )    # asc alpha order
+          or $a cmp $b                                                                          # ASCII byte order
+      }
+      keys( %{ $agg_counts[$p] } );
+    $cons = $sorted_alleles[0] // q{};
+
+    if ( $cons ne '-' ) {
+        $consensus .= $cons;
 
         # alternative non-gap
-        @alleles = keys( %{ $agg_counts[$p] } );
-        if ( scalar(@alleles) > 1 ) {
-            @sortedAlleles = sort { $agg_counts[$p]{$b} <=> $agg_counts[$p]{$a} } @alleles;
-            if ( $sortedAlleles[1] eq '-' ) {
-                $alternative .= $cons[$p];
-            } else {
-                $altCount = $agg_counts[$p]{ $sortedAlleles[1] };
-                $altFreq  = $altCount / $totals[$p];
+        if ( scalar @sorted_alleles > 1 && $sorted_alleles[1] ne '-' ) {
+            $altCount = $agg_counts[$p]{ $sorted_alleles[1] };
+            $altFreq  = $altCount / $totals[$p];
 
-                if ( $altFreq < $alternativeThreshold || $altCount < $alternativeCount ) {
-                    $alternative .= $cons[$p];
-                } else {
-                    $alternative .= $sortedAlleles[1];
-                }
+            if ( $altFreq < $alternativeThreshold || $altCount < $alternativeCount ) {
+                $alternative .= $cons;
+            } else {
+                $alternative .= $sorted_alleles[1];
             }
         } else {
-            $alternative .= $cons[$p];
+            $alternative .= $cons;
         }
+    } else {
 
         # Plurality consensus is '-'
-    } else {
-        $freq    = $agg_counts[$p]{ $cons[$p] } / $totals[$p];
-        @alleles = keys( %{ $agg_counts[$p] } );
+        $freq = $agg_counts[$p]{$cons} / $totals[$p];
 
         # Ignore deletion if below threshold and there exists another allele
-        if ( ( $agg_counts[$p]{ $cons[$p] } < $deletionDepthThreshold || $freq < $deletionThreshold )
-             && scalar(@alleles) > 1 ) {
-            @sortedAlleles = sort { $agg_counts[$p]{$b} <=> $agg_counts[$p]{$a} } @alleles;
-            $consensus .= $sortedAlleles[1];
+        if ( ( $agg_counts[$p]{$cons} < $deletionDepthThreshold || $freq < $deletionThreshold )
+             && scalar(@sorted_alleles) > 1 ) {
+            $consensus .= $sorted_alleles[1];
 
             # alternative non-gap
-            if ( scalar(@alleles) > 2 ) {
-                $altCount = $agg_counts[$p]{ $sortedAlleles[2] };
+            if ( scalar @sorted_alleles > 2 ) {
+                $altCount = $agg_counts[$p]{ $sorted_alleles[2] };
                 $altFreq  = $altCount / $totals[$p];
 
                 if ( $altFreq < $alternativeThreshold || $altCount < $alternativeCount ) {
-                    $alternative .= $sortedAlleles[1];
+                    $alternative .= $sorted_alleles[1];
                 } else {
-                    $alternative .= $sortedAlleles[2];
+                    $alternative .= $sorted_alleles[2];
                 }
             } else {
-                $alternative .= $sortedAlleles[1];
+                $alternative .= $sorted_alleles[1];
             }
 
             # >= Thresholds for deletion OR just the deletion allele is found
@@ -204,13 +188,19 @@ for my $p ( 0 .. ( $N - 1 ) ) {
 
             # Consensus is a deletion.
             # Note: the alternative consensus cannot differ in length, so the alternative allele is not evaluated.
-            $consensus   .= $cons[$p];
-            $alternative .= $cons[$p];
+            $consensus   .= $cons;
+            $alternative .= $cons;
         }
     }
 
     if ( defined( $agg_inserts{$p} ) ) {
-        @sortedIns = sort { $agg_inserts{$p}{$b} <=> $agg_inserts{$p}{$a} } keys( %{ $agg_inserts{$p} } );
+        @sortedIns =
+          sort {
+            $agg_inserts{$p}{$b} <=> $agg_inserts{$p}{$a}                                                   # desc count
+              or ( $agg_insert_quals{$p}{$b} / length $b ) <=> ( $agg_insert_quals{$p}{$a} / length $a )    # desc quality
+              or $a cmp $b                                                                                  # string order
+          }
+          keys( %{ $agg_inserts{$p} } );
         if ( $p < ( $N - 1 ) ) {
             $avgTotal = int( ( $totals[$p] + $totals[$p + 1] ) / 2 );
         } else {
