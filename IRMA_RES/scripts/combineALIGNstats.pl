@@ -167,13 +167,24 @@ if ( $keepDeleted && $Ncount != $REF_LEN ) {
     $keepDeleted = 0;
 }
 
+my @alpha      = split( q{}, 'AaCcGgTtUuRrYySsWwKkMmBbDdHhVvNn-.' );
+my %base_order = ();
+@base_order{@alpha} = 0 .. $#alpha;
+
 # middle
 $max5 = $max3 = 0;
 for ( $j = 0; $j < $Ncount; $j++ ) {
     $alt   = $max  = 0;
     $altB  = $maxB = '';
     $total = 0;
-    while ( ( $base, $matchCount ) = each( %{ $count[$j] } ) ) {
+
+    my @sorted_bases = sort {
+        $count[$j]{$b} <=> $count[$j]{$a}                                                       # count desc
+          or ( $base_order{$a} // scalar(@alpha) ) <=> ( $base_order{$b} // scalar(@alpha) )    # base order
+          or $a cmp $b                                                                          # ASCII order
+    } keys %{ $count[$j] };
+    for my $base (@sorted_bases) {
+        my $matchCount = $count[$j]{$base};
         if ( $base ne '-' ) {
             $total += $matchCount;
             if ( $matchCount > $max ) {
@@ -222,7 +233,13 @@ if ($notSkipExtension) {
         $max   = 0;
         $maxB  = '';
         $total = 0;
-        while ( ( $base, $leaderCount ) = each( %{ $count5{"-$p"} } ) ) {
+        my @sorted_bases = sort {
+            $count5{"-$p"}{$b} <=> $count5{"-$p"}{$a}                                               # count desc
+              or ( $base_order{$a} // scalar(@alpha) ) <=> ( $base_order{$b} // scalar(@alpha) )    # base order
+              or $a cmp $b                                                                          # ASCII order
+        } keys %{ $count5{"-$p"} };
+        for my $base (@sorted_bases) {
+            my $leaderCount = $count5{"-$p"}{$base};
             if ( $leaderCount > $max ) {
                 $max  = $leaderCount;
                 $maxB = $base;
@@ -246,7 +263,13 @@ if ($notSkipExtension) {
         $max   = 0;
         $maxB  = '';
         $total = 0;
-        while ( ( $base, $trailerCount ) = each( %{ $count3{$p} } ) ) {
+        my @sorted_bases = sort {
+            $count3{$p}{$b} <=> $count3{$p}{$a}                                                     # count desc
+              or ( $base_order{$a} // scalar(@alpha) ) <=> ( $base_order{$b} // scalar(@alpha) )    # base order
+              or $a cmp $b                                                                          # ASCII order
+        } keys %{ $count3{$p} };
+        for my $base (@sorted_bases) {
+            my $trailerCount = $count3{$p}{$base};
             if ( $trailerCount > $max ) {
                 $max  = $trailerCount;
                 $maxB = $base;

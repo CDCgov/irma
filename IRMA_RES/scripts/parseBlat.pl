@@ -244,17 +244,26 @@ while ( $line = <IN> ) {
     ( $match, $mismatch, $strand, $query, $target ) = ( $v[0], $v[1], $v[8], $v[9], $v[13] );
     $target =~ s/\{S\d+\}$//;
     $score = $match - $mismatch;
-    if ( $score >= $maxScore{$query} && $score > 0 ) {
-        $maxGene{$query}{$target}[0] = $strand;
-        $maxGene{$query}{$target}[1] = $line;
-        $maxGene{$query}{$target}[2] = $score;
-        $maxScore{$query}            = $score;
-        if ($triplet) {
-            $supergroup                  = $GroupFN->($target);
-            $maxGene{$query}{$target}[3] = $supergroup;
-            $supergroups{$supergroup}    = 1;
+
+    if ( $score > 0 && ( !defined $maxScore{$query} || $score >= $maxScore{$query} ) ) {
+        $maxScore{$query} = $score;
+        if (
+                !defined $maxGene{$query}{$target}[2]
+             || $score > $maxGene{$query}{$target}[2]
+             || (    $score == $maxGene{$query}{$target}[2]
+                  && $line gt $maxGene{$query}{$target}[1] )
+        ) {
+            $maxGene{$query}{$target} = [$strand, $line, $score];
+            if ($triplet) {
+                $supergroup                  = $GroupFN->($target);
+                $maxGene{$query}{$target}[3] = $supergroup;
+                $supergroups{$supergroup}    = 1;
+            }
+
         }
+
     }
+
     $total{$query}++;
     $stats{$query}{$target}{$strand}++;
 }

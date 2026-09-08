@@ -74,7 +74,11 @@ while ( $line = <SAM> ) {
         $score = countMatch($cigar);
     }
 
-    if ( !defined( $scoreByQuery{$qname} ) || $scoreByQuery{$qname} < $score ) {
+    if (
+         !defined $scoreByQuery{$qname}                                               # fill NULL
+         || $scoreByQuery{$qname} < $score                                            # max Score
+         || ( $scoreByQuery{$qname} == $score && $recordByQuery{$qname} gt $line )    # total order on line ordering
+    ) {
         $scoreByQuery{$qname}  = $score;
         $recordByQuery{$qname} = $line;
     }
