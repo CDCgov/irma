@@ -273,6 +273,11 @@ fi
 
 source "$spath/deprecated_or_removed.sh"
 
+if [ "$MAX_ROUNDS" -gt "99" ]; then
+    echo "IRMA WARNING: MAX_ROUNDS is set to '$MAX_ROUNDS'. Setting value to the maximum of 99."
+    MAX_ROUNDS=99
+fi
+
 IRMA_CORE=""
 IRMA_CORE_VERSION="irma-core-cli 0.10.1"
 # shellcheck disable=SC2034
@@ -1514,8 +1519,16 @@ function doPostProcessing() {
             shopt -s nullglob
             echo "$refp"/R[1-9].refs
         )"; then
-            # -G gets rid of alternative references
-            for name in $("$spath"/finalRefs.pl -G "$refp"/R[1-9].refs); do
+            # Select the latest read-gathering reference for each gene.
+            local last_round_files
+            last_round_files=$(
+                shopt -s nullglob
+                "$spath"/finalRefs.pl --ignore-annotation \
+                    "$refp"/R[1-9].refs \
+                    "$refp"/R[1-9][0-9].refs
+            ) || return 1
+
+            for name in $last_round_files; do
                 gene=${name#*-}
                 cat "$sortp"/R*"-$gene.fa" > "$assemp/$gene.fa"
                 "$IRMA_CORE" xflate --inflate "$ppath"/R0.xfl "$assemp/$gene.fa" > "$assemp/$gene.fastq" &

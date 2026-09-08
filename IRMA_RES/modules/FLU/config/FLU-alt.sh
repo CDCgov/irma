@@ -5,8 +5,8 @@ PARAM_FILE_VERSION="1.0"
 PARAM_FILE_DATE="2018-02"
 
 # VARIANT CALLING HEURISTICS & STATS
-MIN_FA=0.050				# minimum frequency for alternative reference
-MIN_CA=20				# minimum count for alternative reference
+MIN_FA=0.050				# enable alternative consensus for second alleles at >=5% frequency
+MIN_CA=20				# require at least 20 observations for an alternative-consensus allele
 
 ALIGN_PROG="SAM"
 SORT_PROG="LABEL"

@@ -10,8 +10,8 @@ IRMA_QUEUE=""      # queue for qsub, e.g.: QUEUE="-q all.q"  Leave unset normall
 ALLOW_DISK_CHECK=1 # check for disk free space before running, relies on Perl & unix df
 
 ### REFERENCE ###
-MIN_FA=1         # no alternative reference [0..1]
-MIN_CA=20        # minimum count for alternative finished assembly
+MIN_FA=1         # minimum frequency for an alternative-consensus allele; 1 disables alternative consensus
+MIN_CA=20        # minimum count for an alternative-consensus allele
 SKIP_E=1         # skip reference elongation
 REF_SET=$DEF_SET # Same as the "consensus.fasta" in the reference folder for the module.
 ASSEM_REF=0      # start with same reference set for the final assembly, sort if custom file

@@ -3,32 +3,30 @@
 #
 # Sam Shepard - 2014
 #
-# Description: get rid of alternative references after read gathering (if applicable)
+# Description: report the latest read-gathering reference round available for
+# each gene.
 
+use English qw(-no_match_vars);
 use File::Basename;
 use Getopt::Long;
-GetOptions( 'ignore-annotation|G'   => \$ignoreAnnotation,
-            'exclude-alternative|X' => \$excludeAlt );
+GetOptions( 'ignore-annotation|G' => \$ignoreAnnotation );
 
-$/ = '>';
-foreach $file (@ARGV) {
-    open( IN, '<', $file ) or die("Cannot open $file for reading.\n");
-    $round = basename( $file, '.refs' );
+my %maxRoundByGene = ();
+local $RS = '>';
+foreach my $file (@ARGV) {
+    open( my $IN, '<', $file ) or die("Cannot open $file for reading.\n");
+    my $round = basename( $file, '.refs' );
     if ( $round =~ /R(\d+)/ ) {
         $round = $1;
     }
 
-    while ( $record = <IN> ) {
+    while ( my $record = <$IN> ) {
         chomp($record);
-        @lines    = split( /\r\n|\n|\r/, $record );
-        $gene     = shift(@lines);
-        $sequence = lc( join( '', @lines ) );
+        my @lines    = split( /\r\n|\n|\r/, $record );
+        my $gene     = shift(@lines);
+        my $sequence = lc( join( '', @lines ) );
 
-        if ( length($sequence) <= 0 ) {
-            next;
-        }
-
-        if ( $excludeAlt && $gene =~ /{alt}/ ) {
+        if ( length $sequence <= 0 ) {
             next;
         }
 
@@ -36,16 +34,20 @@ foreach $file (@ARGV) {
             $gene = $1;
         }
 
-        if ( !defined($maxRoundByGene) || $maxRoundByGene{$gene} < $round ) {
-            $seqByGene{$gene}      = $sequence;
+        if ( !defined $maxRoundByGene{$gene} || $maxRoundByGene{$gene} < $round ) {
             $maxRoundByGene{$gene} = $round;
         }
     }
-    close(IN);
+    close($IN);
 }
 
-@genes = sort( keys(%seqByGene) );
+my @genes = sort( keys(%maxRoundByGene) );
+
+if ( !@genes ) {
+    die("No genes were found for final assembly!\n");
+}
+
 print 'R', $maxRoundByGene{ $genes[0] }, '-', $genes[0];
-for ( $i = 1; $i < scalar(@genes); $i++ ) {
+for my $i ( 1 .. $#genes ) {
     print ' R', $maxRoundByGene{ $genes[$i] }, '-', $genes[$i];
 }
