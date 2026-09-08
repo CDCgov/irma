@@ -47,7 +47,7 @@ foreach $target (%counts) {
 
 # choose primary or secondary between groups
 open( OUT, '>', $ARGV[2] . '.txt' ) or die("Cannot open $ARGV[2].txt\n");
-@genes = sort { $counts{$b} <=> $counts{$a} } keys(%counts);
+@genes = sort { $counts{$b} <=> $counts{$a} or $a cmp $b } keys(%counts);
 foreach $gene (@genes) {
     print OUT $gene, "\t", $counts{$gene}, "\t", $rCounts{$gene}, "\n";
 
@@ -97,7 +97,7 @@ if ( defined($patternList) && length($patternList) > 0 ) {
                     $genesByPat{$pat}{$gene} = $counts{$gene};
                 }
             }
-            @geneList = sort { $genesByPat{$pat}{$b} <=> $genesByPat{$pat}{$a} } keys( %{ $genesByPat{$pat} } );
+            @geneList = sort { $genesByPat{$pat}{$b} <=> $genesByPat{$pat}{$a} or $a cmp $b } keys( %{ $genesByPat{$pat} } );
             for ( $i = 1; $i < scalar(@geneList); $i++ ) {
                 $valid{ $geneList[$i] } = 0;
             }
@@ -148,7 +148,7 @@ while ( $record = <IN> ) {
     }
 
     if ( $primaryWritten == 0 ) {
-        @genes  = sort { $secondary{$b} <=> $secondary{$a} } keys(%secondary);
+        @genes  = sort { $secondary{$b} <=> $secondary{$a} or $a cmp $b } keys(%secondary);
         $handle = $handles{ $genes[0] };
         print $handle '>', $header, "\n", $sequence, "\n";
     }

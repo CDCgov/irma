@@ -59,13 +59,25 @@ if ( defined($name) && $name ne '' ) {
     print STDOUT ">consensus\n";
 }
 
+my @alpha      = split( q{}, 'AaCcGgTtUuRrYySsWwKkMmBbDdHhVvNn-.' );
+my %base_order = ();
+@base_order{@alpha} = 0 .. $#alpha;
+
 $sequence = '';
 foreach my $p ( 0 .. ( $length - 1 ) ) {
-    @nts = sort { $count[$p]{$b} <=> $count[$p]{$a} } keys( %{ $count[$p] } );
-    $nt  = defined( $nts[0] ) ? $nts[0] : '.';
+    @nts = sort {
+        $count[$p]{$b} <=> $count[$p]{$a}                                                       # count desc
+          or ( $base_order{$a} // scalar(@alpha) ) <=> ( $base_order{$b} // scalar(@alpha) )    # base ordering
+          or $a cmp $b                                                                          # ASCII order
+    } keys( %{ $count[$p] } );
+    $nt = defined( $nts[0] ) ? $nts[0] : '.';
     if ( $nt =~ /[.-]/ ) {
-        @nts = sort { $default[$p]{$b} <=> $default[$p]{$a} } keys( %{ $default[$p] } );
-        $nt  = defined( $nts[0] ) ? $nts[0] : '.';
+        @nts = sort {
+            $default[$p]{$b} <=> $default[$p]{$a}                                                   # def count desc
+              or ( $base_order{$a} // scalar(@alpha) ) <=> ( $base_order{$b} // scalar(@alpha) )    # base ordering
+              or $a cmp $b                                                                          # ASCII order
+        } keys( %{ $default[$p] } );
+        $nt = defined( $nts[0] ) ? $nts[0] : '.';
     }
     $sequence .= uc($nt);
 }

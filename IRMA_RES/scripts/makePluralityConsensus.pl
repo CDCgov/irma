@@ -45,8 +45,16 @@ if ($name) {
     print ">consensus\n";
 }
 
+my @alpha      = split( q{}, 'AaCcGgTtUuRrYySsWwKkMmBbDdHhVvNn-.' );
+my %base_order = ();
+@base_order{@alpha} = 0 .. $#alpha;
+
 foreach $p ( 0 .. ( $length - 1 ) ) {
-    @nts = sort { $count[$p]{$b} <=> $count[$p]{$a} } keys( %{ $count[$p] } );
+    @nts = sort {
+        $count[$p]{$b} <=> $count[$p]{$a}                                                       # count descending
+          or ( $base_order{$a} // scalar(@alpha) ) <=> ( $base_order{$b} // scalar(@alpha) )    # base ordering
+          or $a cmp $b                                                                          # ASCII order
+    } keys( %{ $count[$p] } );
     foreach $nt ( 0 .. $#nts ) {
         if ( $nts[$nt] ne '-' || $allowDeletions ) {
             print $nts[$nt];
