@@ -26,6 +26,7 @@ my $minFreqDel = 0.005;    # minimum deletion frequency
 my $minConf    = 0.5;      # minimum confidence not machine error
 my $minQuality = 20;       # minimum average allele quality
 my $minTotal   = 2;        # minimum total coverage depth
+my $nullValue  = 'NA';     # missing-value marker for allAlleles output
 
 GetOptions(
             'no-gap-allele|G'            => \$noGap,
@@ -36,6 +37,7 @@ GetOptions(
             'min-quality|Q=i'            => \$minQuality,
             'min-total-col-coverage|T=i' => \$minTotal,
             'print-all-sites|P'          => \$printAllAlleles,
+            'null-value|N=s'             => \$nullValue,
             'conf-not-mac-err|M=f'       => \$minConf,
             'sig-level|S=f'              => \$sigLevel,
             'paired-error|E=s'           => \$pairedStats,
@@ -51,18 +53,21 @@ if ( $minQuality < 0 ) { $minQuality = 0; }
 if ( $minTotal < 0 )   { $minTotal   = 2; }
 
 if ( scalar(@ARGV) < 3 ) {
-    die(   "Usage:\n\tperl $PROGRAM_NAME <ref> <prefix> <aln.sto> <...>\n"
-         . "\t\t-G|--no-gap-allele\t\t\tDo not count gaps alleles as variants.\n"
-         . "\t\t-F|--min-freq <FLT>\t\t\tMinimum frequency for a variant to be processed. Default = 0.01.\n"
-         . "\t\t-C|--min-count <INT>\t\t\tMinimum count of variant. Default = 2.\n"
-         . "\t\t-Q|--min-quality <INT>\t\t\tMinimum average variant quality, preprocesses data. Default = 20.\n"
-         . "\t\t-T|--min-total-col-coverage <INT>\tMinimum non-ambiguous column coverage. Default = 2.\n"
-         . "\t\t-P|--print-all-vars\t\t\tPrint all variants.\n"
-         . "\t\t-M|--conf-not-mac-err <FLT>\t\tConfidence not machine error allowable minimum. Default = 0.5\n"
-         . "\t\t-S|--sig-level <FLT>\t\t\tSignificance test (90, 95, 99, 99.9) variant is not machine error.\n"
-         . "\t\t-E|--paired-error <FILE>\t\tFile with paired error estimates.\n"
-         . "\t\t-A|--auto-min-freq\t\t\tAutomatically find minimum frequency heuristic.\n"
-         . "\n" );
+    die(  "Usage:\n\tperl $PROGRAM_NAME <ref> <prefix> <aln.sto> <...>\n"
+        . "\t\t-G|--no-gap-allele\t\t\tDo not call gap alleles as variants.\n"
+        . "\t\t-F|--min-freq <FLT>\t\t\tMinimum SNV frequency. Default = 0.005.\n"
+        . "\t\t-I|--min-insertion-freq <FLT>\tMinimum insertion frequency. Default = 0.005.\n"
+        . "\t\t-D|--min-deletion-freq <FLT>\tMinimum deletion frequency. Default = 0.005.\n"
+        . "\t\t-C|--min-count <INT>\t\t\tMinimum variant count. Default = 2.\n"
+        . "\t\t-Q|--min-quality <INT>\t\t\tMinimum average variant quality (not applied to deletions). Default = 20.\n"
+        . "\t\t-T|--min-total-col-coverage <INT>\tMinimum non-ambiguous column coverage. Default = 2.\n"
+        . "\t\t-P|--print-all-sites\t\t\tWrite observed alleles to <prefix>-allAlleles.txt.\n"
+        . "\t\t-N|--null-value <STR>\t\t\tMissing-value marker in allAlleles. Default = NA (R); use \\N for Hadoop/Hive/Impala.\n"
+        . "\t\t-M|--conf-not-mac-err <FLT>\t\tMinimum confidence that a variant is not machine error. Default = 0.5.\n"
+        . "\t\t-S|--sig-level <FLT>\t\t\tSignificance level for error bounds (90, 95, 99, or 99.9 percent).\n"
+        . "\t\t-E|--paired-error <FILE>\t\tFile containing paired-read error estimates.\n"
+        . "\t\t-A|--auto-min-freq\t\t\tAutomatically determine the minimum frequency heuristic.\n"
+        . "\n" );
 }
 
 # FUNCTIONS #
@@ -269,8 +274,6 @@ foreach my $i ( 2 .. $#ARGV ) {
     }
 }
 
-#print STDERR Dumper(@cTable);
-
 my $prefix = $ARGV[1];
 
 my $ALLA;
@@ -341,19 +344,14 @@ foreach my $p ( 0 .. ( $REF_LEN - 1 ) ) {
         $canonical_total -= $cTable[$p]{'N'};
     }
 
-    #if ( $consensus eq '.' && $consensusSeq eq '' ) {
-    #    next;
-    #} else {
     $cons_p++;
-
-    #}
 
     $consensusSeq .= $consensus;
     print $CONS $consensus;
 
     my $conFreq = 0;
     if ( $consensus eq 'N' ) {
-        $conFreq = 'NA';
+        $conFreq = $nullValue;
     } elsif ( $canonical_total != 0 ) {
         $conFreq = $conCount / $canonical_total;
     }
@@ -385,13 +383,13 @@ foreach my $p ( 0 .. ( $REF_LEN - 1 ) ) {
 
                 my ( $confidence, $quality, $pairedUB, $qualityUB );
                 if ( $base eq 'N' ) {
-                    $confidence = 'NA';
+                    $confidence = $nullValue;
                     $quality    = $conQuality;
-                    $pairedUB   = 'NA';
-                    $qualityUB  = 'NA';
+                    $pairedUB   = $nullValue;
+                    $qualityUB  = $nullValue;
                 } elsif ( $base eq '-' ) {
-                    $confidence = 'NA';
-                    $quality    = 'NA';
+                    $confidence = $nullValue;
+                    $quality    = $nullValue;
                     $pairedUB   = UB( $DE, $canonical_total );
                     $qualityUB  = 0;
                 } else {
@@ -423,15 +421,15 @@ foreach my $p ( 0 .. ( $REF_LEN - 1 ) ) {
 
             my ( $confidence, $pairedUB, $qualityUB );
             if ( $base eq '-' ) {
-                $quality    = 'NA';
-                $confidence = 'NA';
+                $quality    = $nullValue;
+                $confidence = $nullValue;
                 $pairedUB   = UB( $DE, $canonical_total );
                 $qualityUB  = 0;
             } elsif ( $consensus eq 'N' ) {
-                $freq       = 'NA';
-                $confidence = 'NA';
-                $pairedUB   = 'NA';
-                $qualityUB  = 'NA';
+                $freq       = $nullValue;
+                $confidence = $nullValue;
+                $pairedUB   = $nullValue;
+                $qualityUB  = $nullValue;
             } else {
 
                 # quality-based estimated error
@@ -579,7 +577,7 @@ foreach my $p ( sort { $a <=> $b } keys(%icTable) ) {
 
         print $INSV $REF_NAME, "\t", ( $p + 1 ), "\t", uc($insert), "\t", lc($left_flanking), uc($insert),
           lc($right_flanking), "\t", $called, "\t", $count, "\t", $total, "\t", $freq, "\t", $quality, "\t",
-          $confidence, "\t", $pairedUB, "\t", $qualityUB, "\t", "\n";
+          $confidence, "\t", $pairedUB, "\t", $qualityUB, "\n";
     }
 }
 close $INSV or croak("Cannot close file: $OS_ERROR\n");
