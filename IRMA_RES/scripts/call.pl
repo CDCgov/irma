@@ -16,9 +16,8 @@ use Carp qw(croak);
 
 #use Data::Dumper;
 
-my ( $printAllAlleles, $sigLevel, $pairedStats, $autoFreq );
+my ( $sigLevel, $pairedStats, $autoFreq );
 
-my $noGap      = 0;        # no gap allele
 my $minCount   = 2;        # minimum allele count
 my $minFreq    = 0.005;    # minimum allele frequency
 my $minFreqIns = 0.005;    # minimum insertion frequency
@@ -29,14 +28,12 @@ my $minTotal   = 2;        # minimum total coverage depth
 my $nullValue  = 'NA';     # missing-value marker for allAlleles output
 
 GetOptions(
-            'no-gap-allele|G'            => \$noGap,
             'min-freq|F=f'               => \$minFreq,
             'min-insertion-freq|I=f'     => \$minFreqIns,
             'min-deletion-freq|D=f'      => \$minFreqDel,
             'min-count|C=i'              => \$minCount,
             'min-quality|Q=i'            => \$minQuality,
             'min-total-col-coverage|T=i' => \$minTotal,
-            'print-all-sites|P'          => \$printAllAlleles,
             'null-value|N=s'             => \$nullValue,
             'conf-not-mac-err|M=f'       => \$minConf,
             'sig-level|S=f'              => \$sigLevel,
@@ -54,14 +51,12 @@ if ( $minTotal < 0 )   { $minTotal   = 2; }
 
 if ( scalar(@ARGV) < 3 ) {
     die(  "Usage:\n\tperl $PROGRAM_NAME <ref> <prefix> <aln.sto> <...>\n"
-        . "\t\t-G|--no-gap-allele\t\t\tDo not call gap alleles as variants.\n"
         . "\t\t-F|--min-freq <FLT>\t\t\tMinimum SNV frequency. Default = 0.005.\n"
         . "\t\t-I|--min-insertion-freq <FLT>\tMinimum insertion frequency. Default = 0.005.\n"
         . "\t\t-D|--min-deletion-freq <FLT>\tMinimum deletion frequency. Default = 0.005.\n"
         . "\t\t-C|--min-count <INT>\t\t\tMinimum variant count. Default = 2.\n"
         . "\t\t-Q|--min-quality <INT>\t\t\tMinimum average variant quality (not applied to deletions). Default = 20.\n"
         . "\t\t-T|--min-total-col-coverage <INT>\tMinimum non-ambiguous column coverage. Default = 2.\n"
-        . "\t\t-P|--print-all-sites\t\t\tWrite observed alleles to <prefix>-allAlleles.txt.\n"
         . "\t\t-N|--null-value <STR>\t\t\tMissing-value marker in allAlleles. Default = NA (R); use \\N for Hadoop/Hive/Impala.\n"
         . "\t\t-M|--conf-not-mac-err <FLT>\t\tMinimum confidence that a variant is not machine error. Default = 0.5.\n"
         . "\t\t-S|--sig-level <FLT>\t\t\tSignificance level for error bounds (90, 95, 99, or 99.9 percent).\n"
@@ -277,13 +272,11 @@ foreach my $i ( 2 .. $#ARGV ) {
 my $prefix = $ARGV[1];
 
 my $ALLA;
-if ($printAllAlleles) {
-    open( $ALLA, '>', $prefix . '-allAlleles.txt' ) or die("ERROR: cannot open $prefix-allAlleles.txt for writing.\n");
-    print $ALLA 'Reference_Name',  "\t",       'Position', "\t";
-    print $ALLA 'Allele',          "\t",       'Count',    "\t", 'Total', "\t", 'Frequency', "\t";
-    print $ALLA 'Average_Quality', "\t",       'ConfidenceNotMacErr';
-    print $ALLA "\t",              'PairedUB', "\t", 'QualityUB', "\t", 'Allele_Type', "\n";
-}
+open( $ALLA, '>', $prefix . '-allAlleles.txt' ) or die("ERROR: cannot open $prefix-allAlleles.txt for writing.\n");
+print $ALLA 'Reference_Name',  "\t",       'Position', "\t";
+print $ALLA 'Allele',          "\t",       'Count',    "\t", 'Total', "\t", 'Frequency', "\t";
+print $ALLA 'Average_Quality', "\t",       'ConfidenceNotMacErr';
+print $ALLA "\t",              'PairedUB', "\t", 'QualityUB', "\t", 'Allele_Type', "\n";
 
 open( my $VARS, '>', $prefix . '-variants.txt' ) or die("ERROR: cannot open $prefix-variants.txt for writing.\n");
 print $VARS 'Reference_Name', "\t",                        'Position', "\t", 'Total';
@@ -377,33 +370,34 @@ foreach my $p ( 0 .. ( $REF_LEN - 1 ) ) {
 
     foreach my $base (@site_alleles) {
 
-        # plurality allele can be ATGC + "N" + "-"
+        # Plurality allele can be ACGT + "N" + "-"
         if ( $base eq $consensus ) {
-            if ($printAllAlleles) {
+            my ( $confidence, $quality, $pairedUB, $qualityUB );
 
-                my ( $confidence, $quality, $pairedUB, $qualityUB );
-                if ( $base eq 'N' ) {
-                    $confidence = $nullValue;
-                    $quality    = $conQuality;
-                    $pairedUB   = $nullValue;
-                    $qualityUB  = $nullValue;
-                } elsif ( $base eq '-' ) {
-                    $confidence = $nullValue;
-                    $quality    = $nullValue;
-                    $pairedUB   = UB( $DE, $canonical_total );
-                    $qualityUB  = 0;
-                } else {
-                    my $ee = 1 / ( 10**( $conQuality / 10 ) );
+            if ( $base eq 'N' ) {
+                $confidence = $nullValue;
+                $quality    = $conQuality;
+                $pairedUB   = $nullValue;
+                $qualityUB  = $nullValue;
+            } elsif ( $base eq '-' ) {
+                $confidence = $nullValue;
+                $quality    = $nullValue;
+                $pairedUB   = UB( $DE, $canonical_total );
+                $qualityUB  = 0;
+            } else {
+                my $ee = 1 / ( 10**( $conQuality / 10 ) );
 
-                    $confidence = calcProb( $conFreq, $ee );
-                    $quality    = $conQuality;
-                    $pairedUB   = UB( $PE, $canonical_total );
-                    $qualityUB  = UB( $ee, $canonical_total );
-                }
-                print $ALLA $REF_NAME, "\t", $cons_p, "\t", $base, "\t", $conCount, "\t", $canonical_total, "\t", $conFreq,
-                  "\t", $quality, "\t", $confidence, "\t", $pairedUB, "\t", $qualityUB, "\t", 'Consensus', "\n";
+                $confidence = calcProb( $conFreq, $ee );
+                $quality    = $conQuality;
+                $pairedUB   = UB( $PE, $canonical_total );
+                $qualityUB  = UB( $ee, $canonical_total );
             }
+            print $ALLA $REF_NAME, "\t", $cons_p, "\t", $base, "\t", $conCount, "\t", $canonical_total, "\t", $conFreq,
+              "\t", $quality, "\t", $confidence, "\t", $pairedUB, "\t", $qualityUB, "\t", 'Consensus', "\n";
+
         } elsif ( $base ne 'N' ) {
+
+            # Any minority allele: ACGT + "-"
 
             # no zero count columns
             my $count = $cTable[$p]{$base};
@@ -411,26 +405,25 @@ foreach my $p ( 0 .. ( $REF_LEN - 1 ) ) {
                 next;
             }
 
-            my $freq = $count / $canonical_total;
             my $quality;
             if ( $base ne '-' ) {
                 $quality = ( $qTable[$p]{$base} - $count * 33 ) / $count;
-            } else {
-                $quality = $minQuality;
             }
 
-            my ( $confidence, $pairedUB, $qualityUB );
-            if ( $base eq '-' ) {
-                $quality    = $nullValue;
-                $confidence = $nullValue;
-                $pairedUB   = UB( $DE, $canonical_total );
-                $qualityUB  = 0;
-            } elsif ( $consensus eq 'N' ) {
+            my ( $confidence, $pairedUB, $qualityUB, $freq );
+
+            if ( $consensus eq 'N' ) {
                 $freq       = $nullValue;
                 $confidence = $nullValue;
                 $pairedUB   = $nullValue;
                 $qualityUB  = $nullValue;
+            } elsif ( $base eq '-' ) {
+                $freq       = $count / $canonical_total;
+                $confidence = $nullValue;
+                $pairedUB   = UB( $DE, $canonical_total );
+                $qualityUB  = 0;
             } else {
+                $freq = $count / $canonical_total;
 
                 # quality-based estimated error
                 my $ee = 1 / ( 10**( $quality / 10 ) );
@@ -439,44 +432,31 @@ foreach my $p ( 0 .. ( $REF_LEN - 1 ) ) {
                 $pairedUB   = UB( $PE, $canonical_total );
                 $qualityUB  = UB( $ee, $canonical_total );
 
-                # Deletions have no expected error from quality scores Even if
-                # were deletion minor variants were allowed, they would be
-                # unikely to contribute to the  auto-frequency heuristic
-                # threshold.
                 if ( $freq <= $ee && $freq > $hFreq ) {
                     $hFreq = $freq;
                 }
             }
 
-            # Valid called variant: ATGC + "-"
-            # IRMA v1.1.0 does not allow minor variants with ambiguous consensus
+            print $ALLA $REF_NAME, "\t", $cons_p, "\t", $base, "\t", $count, "\t", $canonical_total, "\t", $freq, "\t",
+              ( $quality // $nullValue ), "\t", $confidence, "\t", $pairedUB, "\t", $qualityUB, "\t", 'Minority', "\n";
+
+            # Valid called variant: ACGT
+            # IRMA v1.4.0 does not allow minor variants with ambiguous consensus
             if (    $consensus ne 'N'
-                 && !( $noGap && $base eq '-' )
+                 && $base ne '-'
                  && $freq >= $minFreq
                  && $count >= $minCount
                  && $quality >= $minQuality
-                 && $canonical_total >= $minTotal ) {
-
-                if ($printAllAlleles) {
-                    print $ALLA $REF_NAME, "\t", $cons_p, "\t", $base, "\t", $count, "\t", $canonical_total, "\t", $freq,
-                      "\t", $quality, "\t", $confidence, "\t", $pairedUB, "\t", $qualityUB, "\t", 'Minority', "\n";
-                }
-
-                if ( $confidence < $minConf || $freq <= $pairedUB || $freq <= $qualityUB ) {
-                    next;
-                }
+                 && $canonical_total >= $minTotal
+                 && $confidence >= $minConf
+                 && $freq > $pairedUB
+                 && $freq > $qualityUB ) {
 
                 $variants{$p}{$base} = $freq;
                 $varLine{$p}{$base}  = $REF_NAME . "\t" . $cons_p . "\t" . $canonical_total . "\t";
                 $varLine{$p}{$base} .= $consensus . "\t" . $base . "\t" . $conCount . "\t" . $count . "\t";
                 $varLine{$p}{$base} .= $conFreq . "\t" . $freq . "\t" . $conQuality . "\t" . $quality . "\t";
                 $varLine{$p}{$base} .= $confidence . "\t" . $pairedUB . "\t" . $qualityUB . "\n";
-
-            } elsif ($printAllAlleles) {
-
-                # any minor variant: ATGC + "-"
-                print $ALLA $REF_NAME, "\t", $cons_p, "\t", $base, "\t", $count, "\t", $canonical_total, "\t", $freq, "\t",
-                  $quality, "\t", $confidence, "\t", $pairedUB, "\t", $qualityUB, "\t", 'Minority', "\n";
             }
         }
     }

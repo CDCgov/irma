@@ -1228,7 +1228,7 @@ EOL
     [ "$AUTO_F" -eq 1 ] && options+=" -A"
     [ "$PAIRED" -eq "1" ] && "$spath"/getPairingStats.pl "${prefix2}"-*.stats > "$final-pairingStats.txt"
     # shellcheck disable=SC2086
-    "$spath"/call.pl -P -G $options "${pstats[@]}" "$ref" "$final" "$assemp/V${iter}-${gene}-"*.sto
+    "$spath"/call.pl $options "${pstats[@]}" "$ref" "$final" "$assemp/V${iter}-${gene}-"*.sto
 }
 
 function doPHASING() {
