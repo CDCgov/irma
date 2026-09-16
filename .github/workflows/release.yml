@@ -48,13 +48,14 @@ jobs:
         id: create_release
         shell: bash
         run: |
-          test_opts=()
-          [[ "${{ github.ref_name }}" == "test" ]] && test_opts=(--latest=false --draft)
+          # Immutable release deferred until the images are successfully created.
+          release_opts=(--draft)
+          [[ "${{ github.ref_name }}" == "test" ]] && release_opts+=(--latest=false)
 
           gh release create "${{ github.ref_name }}" "${{ steps.create_archive.outputs.archive_name }}" \
             --title "IRMA ${{ github.ref_name }}" \
             --notes-file "$RUNNER_TEMP/release_notes.md" \
-            "${test_opts[@]}"
+            "${release_opts[@]}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -209,3 +210,19 @@ jobs:
             echo "Copying ${GHCR_REPO}:latest to ${DOCKERHUB_REPO}:latest"
             docker buildx imagetools create "${GHCR_REPO}:latest" --tag "${DOCKERHUB_REPO}:latest"
           fi
+
+  finalize-release:
+    name: Finalize Release
+    needs: [create-release, create-image-release-manifest]
+    if: github.ref_name != 'test'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Publish Release
+        shell: bash
+        run: gh release edit "${{ github.ref_name }}" --draft=false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
