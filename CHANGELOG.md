@@ -8,6 +8,8 @@
   overriden in the [TOML configuration file](./IRMA_RES/irma-viz-config.toml).
   In the next minor release we expect to change output from PDF to SVG as well
   as remove some little used plots.
+- External configuration passing can now be semi-colon separated. Value checking
+  is more exact.
 
 ### Changes
 

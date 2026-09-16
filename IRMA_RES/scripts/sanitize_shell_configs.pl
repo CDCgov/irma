@@ -13,7 +13,7 @@ use English qw(-no_match_vars);
 
 my $bool      = '[01]';
 my $integer   = '\d+';
-my $float     = '\d|0.\d+';
+my $float     = '(?:\d|0[.]\d+)';
 my $path      = '[\sA-Za-z0-9/_.-]+';
 my $date      = '[0-9./-]+';
 my $free_text = '[\sa-zA-Z0-9_.-]+';
@@ -26,7 +26,7 @@ my %valid_config = (
                      ALLOW_DISK_CHECK         => $bool,
                      ALLOW_TMP                => $bool,
                      ASSEM_PROC               => $integer,
-                     ASSEM_PROG               => 'SSW|MINIMAP2|CORE',
+                     ASSEM_PROG               => '(?:SSW|MINIMAP2|CORE)',
                      ASSEM_REF                => $bool,
                      AUTO_F                   => $bool,
                      BAN_GROUPS               => '\w+',
@@ -100,7 +100,7 @@ my %valid_config = (
                      SECONDARY_LABEL_MODULES  => '[a-zA-Z0-9_.,:-]+',
                      SECONDARY_SORT           => $bool,
                      SEG_NUMBERS              => '[a-zA-Z0-9_.,:-]+',
-                     SIG_LEVEL                => '0?(.90|.95|.99|.999)',
+                     SIG_LEVEL                => '0?[.](?:90|95|99|999)',
                      SILENCE_COMPLEX_INDELS   => $bool,
                      SINGLE_LOCAL_PROC        => $integer,
                      SKIP_E                   => $bool,
@@ -121,27 +121,36 @@ local $RS = "\n";
 my @sanitized_configs = ();
 while ( my $line = <$CONFIG> ) {
     chomp($line);
-    my ( $key, $value ) = map { trim($_) } ( split /[#=]/smx, $line );
+    ($line) = split q{#}, $line, 2;
 
-    if ( !defined $key || $key eq q{} ) {
+    if ( !defined $line || $line =~ /^\s*$/smx ) {
         next;
     }
 
-    if ( !defined $valid_config{$key} ) {
-        die "Error: configuration '$key' is not a valid IRMA configuration value! Please check file: '$ARGV[0]'\n";
-    } else {
-        my $re = $valid_config{$key};
-        if ( $value eq q{} || $value =~ /^$re|"$re"|'$re'|""|''$/smx ) {
-            push( @sanitized_configs, "$key=$value" );
+    for my $chunk ( ( split /\s*;\s*/smx, $line ) ) {
+
+        my ( $key, $value ) = map { trim($_) } split /[=]/smx, $chunk, 2;
+
+        if ( !defined $key || $key eq q{} || !defined $value ) {
+            next;
+        }
+
+        if ( !defined $valid_config{$key} ) {
+            die "Error: configuration '$key' is not a valid IRMA configuration value! Please check file: '$ARGV[0]'\n";
         } else {
-            die "Error: configuration '$key' expects pattern /$re/ but found: $value\n";
+            my $re = $valid_config{$key};
+            if ( $value eq q{} || $value =~ /^(?:(?:$re)|"(?:$re)"|'(?:$re)'|""|'')$/smx ) {
+                push( @sanitized_configs, "$key=$value" );
+            } else {
+                die "Error: configuration '$key' expects pattern /$re/ but found: $value\n";
+            }
         }
     }
 }
 close $CONFIG or croak("Error: failed to close file. See: $OS_ERROR\n");
 
 if ( scalar @sanitized_configs > 0 ) {
-    print STDOUT join( ";", @sanitized_configs );
+    print STDOUT join( q{;}, @sanitized_configs );
 }
 
 sub trim {
