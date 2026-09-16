@@ -16,7 +16,7 @@ use Carp qw(croak);
 
 #use Data::Dumper;
 
-my ( $sigLevel, $pairedStats, $autoFreq );
+my ( $pairedStats, $autoFreq );
 
 my $minCount   = 2;        # minimum allele count
 my $minFreq    = 0.005;    # minimum allele frequency
@@ -26,6 +26,7 @@ my $minConf    = 0.5;      # minimum confidence not machine error
 my $minQuality = 20;       # minimum average allele quality
 my $minTotal   = 2;        # minimum total coverage depth
 my $nullValue  = 'NA';     # missing-value marker for allAlleles output
+my $sigLevel   = 0.999;    # significance level
 
 GetOptions(
             'min-freq|F=f'               => \$minFreq,
@@ -59,7 +60,7 @@ if ( scalar(@ARGV) < 3 ) {
         . "\t\t-T|--min-total-col-coverage <INT>\tMinimum non-ambiguous column coverage. Default = 2.\n"
         . "\t\t-N|--null-value <STR>\t\t\tMissing-value marker in allAlleles. Default = NA (R); use \\N for Hadoop/Hive/Impala.\n"
         . "\t\t-M|--conf-not-mac-err <FLT>\t\tMinimum confidence that a variant is not machine error. Default = 0.5.\n"
-        . "\t\t-S|--sig-level <FLT>\t\t\tSignificance level for error bounds (90, 95, 99, or 99.9 percent).\n"
+        . "\t\t-S|--sig-level <FLT>\t\t\tSignificance level for error bounds (90, 95, 99, or 99.9 percent). Default = 0.999\n"
         . "\t\t-E|--paired-error <FILE>\t\tFile containing paired-read error estimates.\n"
         . "\t\t-A|--auto-min-freq\t\t\tAutomatically determine the minimum frequency heuristic.\n"
         . "\n" );
@@ -121,62 +122,59 @@ sub toIndicesZero($) {
 }
 #############
 
-my $takeSig = 0;
 my ( $kappa, $kappa2, $eta, $gamma1, $gamma2 );
-if ( defined($sigLevel) ) {
-    $takeSig = 1;
-    if ( $sigLevel >= 1 ) {
-        $sigLevel /= 100;
+
+if ( $sigLevel >= 1 ) {
+    $sigLevel /= 100;
+}
+
+if ( $sigLevel >= .999 ) {
+    $kappa = 3.090232;
+} elsif ( $sigLevel >= .99 ) {
+    $kappa = 2.326348;
+} elsif ( $sigLevel >= .95 ) {
+    $kappa = 1.644854;
+} elsif ( $sigLevel >= .90 ) {
+    $kappa = 1.281552;
+} else {
+    $kappa = 3.090232;
+}
+
+### second order correction ###
+$kappa2 = $kappa**2;
+$eta    = $kappa2 / 3 + 1 / 6;
+$gamma1 = $kappa2 * ( 13 / 18 ) + 17 / 18;
+$gamma2 = $kappa2 * ( 1 / 18 ) + 7 / 36;
+###############################
+
+sub UB($$) {
+    my $p = $_[0];
+    my $N = $_[1];
+
+    if ( $N <= 0 ) {
+        print STDERR "Unexpected error: $N coverage depth.\n";
+        return 0;
     }
 
-    if ( $sigLevel >= .999 ) {
-        $kappa = 3.090232;
-    } elsif ( $sigLevel >= .99 ) {
-        $kappa = 2.326348;
-    } elsif ( $sigLevel >= .95 ) {
-        $kappa = 1.644854;
-    } elsif ( $sigLevel >= .90 ) {
-        $kappa = 1.281552;
+    if ( $p == 1 ) {
+        return 1;
+    }
+
+    # Let b = -1, so V = u - u^2
+    my $V = $p - $p**2;
+
+    # And N + 2*eta
+    my $u2 = ( $p * $N + $eta ) / ( $N + 2 * $eta );
+
+    my $inRoot = $V + ( $gamma2 - $gamma1 * $V ) / $N;
+
+    # N < gamma1 - 4*gamma2
+    # N < kappa^2/2 + 31/18
+    if ( $inRoot < 0 ) {
+        return 1;
     } else {
-        $kappa = 3.090232;
-    }
-
-    ### second order correction ###
-    $kappa2 = $kappa**2;
-    $eta    = $kappa2 / 3 + 1 / 6;
-    $gamma1 = $kappa2 * ( 13 / 18 ) + 17 / 18;
-    $gamma2 = $kappa2 * ( 1 / 18 ) + 7 / 36;
-    ###############################
-
-    sub UB($$) {
-        my $p = $_[0];
-        my $N = $_[1];
-
-        if ( $N <= 0 ) {
-            print STDERR "Unexpected error: $N coverage depth.\n";
-            return 0;
-        }
-
-        if ( $p == 1 ) {
-            return 1;
-        }
-
-        # Let b = -1, so V = u - u^2
-        my $V = $p - $p**2;
-
-        # And N + 2*eta
-        my $u2 = ( $p * $N + $eta ) / ( $N + 2 * $eta );
-
-        my $inRoot = $V + ( $gamma2 - $gamma1 * $V ) / $N;
-
-        # N < gamma1 - 4*gamma2
-        # N < kappa^2/2 + 31/18
-        if ( $inRoot < 0 ) {
-            return 1;
-        } else {
-            my $UB = $u2 + $kappa * sqrt($inRoot) / sqrt($N);
-            return max( min( $UB, 1 ), 0 );
-        }
+        my $UB = $u2 + $kappa * sqrt($inRoot) / sqrt($N);
+        return max( min( $UB, 1 ), 0 );
     }
 }
 
@@ -207,13 +205,15 @@ if ( defined $pairedStats ) {
     while ( my $line = <$PSF> ) {
         chomp($line);
         my ( $rn, $type, $value ) = split( "\t", $line );
-        $pStats{$rn}{$type} = $value;
+        if ( $rn eq $REF_NAME ) {
+            $pStats{$type} = $value;
+        }
     }
     close $PSF or croak("Cannot close file: $OS_ERROR\n");
 
-    $DE        = $pStats{$REF_NAME}{'MinimumDeletionErrorRate'};
-    $PE        = $pStats{$REF_NAME}{'ExpectedErrorRate'};
-    $IE        = $pStats{$REF_NAME}{'MinimumInsertionErrorRate'};
+    $DE        = $pStats{'MinimumDeletionErrorRate'}  // 0;
+    $PE        = $pStats{'ExpectedErrorRate'}         // 0;
+    $IE        = $pStats{'MinimumInsertionErrorRate'} // 0;
     $is_paired = 1;
 }
 
@@ -297,7 +297,6 @@ my %base_order = ();
 @base_order{@alpha} = 0 .. $#alpha;
 
 my $hFreq        = 0;
-my %totals       = ();
 my $consensusSeq = q{};
 my $cons_p       = 0;
 foreach my $p ( 0 .. ( $REF_LEN - 1 ) ) {
