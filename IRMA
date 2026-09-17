@@ -279,7 +279,7 @@ if [ "$MAX_ROUNDS" -gt "99" ]; then
 fi
 
 IRMA_CORE=""
-IRMA_CORE_VERSION="irma-core-cli 0.10.1"
+IRMA_CORE_VERSION="irma-core-cli 0.11.0"
 # shellcheck disable=SC2034
 USE_IRMA_CORE=1
 
