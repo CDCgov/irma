@@ -68,6 +68,22 @@ Download the latest archive via our [releases page](https://github.com/CDCgov/ir
    ./IRMA FLU tests/test2.fastq.gz test_project
    ```
 
+### Via Git Clone
+
+For IRMA 1.4+ you can checkout the repo from git and install needed binary artifacts. Please note that the deployment may not be on a release tag by default and therefore have unvetted changes.
+
+```bash
+
+git clone https://github.com/CDCgov/irma.git
+cd irma
+# Optonal: git checkout <TAG> 
+
+# Requires curl and IRMA v1.4+
+ ./INSTALL_LOCAL.sh
+```
+
+_Deployments using `INSTALL_LOCAL.sh` are not meant for release packaging because they are non-portable._
+
 ### Via Container
 
 Simply run:
