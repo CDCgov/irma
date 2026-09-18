@@ -295,9 +295,14 @@ else
     exit 1
 fi
 
-if [ "$($IRMA_CORE --version)" != "$IRMA_CORE_VERSION" ]; then
-    echo "IRMA ERROR: irma-core version mismatch. Expected: $IRMA_CORE_VERSION"
-    exit 1
+FOUND_CORE_VERSION=$($IRMA_CORE --version)
+if [ "$FOUND_CORE_VERSION" != "$IRMA_CORE_VERSION" ]; then
+    if [[ "$FOUND_CORE_VERSION" == *"-dev" ]]; then
+        echo "IRMA WARNING: expected $IRMA_CORE_VERSION but found ${FOUND_CORE_VERSION#* }, assuming you are a developer!"
+    else
+        echo "IRMA ERROR: irma-core version mismatch. Expected: $IRMA_CORE_VERSION"
+        exit 1
+    fi
 fi
 
 IRMA_VIZ=""
@@ -317,9 +322,14 @@ else
     exit 1
 fi
 
-if [ "$($IRMA_VIZ --version)" != "$IRMA_VIZ_VERSION" ]; then
-    echo "IRMA ERROR: irma-viz version mismatch. Expected: $IRMA_VIZ_VERSION"
-    exit 1
+FOUND_VIZ_VERSION=$($IRMA_VIZ --version)
+if [ "$FOUND_VIZ_VERSION" != "$IRMA_VIZ_VERSION" ]; then
+    if [[ "$FOUND_VIZ_VERSION" == *"-dev" ]]; then
+        echo "IRMA WARNING: expected $IRMA_VIZ_VERSION but found ${FOUND_VIZ_VERSION#* }, assuming you are a developer!"
+    else
+        echo "IRMA ERROR: irma-viz version mismatch. Expected: $IRMA_VIZ_VERSION"
+        exit 1
+    fi
 fi
 
 export IFX_LOCAL_PROCS=$SINGLE_LOCAL_PROC
@@ -1748,8 +1758,12 @@ function doPostProcessing() {
         --min-variant-depth "$MIN_TCC" \
         --min-confidence-not-sequencer-error "$MIN_CONF" \
         --paired "$paired" \
-        --sample-name "$RUN" \
-        && time_stamp "IRMA-viz plots created" || die "IRMA visualization failed"
+        --sample-name "$RUN" > "$ppath/logs/irma-viz-log.txt" 2>&1 \
+        && time_stamp "IRMA-viz plots created" \
+        || {
+            cat "$ppath/logs/irma-viz-log.txt"
+            die "IRMA visualization failed"
+        }
 
     rmglob "$ppath"/R0.xfl "$matchp"/R*.nomatch "$refp"/R*.refs
     mv "$refp" "$ppath/intermediate/0-ITERATIVE-REFERENCES"
