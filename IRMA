@@ -296,7 +296,7 @@ if [ "$($IRMA_CORE --version)" != "$IRMA_CORE_VERSION" ]; then
 fi
 
 IRMA_VIZ=""
-IRMA_VIZ_VERSION="irma-viz 0.2.0"
+IRMA_VIZ_VERSION="irma-viz 0.2.2"
 
 if [ -x "$spath/irma-viz_$IRMA_BIN_SUFFIX" ]; then
     IRMA_VIZ="$spath/irma-viz_$IRMA_BIN_SUFFIX"
@@ -1736,6 +1736,7 @@ function doPostProcessing() {
         --min-variant-depth "$MIN_TCC" \
         --min-confidence-not-sequencer-error "$MIN_CONF" \
         --paired "$paired" \
+        --sample-name "$RUN" \
         && time_stamp "IRMA-viz plots created" || die "IRMA visualization failed"
 
     rmglob "$ppath"/R0.xfl "$matchp"/R*.nomatch "$refp"/R*.refs

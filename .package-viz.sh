@@ -1,6 +1,6 @@
 #!/bin/bash
 
-default_irma_viz=v0.2.0
+default_irma_viz=v0.2.2
 
 version=${PINNED_VIZ:-$default_irma_viz}
 archive=irma-viz-integrated-${version}.zip
