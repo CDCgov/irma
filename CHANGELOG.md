@@ -22,7 +22,7 @@
 
 ### Fixes
 
-- Makes variant phase numbering deterministic by bumping to IRMA-core v0.10.1
+- Makes variant phase numbering deterministic by bumping to IRMA-core v0.11
 - Removes many non-determinisms throughout reference editing, classification,
   and consensus callings.
 - Fixes latent bugs for large read-gathering rounds and final reference passing.
