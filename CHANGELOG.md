@@ -1,6 +1,6 @@
 # IRMA Changelog
 
-## [1.4.0]: TBD
+## [1.4.0]: 2026-09-30
 
 ### Features
 
@@ -29,9 +29,9 @@
 
 ### Removed
 
-- Removes unused options for `call.pl` and cleans up calling
-- Removes experimental feature `MIN_DROPOUT_EDGE_DEPTH`
-- Removes experimental "slim" ubi8-micro Dockerfile
+- Removes *internal* unused options for `call.pl` and cleans up calling
+- Removes *experimental* feature `MIN_DROPOUT_EDGE_DEPTH`
+- Removes *experimental* "slim" ubi8-micro Dockerfile
 
 ## [1.3.5]: 2026-07-06
 

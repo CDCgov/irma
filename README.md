@@ -96,6 +96,8 @@ docker run --rm -itv $(pwd):/data ghcr.io/cdcgov/irma:latest IRMA # more args
 docker run --rm -itv $(pwd):/data docker.io/cdcgov/irma:latest IRMA # more args
 ```
 
+_The image runs as a non-root user by default: on Linux/WSL add `-u "$(id -u):$(id -g)"` so it can write to the mounted directory._
+
 #### Verifying images on `ghcr.io`
 
 While we publish to both `ghcr.io` and Docker Hub, please use the former for
